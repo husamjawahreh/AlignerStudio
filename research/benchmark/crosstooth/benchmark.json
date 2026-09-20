@@ -1,0 +1,106 @@
+{
+  "status": "BLOCKED",
+  "research_only": true,
+  "not_clinically_validated": true,
+  "not_approved_for_commercial_deployment": true,
+  "repository": "https://github.com/XiShuFan/CrossTooth_CVPR2025",
+  "repository_commit": "a637a9d37567d5364cad5eea6f7db91d7189a9ee",
+  "license_status": "No repository LICENSE file and GitHub license metadata is null; commercial/redistribution rights were not established.",
+  "checkpoint_source": "bundled in repository at models/PTv1/point_best_model.pth (README: Pretrained model is at models/PTv1/point_best_model.pth)",
+  "checkpoints": {
+    "point_best_model.pth": {
+      "size_bytes": 27020998,
+      "sha256": "a03d521dfbf9f77d9077a470e123f66255245b3589ccd6af82972102c027baf9",
+      "role": "CrossTooth PTv1 point feature segmentation checkpoint",
+      "research_cache_path": "~/.cache/alignerstudio-research/crosstooth/checkpoints/point_best_model.pth"
+    }
+  },
+  "canonical_inputs": {
+    "upper": {
+      "path": "data/benchmark/real-case/upper.stl",
+      "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48",
+      "size_bytes": 8557034
+    },
+    "lower": {
+      "path": "data/benchmark/real-case/lower.stl",
+      "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b",
+      "size_bytes": 6954234
+    },
+    "canonical_stls_modified": false
+  },
+  "requirements": {
+    "python": "3.8.19 (commented pin in requirements.txt)",
+    "pytorch": "torch==1.13.1+cu117 with torchvision/torchaudio cu117 wheels",
+    "pointops": "required from POSTECH-CVLab/point-transformer (CUDA extension); imported as models.PointTransformer.libs.pointops.functions.pointops but PointTransformer tree is absent from the published repo checkout",
+    "other_cuda_packages": [
+      "spconv-cu117==2.3.6",
+      "torch-scatter==2.1.1+pt113cu117",
+      "torch-sparse==0.6.17+pt113cu117",
+      "torch-cluster==1.6.1+pt113cu117",
+      "torch-spline-conv==1.2.2+pt113cu117",
+      "flash-attn==2.5.9.post1"
+    ],
+    "loader_deps": [
+      "vedo==2023.4.4",
+      "einops==0.8.0",
+      "numpy==1.21.0"
+    ],
+    "input": "PLY mesh readable by vedo (sample YBSESUN6_upper.ply); STL is not the documented official predict input and must be converted only in research area if a future run is unblocked",
+    "pipeline": "face-centroid + cell-normal point features -> PointTransformerSeg38 (19 logits) -> argmax labels -> colored face mask PLY"
+  },
+  "input_format": {
+    "official_example": "YBSESUN6_upper.ply",
+    "official_command": "python predict.py --case \"some.ply\" --save_path \"some_mask.ply\"",
+    "stl_direct": false,
+    "ply_required_by_docs": true,
+    "loader": "dataset/data.py ToothData uses vedo.load(item); computes cell centroids and cell normals; samples/pads to num_points=16000 with random permutation",
+    "correspondence": {
+      "model_operates_on": "face/cell centroids (not original STL vertices)",
+      "original_vertices_in_output": "output_pred_ply writes original mesh.points() as vertices and colored faces from predicted face labels",
+      "sampling": "random permutation and PointcloudSample to 16000 faces; padding faces with (0,0,0) indices skipped on write",
+      "vertex_label_identity": "labels are assigned per sampled face, not per original vertex index; full original-vertex semantic labels are not produced by the official path",
+      "stl_vertex_face_preservation": "not verified on this host because inference was blocked before conversion/run"
+    }
+  },
+  "execution": {
+    "command": "python predict.py --case <case.ply> --save_path <mask.ply> --pretrain_model_path models/PTv1/point_best_model.pth",
+    "device_selection": "args.cuda = (not args.no_cuda) and torch.cuda.is_available(); model moved to cuda if available else cpu flag path exists",
+    "hard_cuda_in_model": "models/PTv1/point_transformer_seg.py uses torch.cuda.IntTensor and pointops CUDA ops (furthestsampling, queryandgroup); no CPU-safe official path",
+    "nvidia_smi": "failed: no NVIDIA driver communication",
+    "nvcc": "not found",
+    "pointops_present_in_checkout": false,
+    "result": "BLOCKED before preprocessing/inference"
+  },
+  "blockers": [
+    "No usable NVIDIA driver (nvidia-smi failed)",
+    "nvcc not installed",
+    "Official stack requires CUDA 11.7 PyTorch and CUDA pointops",
+    "Published repo checkout lacks models/PointTransformer pointops sources",
+    "Model code hard-codes CUDA tensors in TransitionDown"
+  ],
+  "results": null,
+  "connected_component_experiment": {
+    "attempted": false,
+    "reason": "No official prediction masks were produced because inference was blocked"
+  },
+  "tooth_instance_compatibility": {
+    "id": "CANNOT BE SAFELY DERIVED",
+    "fdi": "CANNOT BE SAFELY DERIVED",
+    "jaw": "CAN BE DERIVED",
+    "mesh": "CANNOT BE SAFELY DERIVED",
+    "centroid": "CANNOT BE SAFELY DERIVED",
+    "landmarks": "NOT AVAILABLE",
+    "confidence": "NOT AVAILABLE",
+    "notes": "Public code maps class indices 1-16 to UL/UR/LL/LR color names and includes an FDI2color table, and predict.py always applies lower_palette; without a successful official run, instance identity, FDI correctness, confidence, and original-mesh reconstruction remain unverified. Expected product behavior is semantic class labels on faces rather than a complete ToothInstance pipeline."
+  },
+  "failures": [
+    "Host cannot execute official CUDA/pointops inference path"
+  ],
+  "runtime": null,
+  "mesh_correspondence": null,
+  "production_untouched": true,
+  "production_adapter_added": false,
+  "segmentation_gate_changed": false,
+  "fixture_fallback_added": false,
+  "architecture_or_checkpoint_altered": false
+}
