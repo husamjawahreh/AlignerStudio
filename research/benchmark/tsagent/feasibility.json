@@ -1,0 +1,112 @@
+{
+  "status": "FEASIBILITY_GATE_COMPLETE",
+  "research_only": true,
+  "not_clinically_validated": true,
+  "inference_run": false,
+  "paid_api_called": false,
+  "training_run": false,
+  "production_modified": false,
+  "canonical_inputs": {
+    "upper": {"path": "data/benchmark/real-case/upper.stl", "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48", "size_bytes": 8557034},
+    "lower": {"path": "data/benchmark/real-case/lower.stl", "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b", "size_bytes": 6954234},
+    "modified": false,
+    "converted": false
+  },
+  "TSAGENT_COMMIT": "5dea4d347966121a7cdbb18e7a08009af1a2d310",
+  "repository": "https://github.com/znshje/TSegAgent",
+  "source_license": "Apache-2.0",
+  "sam3": {
+    "source": "https://github.com/facebookresearch/sam3",
+    "pinned_submodule_commit": "2ec3c0711a9719ac324388adc662e471f8fe2168",
+    "license": "SAM License, Last Updated November 19, 2025",
+    "required_install": "pip install -e dep/sam3",
+    "version_status": "No package version or release tag pinned by TSegAgent; exact source commit is pinned as the submodule gitlink.",
+    "runtime_requirements_from_pinned_readme": {"python": ">=3.12", "pytorch": ">=2.7; pinned SAM3 README example uses torch==2.7.0 with cu126", "cuda": ">=12.6", "torchvision": "not separately pinned by SAM3 README; TSegAgent pins 0.24.1+cu130", "cxx": "C++17", "optional": ["einops", "ninja", "flash-attn-3", "cc_torch"]},
+    "weights_repository": "https://huggingface.co/facebook/sam3",
+    "weights_access": "manual gated access; Hugging Face requires access approval and authentication",
+    "weight_files_seen_in_metadata": ["sam3.pt", "model.safetensors"],
+    "weight_filename_for_default_builder": "sam3.pt (inferred from SAM3 repository model metadata/default builder; not downloaded)",
+    "weight_size_bytes": null,
+    "weight_sha256": null,
+    "weight_downloaded": false,
+    "weight_status": "NOT_PUBLICLY_OBTAINABLE_WITHOUT_MANUAL_ACCESS_APPROVAL",
+    "weight_terms": "Covered by SAM License after access/acceptance; license grants non-exclusive worldwide non-transferable royalty-free rights, requires redistribution under the same agreement, and provides no warranty. Commercial suitability is not assumed; legal review remains required.",
+    "source_license_url": "https://github.com/facebookresearch/sam3/blob/2ec3c0711a9719ac324388adc662e471f8fe2168/LICENSE"
+  },
+  "dependencies": {
+    "tsagent_requirements": {"loguru": "0.7.3", "trimesh": "4.10.0", "vedo": "2025.5.4", "torch": "2.9.1+cu130", "torchvision": "0.24.1+cu130", "einops": "0.8.1", "psutil": "7.1.3", "decord": "0.6.0", "python-dotenv": "1.2.1", "openai": "2.9.0", "fastapi": "0.128.0", "uvicorn": "0.40.0", "requests": "2.32.5", "fast-simplification": "0.1.13", "transformers": ">=5.0.0rc0", "accelerate": "unversioned", "peft": "unversioned", "datasets": "unversioned", "pillow": "unversioned"},
+    "python": ">=3.12",
+    "cuda": ">=12.6 according to TSegAgent README; TSegAgent wheel pins are cu130",
+    "opengl": "OpenGL development libraries plus EGL for offscreen rasterization; exact system package versions not pinned",
+    "rasterizer": {"name": "reversible_rasterizer", "version": "0.1.0", "python_requires": ">=3.8", "install_requires": ["numpy>=1.21", "scikit-learn>=1.0"], "build": "CMake >=3.27, C++17, pybind11 2.13.6 fetched by CMake, Eigen 3.4.0 fetched by CMake, Assimp vendored, OpenGL EGL", "license": "Apache-2.0 in bundled setup.py/LICENSE"},
+    "vlm": {"client": "openai==2.9.0", "providers": ["OpenAI API via OPENAI_API_KEY", "ARK/Doubao API via ARK_API_KEY"], "documented_models": ["gpt-5.2 / chatgpt-5.2", "doubao-seed-1-8-251228 / doubao-seed 1.8"], "paid_api_used": false}
+  },
+  "pipeline": {
+    "input": "trimesh.load(model_path, process=False); documented examples are Teeth3DS-style OBJ files in separate upper/lower case directories",
+    "stl_support": "not documented or verified; canonical STL conversion was not performed",
+    "preprocessing": ["load mesh without trimesh processing", "compute vertex normals and curvature", "color vertices by curvature", "MeshRenderer normalizes by bounding-box centroid and scale", "render 19 fixed orthographic views at 1280x800", "SAM3 text prompt is 'tooth'", "map SAM3 image masks through reversible rasterizer face ID maps", "merge, remove disconnected parts, fill small gaps, reorder face instance IDs"],
+    "coordinate_convention": "MeshRenderer applies translation by bounding-box centroid and scale by max radial distance; rotations are Euler degree triples and camera is orthographic. No dental upper/lower axis convention is documented beyond Teeth3DS filename context.",
+    "upper_lower": "Teeth3DS directory and *_upper.obj / *_lower.obj naming; Predictor itself accepts a single model path and does not validate jaw from geometry. FDI VLM prompt separately asks for jaw upper/lower.",
+    "own_checkpoint": false,
+    "required_checkpoints": ["SAM3 gated foundation checkpoint; TSegAgent publishes no own checkpoint"],
+    "segmentation_without_vlm": "YES: Predictor(use_gpt=False) and test_teeth3ds.py --disable-gpt run the SAM3 segmentation/postprocessing path without creating an OpenAI/ARK client.",
+    "fdi_without_vlm": "NO: FDI classification is implemented by predict_fdi_from_images using the external VLM; --disable-gpt intentionally omits it."
+  },
+  "output": {
+    "internal": {"vertices": "normalized renderer mesh vertices", "faces": "original loaded face index array", "face_labels": "positive integer instance IDs after multi-view merge/postprocessing; 0 unlabeled/background", "face_id": "pre-FDI face instance labels retained only when VLM is used", "gpt_output": "raw/processed VLM JSON only when VLM is used", "debug_info": ["face_coverage"]},
+    "json_export": "{labels: vertex_labels[], debug_info: ..., face_id: [], gpt_output: null} without VLM; with VLM includes face_id and gpt_output",
+    "vertex_labels": "majority vote of incident positive face labels; unlabeled vertices remain 0",
+    "instance_representation": "face-level integer regions from SAM3 masks projected through face ID maps; vertex labels are derived by incident-face majority, not independent instance segmentation",
+    "confidence": "SAM3 scores are captured internally per view but are not exported into the JSON or aggregated into per-instance confidence",
+    "landmarks": "none",
+    "fdi": "external VLM JSON with id/fdi/type/bad_id and jaw, then fdi_optimize remaps face labels; unavailable in no-VLM mode"
+  },
+  "reversible_rasterizer": {
+    "behavior": "Orthographic renderer returns a pixel-to-face ID map; IDs identify original face indices in the renderer mesh. TSegAgent maps each positive SAM3 pixel mask to unique face IDs.",
+    "preserves_face_indices": true,
+    "preserves_vertex_indices": true,
+    "normalization_effect": "renderer mutates the loaded trimesh by translating/scaling vertices; indices/faces remain aligned but coordinates are normalized, not original clinical coordinates",
+    "coverage": "face_coverage debug ratio records whether faces were seen across fixed views; uncovered faces remain unlabeled",
+    "outlier_and_gap_processing": "removes small disconnected same-label components and fills small unlabeled face gaps by adjacency majority; these are deterministic research heuristics, not validated clinical postprocessing"
+  },
+  "tooth_instance_mapping": {
+    "id": "AVAILABLE as research face/vertex region IDs, but IDs are reordered by arch geometry and are not stable FDI IDs",
+    "fdi": "AVAILABLE only with external VLM; NOT AVAILABLE in no-VLM segmentation-only mode",
+    "jaw": "DERIVABLE from input naming/context; not emitted as a stable segmentation field in no-VLM JSON",
+    "mesh": "DERIVABLE from original face topology and face labels, but exported vertices are normalized and unlabeled/uncovered faces require explicit handling",
+    "centroid": "DERIVABLE from trusted face/vertex regions",
+    "landmarks": "NOT AVAILABLE",
+    "confidence": "CANNOT BE SAFELY DERIVED as per-tooth confidence"
+  },
+  "rights": {
+    "classification": "RESEARCH_ONLY",
+    "tsagent_source": "Apache-2.0",
+    "sam3_code_and_weights": "SAM License; gated weights require acceptance/authentication; terms include redistribution conditions and no warranty",
+    "vlm_api_terms": "OpenAI and ARK/Doubao service terms apply; no API key was used and no paid call was made",
+    "dataset": "README points to Teeth3DS via OSF; applicable dataset/training-data terms were not re-licensed by TSegAgent. The related 3DTeethSeg challenge repository identifies its data as CC BY-NC-ND 4.0, so commercial clearance is not assumed.",
+    "checkpoint_terms": "No TSegAgent checkpoint terms because TSegAgent has no own checkpoint; SAM3 checkpoint access/terms remain gated and separate."
+  },
+  "hardware": {
+    "current_machine": "BLOCKED",
+    "current_blockers": ["no NVIDIA driver", "no NVIDIA GPU", "nvcc not found", "no SAM3 weights/access", "no reversible_rasterizer build"],
+    "cloud_gpu_minimum": "Official software minimum is CUDA >=12.6 and no VRAM minimum is published by TSegAgent/SAM3 README.",
+    "cloud_gpu_recommendation": "Modern NVIDIA GPU with CUDA 12.6+; 24 GB VRAM is a planning target but sufficiency is UNKNOWN until gated SAM3 weights and the exact pinned build are tested.",
+    "disk_estimate": "Exact SAM3 weight size is unavailable from the gated Hugging Face metadata. Reserve at least 30 GB free for environment, build trees, caches, model files, and rendered intermediates; this is a planning reserve, not a measured requirement.",
+    "rtx40_compatibility": "No TSegAgent-specific RTX40/RTX50 compatibility statement found. SAM3 requires CUDA 12.6+; compatibility is UNKNOWN.",
+    "cloud_feasibility": "UNKNOWN until SAM3 access is approved and a 24 GB-class environment is tested; technically plausible, not reproducibly ready now."
+  },
+  "SAM3_STATUS": "PINNED_SOURCE_COMMIT_AVAILABLE; MANUAL_GATED_WEIGHTS_REQUIRED",
+  "SAM3_WEIGHTS_STATUS": "NOT_PUBLICLY_OBTAINABLE_WITHOUT_MANUAL_ACCESS_APPROVAL; filename/size/hash not available without authenticated access",
+  "VLM_REQUIRED_FOR_FDI": "YES",
+  "CHECKPOINT_STATUS": "TSegAgent_OWN_CHECKPOINT_NONE; SAM3_CHECKPOINT_GATED",
+  "INPUT_COMPATIBILITY": "PARTIAL; documented Teeth3DS OBJ layout, raw canonical STL not verified",
+  "ORIGINAL_MESH_MAPPING": "PARTIAL; face indices are preserved through rasterizer and vertex labels are majority-derived, but normalized coordinates and uncovered/mixed faces require benchmark validation",
+  "LANDMARKS": "NOT_AVAILABLE",
+  "CONFIDENCE": "NOT_AVAILABLE_AS_PER_TOOTH_FIELD",
+  "GPU_REQUIREMENT": "CUDA >=12.6 GPU; VRAM minimum unpublished",
+  "CURRENT_MACHINE_STATUS": "BLOCKED",
+  "CLOUD_GPU_FEASIBILITY": "UNKNOWN",
+  "LEGAL_STATUS": "RESEARCH_ONLY",
+  "BENCHMARK_READY": "NO",
+  "RECOMMENDATION": "STOP_PENDING_SAM3_ACCESS_AND_RIGHTS_REVIEW"
+}

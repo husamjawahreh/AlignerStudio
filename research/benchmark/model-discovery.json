@@ -1,0 +1,76 @@
+{
+  "status": "RESEARCH_AUDIT_COMPLETE",
+  "research_only": true,
+  "not_clinically_validated": true,
+  "not_approved_for_commercial_deployment": true,
+  "audit_date": "2026-09-20",
+  "canonical_inputs": {
+    "upper": {"path": "data/benchmark/real-case/upper.stl", "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48", "size_bytes": 8557034},
+    "lower": {"path": "data/benchmark/real-case/lower.stl", "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b", "size_bytes": 6954234},
+    "modified": false
+  },
+  "host": {
+    "python": "3.12.3",
+    "nvidia_smi": "failed: no NVIDIA driver communication",
+    "nvcc": "not found",
+    "gpu": "unavailable",
+    "production_environment_modified": false
+  },
+  "repositories": {
+    "TSegAgent": {"url": "https://github.com/znshje/TSegAgent", "commit": "5dea4d347966121a7cdbb18e7a08009af1a2d310", "license": "Apache-2.0 source; model/data/third-party terms separate", "checkpoint": "No TSegAgent checkpoint published; SAM3 weights require separate access", "execution": "BLOCKED", "cache": "~/.cache/alignerstudio-research/model-discovery/TSegAgent"},
+    "OrthoGeo3D": {"url": "https://github.com/lachtarnour/OrthoGeo3D", "commit": "16a20f13a6968214787c76f854627a361455a9be", "license": "No repository license metadata", "checkpoint": "No bundled or author-downloadable pretrained checkpoint found; README shows training-generated best.pt only", "execution": "BLOCKED", "cache": "~/.cache/alignerstudio-research/model-discovery/OrthoGeo3D"},
+    "ToothGroupNetwork": {"url": "https://github.com/limhoyeon/ToothGroupNetwork", "commit": "d7e16a4b8fca811975c3a4c7c1429bb0a51b3083", "license": "No repository license metadata", "checkpoint": "Author-linked Google Drive ckpts(new).zip; not downloaded", "execution": "BLOCKED_ON_HOST", "cache": "~/.cache/alignerstudio-research/model-discovery/ToothGroupNetwork"},
+    "3d_tooth_segmentation": {"url": "https://github.com/irfanfadhullah/3d_tooth_segmentation", "commit": "e344796c1492e270ba930609f60625a66778180d", "license": "No repository license metadata", "checkpoint": "No published pretrained checkpoint found; maintained DGCNN baseline requires training output best.pt", "execution": "BLOCKED_MISSING_CHECKPOINT", "cache": "~/.cache/alignerstudio-research/model-discovery/3d_tooth_segmentation"},
+    "PMTSeg": {"url": "https://github.com/znshje/PMTSeg", "commit": "e07a508ab9089113e5efd4835d18f6e0d753096e", "license": "Apache-2.0 source; weights/data/third-party terms separate", "checkpoint": "No bundled or linked pretrained checkpoint found", "execution": "BLOCKED_MISSING_CHECKPOINT", "cache": "~/.cache/alignerstudio-research/model-discovery/PMTSeg"},
+    "THISNet": {"url": "https://github.com/li-pengcheng/THISNet", "commit": "9fb881e78a24c52cb0d0cde1576369d142f53f85", "license": "No repository license metadata", "checkpoint": "README test.py expects local ckpt_xx_xxxx.pth; no downloadable checkpoint found", "execution": "BLOCKED_MISSING_CHECKPOINT", "cache": "~/.cache/alignerstudio-research/model-discovery/THISNet"}
+  },
+  "candidates": [
+    {
+      "model": "TSegAgent",
+      "3d_ios": "YES", "stl": "UNKNOWN", "instances": "YES", "fdi": "PARTIAL", "original_mesh": "PARTIAL", "landmarks": "UNKNOWN", "confidence": "PARTIAL", "pretrained": "PARTIAL", "cpu": "NO", "gpu": "YES", "checkpoint_available": "UNKNOWN", "license_status": "SOURCE_APACHE_WEIGHTS_SAM3_OTHER_VLM_UNCLEAR", "commercial_status": "UNKNOWN", "engineering_effort": "HIGH", "execution_status": "BLOCKED",
+      "facts": {"input": "Teeth3DS-style upper/lower OBJ directory layout; arbitrary STL/OBJ support is not demonstrated", "preprocessing": "SAM3 plus reversible_rasterizer mesh rendering and face/pixel relation; dataset-specific structure", "output": "prediction visualization and exported JSON; source includes instance masks and FDI classifier", "semantic_or_instance": "instance masks", "upper_lower": "dataset filenames and jaw context", "correspondence": "reversible rasterizer is intended to relate rendered pixels to mesh faces, but exact original-face/vertex preservation was not validated", "landmarks": "not documented", "confidence": "SAM3/VLM scores may exist but no stable ToothInstance confidence contract", "fdi": "external VLM classifier; --disable-gpt removes FDI classification", "api": "README requires OPENAI_API_KEY or ARK_API_KEY; documented models chatgpt-5.2 and doubao-seed 1.8; no paid API called", "sam3": "README does not pin a SAM3 version; requires separate SAM3 install and weights; GitHub API reports license Other/NOASSERTION", "vram": "not documented; Python >=3.12, PyTorch >=2.7, CUDA >=12.6, C++17, OpenGL"},
+      "tooth_instance": {"id": "AVAILABLE_AS_PREDICTED_MASK_INSTANCE_ID_ONLY_IF_EXPORT_SCHEMA_CONFIRMED", "fdi": "DERIVABLE_ONLY_THROUGH_EXTERNAL_VLM", "jaw": "DERIVABLE", "mesh": "DERIVABLE_WITH_VALIDATED_FACE_MAPPING", "centroid": "DERIVABLE", "landmarks": "NOT AVAILABLE", "confidence": "CANNOT_BE_SAFELY_DERIVED"}
+    },
+    {
+      "model": "OrthoGeo3D / OrthoTwin3D",
+      "3d_ios": "YES", "stl": "UNKNOWN", "instances": "PARTIAL", "fdi": "PARTIAL", "original_mesh": "PARTIAL", "landmarks": "NOT_AVAILABLE", "confidence": "NOT_AVAILABLE", "pretrained": "NO", "cpu": "UNKNOWN", "gpu": "YES", "checkpoint_available": "NO", "license_status": "NO_REPOSITORY_LICENSE", "commercial_status": "UNKNOWN", "engineering_effort": "HIGH", "execution_status": "BLOCKED",
+      "facts": {"state": "project/baseline implementation, not a complete production inference package", "input": "prepared Teeth3DS point data; README describes 60000-point processed scans", "output": "point-wise tooth labels; planned instance postprocessing, landmarks, and geometry are explicitly future project phases", "model": "DGCNN semantic baseline", "preprocessing": "dataset download, patient splits, prepare_data; no STL command", "checkpoint": "README references OUTPUT_DIR-generated best.pt after training, not a released artifact", "FDI": "project plan says FDI point-wise labels but no verified exported FDI contract", "commercial": "not established"},
+      "tooth_instance": {"id": "CAN_BE_DERIVED_ONLY_AFTER_UNIMPLEMENTED_POSTPROCESSING", "fdi": "PARTIAL", "jaw": "DERIVABLE_FROM_INPUT", "mesh": "CANNOT_BE_SAFELY_DERIVED", "centroid": "CAN_BE_DERIVED_AFTER_INSTANCE_EXTRACTION", "landmarks": "NOT AVAILABLE", "confidence": "NOT AVAILABLE"}
+    },
+    {
+      "model": "ToothGroupNetwork / TGNet",
+      "3d_ios": "YES", "stl": "NO", "instances": "YES", "fdi": "YES", "original_mesh": "PARTIAL", "landmarks": "NOT_AVAILABLE", "confidence": "UNKNOWN", "pretrained": "YES", "cpu": "NO", "gpu": "YES", "checkpoint_available": "YES", "license_status": "SOURCE_AND_WEIGHTS_UNLICENSED_OR_UNCLEAR", "commercial_status": "NOT_ESTABLISHED; DATASET_REFERENCED_AS_3DTEETHSEG", "engineering_effort": "MEDIUM", "execution_status": "BLOCKED_ON_HOST",
+      "facts": {"input": "separate upper/lower OBJ named casename_upper.obj/casename_lower.obj with required axis orientation", "preprocessing": "farthest-point sampling; inference can sample original OBJ internally", "output": "challenge-format JSON files, same format as ground truth; instance and FDI labeling challenge semantics", "checkpoint": "Google Drive ckpts(new).zip linked by README; not downloaded", "runtime": "PyTorch 1.7.1 CUDA 11.0 image, custom pointops, batch size 1, minimum 11 GB GPU; RTX40 issues noted", "upper_lower": "explicit filename/jaw handling", "correspondence": "JSON is indexed against sampled mesh/challenge format; original full-face correspondence requires validation", "license": "no repository LICENSE; checkpoint terms absent; referenced 3DTeethSeg dataset rights are separate and non-commercial terms require review"},
+      "tooth_instance": {"id": "AVAILABLE_IN_CHALLENGE_JSON", "fdi": "AVAILABLE_IN_CHALLENGE_JSON", "jaw": "DERIVABLE_FROM_FILENAME", "mesh": "DERIVABLE_ONLY_AFTER_VALIDATING_JSON_INDEXES_AND_SAMPLING", "centroid": "DERIVABLE", "landmarks": "NOT_AVAILABLE", "confidence": "UNKNOWN"}
+    },
+    {
+      "model": "Unified benchmark maintained DGCNN baseline",
+      "3d_ios": "YES", "stl": "UNKNOWN", "instances": "NO", "fdi": "PARTIAL", "original_mesh": "PARTIAL", "landmarks": "NOT_AVAILABLE", "confidence": "PARTIAL", "pretrained": "NO", "cpu": "UNKNOWN", "gpu": "YES", "checkpoint_available": "NO", "license_status": "NO_REPOSITORY_LICENSE", "commercial_status": "UNKNOWN", "engineering_effort": "HIGH", "execution_status": "BLOCKED_MISSING_CHECKPOINT",
+      "facts": {"repository": "3d_tooth_segmentation", "input": "prepared Teeth3DS point tensors", "output": "point-wise semantic labels and metrics", "checkpoint": "best.pt is an output of training; no released weight found", "preprocessing": "download Teeth3DS, patient splits, prepare_data --num_points 60000", "registry_result": "No other additional model with an obtainable pretrained 3D intraoral instance/FDI inference artifact was identified in this repository"},
+      "tooth_instance": {"id": "NOT_AVAILABLE", "fdi": "CANNOT_BE_SAFELY_DERIVED", "jaw": "DERIVABLE_FROM_DATASET_PATH", "mesh": "CANNOT_BE_SAFELY_DERIVED", "centroid": "NOT_AVAILABLE", "landmarks": "NOT_AVAILABLE", "confidence": "NOT_AVAILABLE"}
+    },
+    {
+      "model": "PMTSeg",
+      "3d_ios": "YES", "stl": "UNKNOWN", "instances": "YES", "fdi": "PARTIAL", "original_mesh": "PARTIAL", "landmarks": "NOT_AVAILABLE", "confidence": "PARTIAL", "pretrained": "NO", "cpu": "NO", "gpu": "YES", "checkpoint_available": "NO", "license_status": "SOURCE_APACHE_WEIGHTS_AND_DATA_UNCLEAR", "commercial_status": "UNKNOWN", "engineering_effort": "HIGH", "execution_status": "BLOCKED_MISSING_CHECKPOINT",
+      "facts": {"input": "Teeth3DS or compatible prepared data; paper pipeline uses 3D oral scan plus rendered image features", "preprocessing": "data collection, camera pose, revras reversible rasterizer, PointNet2 CUDA, OpenGL/EGL", "output": "PLY meshes, JSON labels, JPG overlays; instance metrics TLA/TSA/TIR", "checkpoint": "test.py expects best_1.ckpt in a locally trained experiment directory; no released checkpoint link found", "runtime": "CUDA/nvcc, CMake >=3.27, OpenGL/EGL, PointNet2 CUDA extensions", "stl": "no direct STL command documented", "fdi": "not documented as a stable output field", "correspondence": "revras id_map suggests research-grade face/pixel relation, but no validated original STL contract"},
+      "tooth_instance": {"id": "PARTIAL", "fdi": "CANNOT_BE_SAFELY_DERIVED", "jaw": "DERIVABLE_FROM_INPUT", "mesh": "PARTIAL", "centroid": "DERIVABLE", "landmarks": "NOT_AVAILABLE", "confidence": "PARTIAL"}
+    },
+    {
+      "model": "THISNet",
+      "3d_ios": "YES", "stl": "UNKNOWN", "instances": "YES", "fdi": "UNKNOWN", "original_mesh": "PARTIAL", "landmarks": "NOT_AVAILABLE", "confidence": "PARTIAL", "pretrained": "NO", "cpu": "NO", "gpu": "YES", "checkpoint_available": "NO", "license_status": "NO_REPOSITORY_LICENSE", "commercial_status": "UNKNOWN", "engineering_effort": "HIGH", "execution_status": "BLOCKED_MISSING_CHECKPOINT",
+      "facts": {"input": "PLY face/point tensors from data loader; no documented STL command", "output": "predicted instance masks and PLY output in test.py", "checkpoint": "test.py contains placeholder ckpt_xx_xxxx.pth; no downloadable artifact found", "runtime": "PyTorch 1.8.0 + CUDA 11.1 environment; test hard-codes CUDA and DataParallel", "correspondence": "prediction is built from face centers/face geometry; exact original face mapping requires validation", "fdi": "no FDI export/class map documented", "partial_scan": "not documented"},
+      "tooth_instance": {"id": "AVAILABLE_AS_MASK_SLOTS", "fdi": "NOT_AVAILABLE", "jaw": "DERIVABLE_FROM_INPUT", "mesh": "PARTIAL", "centroid": "DERIVABLE", "landmarks": "NOT_AVAILABLE", "confidence": "PARTIAL"}
+    }
+  ],
+  "benchmark_gate": {
+    "all_requirements": "Only TGNet currently has documented real 3D intraoral input, obtainable author-linked pretrained inference, plausible individual tooth/FDI output, and enough documentation for a meaningful isolated benchmark. It remains blocked pending checkpoint retrieval and license review.",
+    "candidates_worth_actual_benchmark": ["ToothGroupNetwork / TGNet"],
+    "candidates_for_future_feasibility_only": ["TSegAgent"],
+    "do_not_benchmark_yet": ["OrthoGeo3D / OrthoTwin3D", "Unified benchmark DGCNN baseline", "PMTSeg", "THISNet"],
+    "reasons": {"TSegAgent": "requires SAM3 access/weights and external VLM API keys; no paid API call authorized", "OrthoGeo3D / OrthoTwin3D": "roadmap/in-training baseline with no released checkpoint", "Unified benchmark DGCNN baseline": "no released checkpoint and semantic output", "PMTSeg": "no checkpoint and CUDA/OpenGL/revras stack", "THISNet": "no checkpoint and CUDA-only test path"}
+  },
+  "production_untouched": true,
+  "no_inference_run": true,
+  "no_training_run": true,
+  "no_checkpoints_downloaded": true
+}

@@ -1,0 +1,105 @@
+{
+  "status": "CHECKPOINT_GATE_COMPLETE",
+  "research_only": true,
+  "inference_run": false,
+  "training_run": false,
+  "production_modified": false,
+  "repository": "https://github.com/limhoyeon/ToothGroupNetwork",
+  "repository_commit": "d7e16a4b8fca811975c3a4c7c1429bb0a51b3083",
+  "repository_license": "No LICENSE file or GitHub license metadata found",
+  "checkpoint_source": {
+    "official_reference": "README.md at audited commit, inference section",
+    "folder_url": "https://drive.google.com/drive/folders/15oP0CZM_O_-Bir18VbSM8wRUEzoyLXby?usp=sharing",
+    "file_name": "ckpts(new).zip",
+    "file_id": "1Xpw9vYbDVwoafVohqY0aMen2iMCx053-",
+    "download_url": "https://drive.usercontent.google.com/download?id=1Xpw9vYbDVwoafVohqY0aMen2iMCx053-&export=download&confirm=t",
+    "verification": "The file name and file ID were resolved from the official author-linked Drive folder referenced by the README.",
+    "archive_size_bytes": 156866803,
+    "archive_sha256": "c1db3f163791b017be7559039c774d7d4fc11fb0367106cb0625ff6e82bf5c36",
+    "research_cache_path": "~/.cache/alignerstudio-research/toothgroupnetwork/ckpts(new).zip"
+  },
+  "extracted_checkpoints": {
+    "tgnet_fps.h5": {"size_bytes": 64037327, "sha256": "024f585f20924c08eafced8fdc633015b0cc8bba04301d585b4cf7a0c02206b6", "role": "TGNet farthest-point-sampling stage"},
+    "tgnet_bdl.h5": {"size_bytes": 511103, "sha256": "5ec7780d7d645af522c6f2888093e5ca8e11c631d0e13798d208ba2a157554d1", "role": "TGNet boundary-aware stage"},
+    "dgcnn.h5": {"size_bytes": 3980231, "sha256": "28f2c752755c543afd7642288a0f916c6663889a32caa847704522a07331e713", "role": "Additional bundled DGCNN checkpoint"},
+    "pointnet.h5": {"size_bytes": 37216127, "sha256": "04a8089df2a473de4907895c67b3226b15a1a92720e22044dfc10ece0b4ad4be", "role": "Additional bundled PointNet checkpoint"},
+    "pointnetpp.h5": {"size_bytes": 35963823, "sha256": "09d2f8b14e97584a2baf56a7680290e7723ea4956433c0eebd0c9023c5a15de2", "role": "Additional bundled PointNet++ checkpoint"},
+    "pointtransformer.h5": {"size_bytes": 32024895, "sha256": "0aa9909b04ac9783e63b27b330e8e2480de4afb345c3b300e60b720c1e943a87", "role": "Additional bundled PointTransformer checkpoint"},
+    "tsegnet.h5": {"size_bytes": 9720607, "sha256": "f0201fe1856187adf92ee621b07e574cb5ffa648d228f152414daa104aab0622", "role": "Additional bundled TSegNet checkpoint"},
+    "tsegnet_centroid.h5": {"size_bytes": 3405743, "sha256": "2f7ced72d573db8447e6caa972f211ca65e1e4834cebbd68a44a5bd40ef2620f", "role": "Additional bundled TSegNet centroid checkpoint"}
+  },
+  "configuration": {
+    "official_inference_entrypoint": "start_inference.py",
+    "tgnet_model_name": "tgnet",
+    "documented_command": "python start_inference.py --input_dir_path <OBJ_PARENT> --split_txt_path <TEST_SPLIT> --save_path <OUTPUT> --model_name tgnet --checkpoint_path <FPS_CHECKPOINT_WITHOUT_EXTENSION> --checkpoint_path_bdl <BDL_CHECKPOINT_WITHOUT_EXTENSION>",
+    "loader": "inference_pipelines/inference_pipeline_maker.py -> inference_pipelines/inference_pipeline_tgn.py",
+    "fps_config": "inference_pipelines/inference_pipeline_maker.py fps_model_info: input_feat=6, stride=[1,4,4,4,4], nsample=[36,24,24,24,24], blocks=[2,3,4,6,3], planes=[32,64,128,256,512], crop_sample_size=3072",
+    "boundary_config": "inference_pipelines/inference_pipeline_maker.py boundary_model_info: input_feat=6, stride=[1,1], nsample=[36,24], blocks=[2,3], planes=[16,32], crop_sample_size=3072, num_of_bdl_points=20000, num_of_all_points=24000",
+    "checkpoint_path_resolution": "start_inference.py appends .h5 to both checkpoint_path and checkpoint_path_bdl; extracted filenames match tgnet_fps.h5 and tgnet_bdl.h5",
+    "compatibility": "Name-level and configuration-level compatibility confirmed. Tensor-level load_state_dict compatibility was not executed because torch is not installed in the research environment and CUDA installation is prohibited for this gate.",
+    "architecture_modified": false
+  },
+  "license_and_usage": {
+    "classification": "RESEARCH_ONLY",
+    "repository_usage_terms": "README provides usage and inference instructions but no commercial, weight, or redistribution grant.",
+    "checkpoint_terms": "Google Drive archive is author-linked through the official README; no model-weight license, commercial permission, or redistribution terms were visible in the repository or folder metadata.",
+    "dataset_repository": "https://github.com/abenhamadou/3DTeethSeg22_challenge",
+    "dataset_repository_commit": "d03b8c644239980bbc779c6cb58b42fb02204916",
+    "dataset_license": "Dataset: CC BY-NC-ND 4.0. Repository non-data code: MIT.",
+    "dataset_commercial_status": "Non-commercial restriction applies to the dataset; no commercial training/evaluation assumption is made.",
+    "weights_commercial_status": "UNKNOWN; no explicit model-weight commercial permission found.",
+    "redistribution_status": "UNKNOWN; archive was not redistributed and remains in external research cache only.",
+    "reason": "The checkpoint can be retained for an isolated internal research benchmark, but neither checkpoint rights nor referenced dataset rights establish commercial use."
+  },
+  "canonical_inputs": {
+    "upper": {"path": "data/benchmark/real-case/upper.stl", "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48", "size_bytes": 8557034},
+    "lower": {"path": "data/benchmark/real-case/lower.stl", "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b", "size_bytes": 6954234},
+    "modified": false,
+    "conversion_performed": false
+  },
+  "input_requirements": {
+    "expected_format": "OBJ mesh",
+    "naming": "casename_upper.obj and casename_lower.obj",
+    "jaw_handling": "separate upper/lower files; same Z direction for both jaws",
+    "axis": "Y axis points toward the back; axes must follow the README reference orientation",
+    "preprocessing": "farthest-point sampled vertices; inference path accepts the original OBJ parent and samples internally",
+    "sample_counts": "TGNet path uses 24000 total points; boundary stage uses 20000 boundary points and fills remaining points to 24000; crop_sample_size=3072",
+    "sampling_determinism": "not established as deterministic; repository calls resample_pcd with FPS and uniform sampling and has no benchmark seed contract",
+    "stl_direct": false,
+    "required_future_conversion": "Create research-only OBJ copies from canonical STL, preserve a source-to-OBJ mapping, and verify axis orientation before any future benchmark. Do not convert canonical files in place."
+  },
+  "output_contract": {
+    "format": "JSON files in save_path, matching challenge ground-truth JSON format",
+    "semantics": "instance labels plus semantic/FDI-style labels",
+    "fdi": "The inference pipeline maps semantic labels to upper/lower tooth numbering; exact JSON field schema must be verified during a future run",
+    "confidence": "not documented as a stable output field",
+    "landmarks": "not available in documented inference path",
+    "original_correspondence": "The pipeline predicts on sampled points, then uses nearest-neighbor transfer back to org_feats vertices and asserts output length equals original vertex count. This supports deterministic original-vertex labels after a successful run, but original face labels and exact JSON indexing still require validation.",
+    "mesh_reconstruction": "Potentially derivable from original vertices and predicted per-vertex instance labels; not yet validated. Original face membership can be reconstructed only by applying vertex labels to source faces, with ambiguous mixed-label faces handled explicitly."
+  },
+  "hardware_feasibility": {
+    "current_machine": "BLOCKED",
+    "current_blockers": ["no NVIDIA driver", "no NVIDIA GPU", "nvcc not found", "PyTorch/CUDA/pointops not installed"],
+    "cloud_gpu_16gb": "POSSIBLE",
+    "cloud_gpu_16gb_basis": "Repository states minimum 11 GB GPU RAM and batch size 1; 16 GB exceeds the documented minimum, but CUDA 11.0/custom pointops compatibility and runtime headroom must be validated before execution.",
+    "cloud_gpu_24gb": "POSSIBLE",
+    "cloud_gpu_24gb_basis": "24 GB exceeds the documented 11 GB minimum and provides more headroom; repository still notes RTX40 issues, so an older CUDA-compatible GPU may reduce compatibility risk.",
+    "required_stack": "PyTorch 1.7.1 CUDA 11.0 image, custom pointops, open3d, multimethod, termcolor, trimesh, easydict; exact dependency installation was intentionally not attempted.",
+    "inference_ready": false
+  },
+  "remaining_blockers": [
+    "No tensor-level load_state_dict compatibility test because installing torch/CUDA is prohibited in this gate.",
+    "No written model-weight commercial or redistribution permission found.",
+    "Referenced Teeth3DS dataset is CC BY-NC-ND 4.0 and cannot be treated as commercially cleared.",
+    "Canonical STL-to-OBJ conversion and axis validation remain undone by instruction.",
+    "Original JSON indexing and face correspondence require a future isolated run."
+  ],
+  "checkpoint": "available",
+  "checkpoint_hash": "c1db3f163791b017be7559039c774d7d4fc11fb0367106cb0625ff6e82bf5c36",
+  "usage_status": "RESEARCH_ONLY",
+  "inference_ready": "NO",
+  "current_machine": "BLOCKED",
+  "cloud_gpu": "POSSIBLE",
+  "recommendation": "PROCEED_TO_ISOLATED_BENCHMARK",
+  "production_untouched": true
+}
