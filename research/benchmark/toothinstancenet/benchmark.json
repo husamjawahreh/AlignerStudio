@@ -1,0 +1,61 @@
+{
+  "status": "BLOCKED",
+  "research_only": true,
+  "not_clinically_validated": true,
+  "not_approved_for_commercial_deployment": true,
+  "repository": "https://github.com/nnistelrooij/3dteethland",
+  "repository_commit": "424252e3d94a1565c8c2090eb5bb456b76386b93",
+  "source_license": "MIT",
+  "checkpoint_source": "https://drive.google.com/drive/folders/1MIPNtsM3rW_VAUtD8RBPOso1IxyJZgdF?usp=sharing",
+  "checkpoint_usage_status": "Author-linked research checkpoint; commercial and redistribution rights not established.",
+  "checkpoints": {
+    "align.ckpt": {
+      "size_bytes": 217409208,
+      "sha256": "890d8e02ce9a83253c7c914048bbbc0f4bcbccdda405214ab493d5dcd4d3974a",
+      "official_config_role": "model.align.checkpoint_path"
+    },
+    "instseg_full.ckpt": {
+      "size_bytes": 111127353,
+      "sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+      "official_config_role": "model.instseg.checkpoint_path"
+    },
+    "landmarks_full.ckpt": {
+      "size_bytes": 115592777,
+      "sha256": "9d4489439a7e9cab4d368b51de5f6debc41540abd8936a8605afebf1bd2daeff",
+      "official_config_role": "model.landmarks.checkpoint_path"
+    }
+  },
+  "inputs": {
+    "STEM_upper.stl": {
+      "source": "data/uploads/50d34180-53b5-4eb9-8164-f73b0b96650e-upper-38f5de61c3ac42d788fcee7f453318ce.stl",
+      "size_bytes": 8557034,
+      "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48"
+    },
+    "STEM_lower.stl": {
+      "source": "data/uploads/50d34180-53b5-4eb9-8164-f73b0b96650e-lower-8bd6d9913fc44977997e307c337d585b.stl",
+      "size_bytes": 6954234,
+      "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b"
+    }
+  },
+  "environment": {
+    "research_python": "3.12 isolated virtual environment",
+    "repository_requires": "Python 3.10, PyTorch 2.3.0 CUDA 12.1, compiled CUDA pointops",
+    "nvidia_smi": "failed: no NVIDIA driver communication",
+    "nvcc": "not found",
+    "pointops": "not installed",
+    "pytorch_lightning": "not installed"
+  },
+  "official_inference_attempt": {
+    "command": "python infer.py instances --devices 1 --config teethland/config/config.yaml",
+    "result": "BLOCKED",
+    "error": "ModuleNotFoundError: No module named 'pytorch_lightning'",
+    "deeper_blockers": [
+      "Official requirements target CUDA 12.1 and compiled pointops kernels.",
+      "Host has no usable NVIDIA driver or nvcc.",
+      "No CPU inference path is documented by the official command."
+    ]
+  },
+  "results": null,
+  "outputs": [],
+  "production_untouched": true
+}

@@ -3,6 +3,7 @@ dist/
 .venv/
 **/.venv/
 data/uploads/
+data/benchmark/real-case/
 *.log
 .env
 .env.*

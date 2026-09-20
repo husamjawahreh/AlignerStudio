@@ -1,0 +1,47 @@
+{
+  "status": "BLOCKED",
+  "research_only": true,
+  "not_clinically_validated": true,
+  "not_approved_for_commercial_deployment": true,
+  "repository": "https://github.com/Crisitofy/3DTeethSAM",
+  "repository_commit": "4845f4132cbbeca2ebc456d33de7e0c358385615",
+  "license_status": "No repository license metadata was available; SAM2 and dataset terms require separate review.",
+  "checkpoint_source": "https://drive.google.com/drive/folders/1-gGMov__sWje_2ONXyEq09yKPG-plTxU?usp=drive_link",
+  "checkpoints": {
+    "best.pth": {
+      "size_bytes": 1701295825,
+      "sha256": "d6cb1acb935b225f0f798b616f9ae1b7249386de79ef4496b892f1e86f599616",
+      "role": "3DTeethSAM checkpoint"
+    },
+    "sam2.1_hiera_large.pt": {
+      "size_bytes": 898083611,
+      "sha256": "2647878d5dfa5098f2f8649825738a9345572bae2d4350a2468587ece47dd318",
+      "role": "SAM2 foundation checkpoint"
+    }
+  },
+  "canonical_inputs": {
+    "path": "data/benchmark/real-case/upper.stl",
+    "sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48",
+    "size_bytes": 8557034
+  },
+  "lower_input": {
+    "path": "data/benchmark/real-case/lower.stl",
+    "sha256": "dc4f8b0d4e8d1c21ab45ee0e69457eb575b869bcd895fbda36de9fcb4387037b",
+    "size_bytes": 6954234
+  },
+  "requirements": {
+    "python": "3.10",
+    "pytorch": "repository requirements specify torchvision 0.22.1; CUDA-capable PyTorch expected",
+    "pytorch3d": "install from official Git repository",
+    "input": "Teeth3DS-style OBJ; raw STL must be converted in research area",
+    "pipeline": "multi-view rendering, SAM2, PyTorch3D projection, per-vertex labels"
+  },
+  "execution": {
+    "command": "python start_inference.py --input_dir <OBJ_LAYOUT> --checkpoint ckpts/best.pth --output_dir inference_results --num_views 7 --device cuda:0",
+    "nvidia_smi": "failed: no NVIDIA driver communication",
+    "nvcc": "not found",
+    "result": "BLOCKED before preprocessing/inference"
+  },
+  "results": null,
+  "production_untouched": true
+}
