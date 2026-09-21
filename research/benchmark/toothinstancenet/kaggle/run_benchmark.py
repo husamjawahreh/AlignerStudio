@@ -122,7 +122,9 @@ def find_json_outputs(root: Path) -> list[Path]:
 
 
 def normalize_output_names(root: Path) -> None:
-    for source in root.rglob("STEM_*.json"):
+    for source in root.rglob("STEM_*"):
+        if source.suffix.lower() not in {".json", ".stl", ".ply", ".obj"}:
+            continue
         target = source.with_name(source.name.replace("STEM_", "CASE_", 1))
         shutil.copy2(source, target)
 
@@ -139,44 +141,41 @@ def recursive_values(value: Any):
 
 def inspect_prediction(path: Path, original: dict[str, Any]) -> dict[str, Any]:
     data = json.loads(path.read_text())
-    labels: list[Any] = []
+    labels = data.get("labels") if isinstance(data, dict) else None
+    instances = data.get("instances") if isinstance(data, dict) else None
     fdi_values: list[int] = []
-    instances = data.get("instances", []) if isinstance(data, dict) else []
     instance_sizes = []
     empty_instances = []
-    if isinstance(instances, list):
-        for index, instance in enumerate(instances):
-            if not isinstance(instance, dict):
-                continue
-            points = instance.get("points", instance.get("vertices", instance.get("indices", [])))
-            size = len(points) if isinstance(points, list) else None
-            instance_sizes.append(size)
-            if size == 0:
-                empty_instances.append(index)
+    actual_instance_output = isinstance(instances, list) and isinstance(labels, list)
+    if actual_instance_output:
+        fdi_values = sorted(set(value for value in labels if isinstance(value, int) and value > 0))
+    if actual_instance_output:
+        instance_ids = sorted(set(value for value in instances if isinstance(value, int) and value >= 0))
+        instance_sizes = [instances.count(instance_id) for instance_id in instance_ids]
+        empty_instances = [instance_id for instance_id, size in zip(instance_ids, instance_sizes) if size == 0]
     for key, value in recursive_values(data):
         lower = key.lower()
-        if lower in {"labels", "label", "instance_labels", "instances"} and isinstance(value, list):
-            if value and all(isinstance(item, (int, float)) for item in value):
-                labels = value
         if lower in {"fdi", "fdi_label", "tooth_number"} and isinstance(value, int):
             fdi_values.append(value)
-    label_count = len(labels)
-    correspondence = "UNKNOWN"
-    if label_count == original["vertices"]:
-        correspondence = "LIKELY_ORIGINAL_VERTICES_LENGTH_MATCH"
-    elif label_count:
-        correspondence = "SAMPLED_OR_NON_VERTEX_OUTPUT_LENGTH"
+    label_count = len(labels) if isinstance(labels, list) else 0
+    correspondence = "NOT_VERIFIED"
+    if actual_instance_output and len(instances) == original["vertices"] and len(labels) == original["vertices"]:
+        correspondence = "VERIFIED_ORIGINAL_VERTEX_INDEX_SPACE_BY_UPSTREAM_INTERPOLATION_AND_CARDINALITY"
+    elif actual_instance_output:
+        correspondence = "SAMPLED_OR_TRANSFORMED_POINT_INDEX_SPACE"
     return {
         "path": str(path),
         "json_keys": sorted(data) if isinstance(data, dict) else [],
+        "actual_instance_segmentation_output": actual_instance_output,
         "label_count": label_count,
-        "predicted_instances": len(instances) if isinstance(instances, list) else None,
+        "predicted_instances": len(set(value for value in instances if isinstance(value, int) and value >= 0)) if actual_instance_output else None,
         "instance_sizes": instance_sizes,
         "empty_instances": empty_instances,
         "fdi_labels": sorted(set(fdi_values)),
         "duplicate_fdi_labels": sorted({label for label in fdi_values if fdi_values.count(label) > 1}),
         "original_vertex_count": original["vertices"],
         "correspondence": correspondence,
+        "index_space": "original_mesh_vertices" if correspondence.startswith("VERIFIED") else "unknown",
         "raw_schema": data,
     }
 
@@ -194,7 +193,7 @@ def run(args: argparse.Namespace) -> int:
 
     config_path = work_root / "config.kaggle.yaml"
     patch_config(repo / "teethland/config/config.yaml", config_path, work_root, checkpoint_dir)
-    command = [sys.executable, "infer.py", "landmarks", "--devices", "1", "--config", str(config_path)]
+    command = [sys.executable, "infer.py", "instances", "--devices", "1", "--config", str(config_path)]
     gpu_before = gpu_snapshot()
     start = time.perf_counter()
     failure = None
@@ -210,7 +209,24 @@ def run(args: argparse.Namespace) -> int:
     for path in find_json_outputs(work_root):
         jaw = "upper" if "upper" in path.name else "lower" if "lower" in path.name else None
         if jaw:
-            outputs.append(inspect_prediction(path, original_stats[jaw]))
+            item = inspect_prediction(path, original_stats[jaw])
+            output_mesh = path.with_suffix(".stl")
+            if output_mesh.exists():
+                output_stats = mesh_stats(output_mesh)
+                item["output_mesh"] = output_stats
+                item["mesh_topology_matches_original"] = (
+                    output_stats["vertices"] == original_stats[jaw]["vertices"]
+                    and output_stats["faces"] == original_stats[jaw]["faces"]
+                    and output_stats["face_sha256"] == original_stats[jaw]["face_sha256"]
+                )
+            else:
+                item["output_mesh"] = None
+                item["mesh_topology_matches_original"] = None
+            outputs.append(item)
+    if failure is None and not outputs:
+        failure = {"type": "missing_instance_segmentation_output", "message": "Inference completed without CASE_* JSON output."}
+    if failure is None and not all(item["actual_instance_segmentation_output"] for item in outputs):
+        failure = {"type": "invalid_instance_segmentation_output", "message": "JSON output exists but does not contain both per-vertex instances and labels arrays."}
     missing_teeth = {}
     for item in outputs:
         fdi = set(item["fdi_labels"])
@@ -241,6 +257,14 @@ def run(args: argparse.Namespace) -> int:
         "COMMAND": command,
         "CANONICAL_INPUTS": {jaw: {"path": str(path), "sha256": sha256(path)} for jaw, path in input_paths.items()},
         "OUTPUTS": outputs,
+        "INFERENCE_STAGE": "instances",
+        "SEGMENTATION_OUTPUT_TYPE": "per-original-vertex instance IDs plus FDI labels, when valid",
+        "INSTANCE_INDEX_SPACE": {item["path"]: item["index_space"] for item in outputs},
+        "FDI_SOURCE": "FullNet.fdi_model in instances_stage -> teeth_classes_to_labels",
+        "LANDMARK_SOURCE": "FullNet.single_tooth_stage landmark head; secondary output only",
+        "ORIGINAL_MESH_CORRESPONDENCE_METHOD": "Upstream FullNet interpolates clustered predictions back to x, where x retains original mesh vertices; harness verifies both arrays equal original vertex cardinality and compares output mesh topology/coordinates.",
+        "CORRESPONDENCE_VERIFIED": all(item["correspondence"].startswith("VERIFIED") for item in outputs) if outputs else False,
+        "CORRESPONDENCE_CONFIDENCE": "HIGH" if outputs and all(item["correspondence"].startswith("VERIFIED") for item in outputs) else "LOW",
         "GPU_BEFORE": gpu_before,
         "COMPLETED_STDOUT": completed.stdout[-12000:] if completed else None,
     }

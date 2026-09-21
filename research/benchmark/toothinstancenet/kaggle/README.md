@@ -64,11 +64,23 @@ python run_benchmark.py \
   --work-dir /kaggle/working/toothinstancenet-benchmark
 ```
 
+The runner invokes the audited upstream instance pipeline exactly as:
+
+```bash
+python infer.py instances --devices 1 --config <temporary-research-config>
+```
+
+This is the primary segmentation stage. It loads `align.ckpt` for the optional
+alignment stage, `instseg_full.ckpt` for instance embeddings/cluster masks and
+FDI classification, and `landmarks_full.ckpt` for the secondary landmark head
+used by the full model path. The runner hard-fails if the output does not
+contain both per-vertex `instances` and `labels` arrays.
+
 The upstream README says `.stl`, `.ply`, and `.obj` are accepted and expects
 `STEM_upper`/`STEM_lower` naming for FDI handling. This harness preserves the
-required user-facing working names `CASE_upper.stl` and `CASE_lower.stl`; the
-runner must record any upstream naming alias needed by the exact data loader
-rather than silently claiming the names are equivalent.
+required user-facing working names `CASE_upper.stl` and `CASE_lower.stl`, and
+creates separate `STEM_*` research aliases for the upstream filename-based
+jaw detection. Raw outputs are copied to the requested `CASE_*` names.
 
 Outputs:
 
@@ -80,12 +92,14 @@ Outputs:
 
 ## Correspondence policy
 
-The report compares prediction label cardinality, indices, and coordinates with
-the original STL vertices/faces. It must distinguish original-vertex output
-from sampled-point output. If the raw output contains sampled coordinates but
-not original indices, an isolated nearest/registered vertex mapping may be
-implemented in the Kaggle working directory only. No mapping is added to
-AlignerStudio production.
+The report treats the upstream representation as original-mesh vertex index
+space only when the exact source path is present: `TeethSegDataset` loads all
+mesh vertices, `UniformDensityDownsample(inplace=False)` keeps the full point
+tensor, and `FullNet.single_tooth_stage` interpolates predictions back to `x`
+before `save_segmentation` writes `instances` and `labels`. It also checks both
+array lengths and emitted mesh topology. A nearest/registered mapping is not
+used unless a future raw output contradicts this proof; then it must remain a
+clearly labeled research fallback in the Kaggle working directory.
 
 ## Blockers and safety
 

@@ -356,11 +356,7 @@ export function App(): JSX.Element {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-lockup">
-          <img src="/assets/AS-logo.png" alt="AlignerStudio" />
-          <div>
-            <strong>AlignerStudio</strong>
-            <span>ORTHODONTIC REVIEW WORKSPACE</span>
-          </div>
+          <img src="/assets/AS-logo.png" alt="AlignerStudio orthodontic review workspace" />
         </div>
         <div className="topbar-case">
           <span className="eyebrow">Active case</span>

@@ -63,27 +63,14 @@ button:disabled {
 .brand-lockup {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-width: 245px;
+  width: 188px;
+  min-width: 188px;
 }
 .brand-lockup img {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-}
-.brand-lockup strong,
-.brand-lockup span {
   display: block;
-}
-.brand-lockup strong {
-  font-size: 15px;
-  letter-spacing: 0.04em;
-}
-.brand-lockup span {
-  margin-top: 3px;
-  color: var(--as-text-muted);
-  font-size: 9px;
-  letter-spacing: 0.14em;
+  width: 178px;
+  height: auto;
+  object-fit: contain;
 }
 .topbar-case {
   display: flex;
