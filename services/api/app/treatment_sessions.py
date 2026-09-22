@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from domain.tooth.identification import ArchType
+from domain.treatment_plan.input import TreatmentPlanningInput
 from domain.treatment_plan.setup import ToothMovement, TreatmentPlanProposal
 from domain.treatment_plan.staging import StagingConfiguration, StagingResult
 from domain.treatment_plan.validation import TreatmentValidationReport
@@ -35,6 +36,8 @@ class TreatmentSession:
     staging: StagingResult
     validation: TreatmentValidationReport
     adjuncts: Any
+    source_kind: str = "development_treatment_fixture"
+    experimental: bool = True
 
 
 class TreatmentSessionStore:
@@ -54,6 +57,18 @@ class TreatmentSessionStore:
             synthetic_upper_arch(), ArchType.UPPER
         )
         proposal = self._planner.generate(case_id, identification, demo_objectives())
+        session = self._compose(proposal)
+        self._sessions[case_id] = session
+        return session
+
+    def create_from_treatment_input(
+        self,
+        case_id: str,
+        treatment_input: TreatmentPlanningInput,
+        objectives,
+    ) -> TreatmentSession:
+        """Compose existing treatment engines from reviewed domain input."""
+        proposal = self._planner.generate_from_input(case_id, treatment_input, objectives)
         session = self._compose(proposal)
         self._sessions[case_id] = session
         return session
@@ -102,7 +117,14 @@ class TreatmentSessionStore:
         validation = self._validator.validate(
             staging, GeometricValidationConfiguration(1.0, 0.001, 0.0)
         )
-        return TreatmentSession(proposal, staging, validation, self._proposals.generate(proposal))
+        return TreatmentSession(
+            proposal,
+            staging,
+            validation,
+            self._proposals.generate(proposal),
+            source_kind="development_treatment_fixture" if proposal.fixture else "treatment_result",
+            experimental=True,
+        )
 
 
 def review_bundle(session: TreatmentSession) -> dict[str, Any]:
@@ -152,6 +174,8 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         "stages": stages,
         "provenance": session.proposal.provenance.value,
         "fixture": session.proposal.fixture,
+        "sourceKind": session.source_kind,
+        "experimental": session.experimental,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
         "editHistory": [

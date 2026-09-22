@@ -13,6 +13,10 @@ from engines.segmentation.preprocessing import (
     PreparedMesh,
     prepare_mesh,
 )
+from engines.segmentation.toothinstancenet import (
+    ToothInstanceNetEngine,
+    ToothInstanceNetInferenceResult,
+)
 
 __all__ = [
     "FIXTURE_NOTE",
@@ -28,4 +32,6 @@ __all__ = [
     "build_segmentation_result",
     "parse_model_outputs",
     "prepare_mesh",
+    "ToothInstanceNetEngine",
+    "ToothInstanceNetInferenceResult",
 ]

@@ -34,6 +34,8 @@ def test_engineering_demo_allows_local_vite_origins(origin: str) -> None:
     assert payload["review_bundle"]["stages"]
     assert payload["review_bundle"]["iprSites"]
     assert payload["review_bundle"]["attachmentSites"]
+    assert payload["review_bundle"]["sourceKind"] == "development_treatment_fixture"
+    assert payload["review_bundle"]["experimental"] is True
 
 
 def test_create_case() -> None:

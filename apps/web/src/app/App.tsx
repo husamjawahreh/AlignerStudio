@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
-import { api, type PipelineDiagnostic } from "../api/client";
+import { api, type PipelineDiagnostic, type PipelineToothInstance } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
 import { FixtureBadge } from "../components/FixtureBadge";
 import { InspectionPanel } from "../components/InspectionPanel";
@@ -24,7 +24,7 @@ import {
   setAttachmentStatus,
   setIPRStatus,
 } from "../review/proposalEditing";
-import type { MovementSummary, ReviewBundle } from "../review/types";
+import type { MovementSummary, ReviewBundle, ReviewStage, ReviewToothMesh } from "../review/types";
 import { StageViewer } from "../viewer/StageViewer";
 
 const WORKFLOW = [
@@ -62,6 +62,79 @@ function unavailableReviewBundle(reason: string): ReviewBundle {
   };
 }
 
+function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | null {
+  const teeth = (diagnostic?.tooth_instances ?? [])
+    .filter((tooth): tooth is PipelineToothInstance & { fdi_number: number } => tooth.fdi_number !== null)
+    .map<ReviewToothMesh>((tooth) => ({
+      instanceId: tooth.instance_id,
+      fdiNumber: tooth.fdi_number,
+      arch: tooth.arch,
+      confidence: tooth.confidence,
+      vertices: tooth.vertices,
+      faces: tooth.faces,
+      centroid: tooth.centroid,
+      movement: {
+        translationX: 0,
+        translationY: 0,
+        translationZ: 0,
+        rotation: 0,
+        tip: 0,
+        torque: 0,
+        intrusion: 0,
+        extrusion: 0,
+      },
+      validationStatus: "pass",
+      validationMessage: "Validated ToothInstanceNet geometry; no treatment validation was run.",
+      provenance: tooth.provenance,
+      fixture: tooth.fixture,
+      experimental: tooth.experimental,
+    }));
+  if (!diagnostic || teeth.length === 0) return null;
+  return {
+    index: 0,
+    stageId: "toothinstancenet-validation-stage",
+    teeth,
+    validationStatus: diagnostic.duplicate_fdi_numbers?.length || diagnostic.missing_fdi_numbers?.length ? "warning" : "pass",
+    collisionCount: 0,
+    proximityCount: 0,
+    contactCount: 0,
+    warnings: [
+      ...(diagnostic.duplicate_fdi_numbers?.length ? [`Duplicate FDI: ${diagnostic.duplicate_fdi_numbers.join(", ")}`] : []),
+      ...(diagnostic.missing_fdi_numbers?.length ? [`Missing FDI: ${diagnostic.missing_fdi_numbers.join(", ")}`] : []),
+      ...(diagnostic.excluded_fragment_count ? [`Excluded zero-face fragments: ${diagnostic.excluded_fragment_count}`] : []),
+    ],
+    provenance: diagnostic.provenance ?? "experimental",
+    fixture: diagnostic.fixture ?? false,
+  };
+}
+
+function mergePipelineDiagnostics(
+  upperDiagnostic: PipelineDiagnostic,
+  lowerDiagnostic: PipelineDiagnostic,
+): PipelineDiagnostic {
+  const upperInstances = upperDiagnostic.tooth_instances ?? [];
+  const lowerInstances = (lowerDiagnostic.tooth_instances ?? []).map((tooth) => ({
+    ...tooth,
+    instance_id: tooth.instance_id + upperInstances.length,
+  }));
+  return {
+    ...lowerDiagnostic,
+    tooth_instances: [...upperInstances, ...lowerInstances],
+    tooth_instance_count: upperDiagnostic.tooth_instance_count + lowerDiagnostic.tooth_instance_count,
+    duplicate_fdi_numbers: [
+      ...(upperDiagnostic.duplicate_fdi_numbers ?? []),
+      ...(lowerDiagnostic.duplicate_fdi_numbers ?? []),
+    ],
+    missing_fdi_numbers: [
+      ...(upperDiagnostic.missing_fdi_numbers ?? []),
+      ...(lowerDiagnostic.missing_fdi_numbers ?? []),
+    ],
+    excluded_fragment_count:
+      (upperDiagnostic.excluded_fragment_count ?? 0) +
+      (lowerDiagnostic.excluded_fragment_count ?? 0),
+  };
+}
+
 export function App(): JSX.Element {
   const [patientReference, setPatientReference] = useState("");
   const [activeCase, setActiveCase] = useState<Case | null>(null);
@@ -83,6 +156,7 @@ export function App(): JSX.Element {
   const [showLower, setShowLower] = useState(true);
   const [showOriginal, setShowOriginal] = useState(false);
   const [wireframe, setWireframe] = useState(false);
+  const [hiddenToothIds, setHiddenToothIds] = useState<ReadonlySet<number>>(new Set());
   const [reviewBundle, setReviewBundle] = useState<ReviewBundle>(() =>
     unavailableReviewBundle(
       "Treatment plan unavailable. Load the engineering demo or create a case.",
@@ -94,9 +168,12 @@ export function App(): JSX.Element {
   >("idle");
 
   const fixtureStage = reviewBundle.stages[stageIndex] ?? null;
+  const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
+  const pipelineReviewStage = useMemo(() => pipelineStage(pipelineDiagnostic), [pipelineDiagnostic]);
+  const activeReviewStage = treatmentAvailable ? fixtureStage : pipelineReviewStage;
   const selectedFixtureTooth = useMemo(
-    () => fixtureStage?.teeth.find((tooth) => tooth.fdiNumber === selectedTooth) ?? null,
-    [fixtureStage, selectedTooth],
+    () => activeReviewStage?.teeth.find((tooth) => tooth.fdiNumber === selectedTooth) ?? null,
+    [activeReviewStage, selectedTooth],
   );
   const originalTooth =
     selectedTooth === null
@@ -111,12 +188,12 @@ export function App(): JSX.Element {
         null);
   const bothArchesValid =
     archUploads.upper.state === "valid" && archUploads.lower.state === "valid";
-  const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
 
   function clearRealCaseReview(reason: string): void {
     setReviewBundle(unavailableReviewBundle(reason));
     setStageIndex(0);
     setSelectedTooth(null);
+    setHiddenToothIds(new Set());
     setDraftMovement(null);
     setRecalculationState("idle");
     setExportMessage(null);
@@ -329,7 +406,28 @@ export function App(): JSX.Element {
       const upperDiagnostic = await api.processPipeline(activeCase.id, "upper");
       const lowerDiagnostic = await api.processPipeline(activeCase.id, "lower");
       setPipelineDiagnostic(
-        upperDiagnostic.state === "model_unavailable" ? upperDiagnostic : lowerDiagnostic,
+        upperDiagnostic.state === "model_unavailable"
+          ? upperDiagnostic
+          : {
+              ...lowerDiagnostic,
+              tooth_instances: [
+                ...(upperDiagnostic.tooth_instances ?? []),
+                ...(lowerDiagnostic.tooth_instances ?? []),
+              ],
+              tooth_instance_count:
+                upperDiagnostic.tooth_instance_count + lowerDiagnostic.tooth_instance_count,
+              duplicate_fdi_numbers: [
+                ...(upperDiagnostic.duplicate_fdi_numbers ?? []),
+                ...(lowerDiagnostic.duplicate_fdi_numbers ?? []),
+              ],
+              missing_fdi_numbers: [
+                ...(upperDiagnostic.missing_fdi_numbers ?? []),
+                ...(lowerDiagnostic.missing_fdi_numbers ?? []),
+              ],
+              excluded_fragment_count:
+                (upperDiagnostic.excluded_fragment_count ?? 0) +
+                (lowerDiagnostic.excluded_fragment_count ?? 0),
+            },
       );
       if (
         upperDiagnostic.state !== "planning_ready" ||
@@ -345,6 +443,28 @@ export function App(): JSX.Element {
         return;
       }
       await api.generatePlan(activeCase.id);
+      setReviewBundle(await api.getTreatment(activeCase.id));
+      setBackendTreatment(true);
+      setStageIndex(0);
+      setSelectedTooth(null);
+      setDraftMovement(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleReviewSegmentation(): Promise<void> {
+    if (!activeCase || !bothArchesValid) return;
+    setError(null);
+    setIsBusy(true);
+    try {
+      const [upperDiagnostic, lowerDiagnostic] = await Promise.all([
+        api.processPipeline(activeCase.id, "upper"),
+        api.processPipeline(activeCase.id, "lower"),
+      ]);
+      setPipelineDiagnostic(mergePipelineDiagnostics(upperDiagnostic, lowerDiagnostic));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -452,6 +572,13 @@ export function App(): JSX.Element {
             >
               Generate plan
             </button>
+            <button
+              className="text-button"
+              onClick={() => void handleReviewSegmentation()}
+              disabled={!bothArchesValid || isBusy}
+            >
+              Review segmentation
+            </button>
           </div>
           {activeCase && (
             <div className="case-summary">
@@ -465,10 +592,51 @@ export function App(): JSX.Element {
               )}
               {pipelineDiagnostic && (
                 <small>
-                  Pipeline {pipelineDiagnostic.state.replaceAll("_", " ")} ·{" "}
-                  {pipelineDiagnostic.tooth_instance_count} instances
+                  Pipeline {pipelineDiagnostic.state.replaceAll("_", " ")} · {pipelineDiagnostic.tooth_instance_count} instances
                 </small>
               )}
+            </div>
+          )}
+          {pipelineReviewStage && !treatmentAvailable && (
+            <div className="segmentation-review-summary" data-testid="toothinstancenet-summary">
+              <span className="eyebrow">Validated ToothInstanceNet</span>
+              <strong>{pipelineReviewStage.teeth.length} visible tooth meshes</strong>
+              <small>
+                {pipelineDiagnostic?.fixture ? "Validated real-case fixture" : "Experimental model result"}
+                {pipelineDiagnostic?.experimental ? " · experimental" : ""}
+              </small>
+              {(pipelineDiagnostic?.duplicate_fdi_numbers?.length ?? 0) > 0 && (
+                <small className="diagnostic-warning">
+                  Duplicate FDI: {pipelineDiagnostic?.duplicate_fdi_numbers?.join(", ")}
+                </small>
+              )}
+              {(pipelineDiagnostic?.missing_fdi_numbers?.length ?? 0) > 0 && (
+                <small className="diagnostic-warning">
+                  Missing FDI: {pipelineDiagnostic?.missing_fdi_numbers?.join(", ")}
+                </small>
+              )}
+              {(pipelineDiagnostic?.excluded_fragment_count ?? 0) > 0 && (
+                <small>Excluded zero-face fragments: {pipelineDiagnostic?.excluded_fragment_count}</small>
+              )}
+              <div className="tooth-visibility-list">
+                {pipelineReviewStage.teeth.map((tooth) => (
+                  <label className="toggle-row" key={tooth.instanceId}>
+                    <input
+                      type="checkbox"
+                      checked={!hiddenToothIds.has(tooth.instanceId)}
+                      onChange={() =>
+                        setHiddenToothIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(tooth.instanceId)) next.delete(tooth.instanceId);
+                          else next.add(tooth.instanceId);
+                          return next;
+                        })
+                      }
+                    />
+                    <span>FDI {tooth.fdiNumber}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
           {error && <div className="error-message">{error}</div>}
@@ -532,6 +700,7 @@ export function App(): JSX.Element {
                 <FixtureBadge
                   fixture={reviewBundle.fixture}
                   provenance={reviewBundle.provenance}
+                  sourceKind={reviewBundle.sourceKind}
                   notes="Engineering preview only"
                 />
               )}
@@ -557,26 +726,33 @@ export function App(): JSX.Element {
               }
             />
           )}
-          {treatmentAvailable && (
+          {(treatmentAvailable || pipelineReviewStage) && activeReviewStage && (
             <>
               <div className="viewer-card">
                 <div className="viewer-card-header">
-                  <span>3D scene · Stage {fixtureStage.index}</span>
-                  <span className="scene-source">API engineering fixture</span>
+                  <span>
+                    3D scene{treatmentAvailable ? ` · Stage ${activeReviewStage.index}` : " · ToothInstanceNet"}
+                  </span>
+                  <span className="scene-source">
+                    {pipelineReviewStage && !treatmentAvailable
+                      ? "validated real-case fixture"
+                      : "API engineering fixture"}
+                  </span>
                 </div>
                 <StageViewer
-                  stage={fixtureStage}
+                  stage={activeReviewStage}
                   selectedTooth={selectedTooth}
                   showUpper={showUpper}
                   showLower={showLower}
                   showOriginal={showOriginal}
                   wireframe={wireframe}
+                  hiddenToothIds={hiddenToothIds}
                   onSelectTooth={handleSelectTooth}
                   onFit={() => undefined}
                   onReset={() => undefined}
                 />
               </div>
-              <ValidationPanel stage={fixtureStage} />
+              {treatmentAvailable && <ValidationPanel stage={activeReviewStage} />}
               <ProposalPanels
                 iprSites={reviewBundle.iprSites}
                 attachmentSites={reviewBundle.attachmentSites}

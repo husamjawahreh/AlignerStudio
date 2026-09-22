@@ -12,6 +12,12 @@ from engines.arrangement.identification import ToothIdentificationEngine
 from engines.segmentation.onnx_engine import OnnxSegmentationEngine
 
 from app.segmentation_config import SegmentationConfigurationError, load_segmentation_configuration
+from app.toothinstancenet_configuration import (
+    ToothInstanceNetConfigurationError,
+    load_toothinstancenet_engine,
+    load_validated_fixture_result,
+    selected_backend,
+)
 
 
 class PipelineState(StrEnum):
@@ -37,6 +43,14 @@ class CasePipelineDiagnostic:
     failures: tuple[str, ...]
     arch_analysis_available: bool
     notes: tuple[str, ...]
+    provenance: str = "experimental"
+    fixture: bool = False
+    experimental: bool = True
+    fdi_assignments: tuple[tuple[int, int | None], ...] = ()
+    duplicate_fdi_numbers: tuple[int, ...] = ()
+    missing_fdi_numbers: tuple[int, ...] = ()
+    excluded_fragment_count: int = 0
+    tooth_instances: tuple[dict, ...] = ()
 
     def payload(self) -> dict:
         return {**asdict(self), "state": self.state.value}
@@ -45,6 +59,23 @@ class CasePipelineDiagnostic:
 def process_uploaded_case(mesh_path: str, arch: ArchType) -> CasePipelineDiagnostic:
     """Process a real upload only when a verified external model is configured."""
     started = perf_counter()
+    backend = selected_backend()
+    if backend == "toothinstancenet_fixture":
+        try:
+            result = load_validated_fixture_result(arch, mesh_path)
+        except ToothInstanceNetConfigurationError as error:
+            return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
+        except Exception as error:
+            return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
+        return _diagnostic_from_result(result, started, source_kind="validated_real_case")
+    if backend == "toothinstancenet":
+        try:
+            result = load_toothinstancenet_engine(arch).segment(mesh_path)
+        except ToothInstanceNetConfigurationError as error:
+            return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
+        except Exception as error:
+            return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
+        return _diagnostic_from_result(result, started, source_kind="uploaded_real_case")
     try:
         configuration = load_segmentation_configuration()
     except SegmentationConfigurationError as error:
@@ -94,7 +125,7 @@ def process_uploaded_case(mesh_path: str, arch: ArchType) -> CasePipelineDiagnos
 def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineDiagnostic:
     return CasePipelineDiagnostic(
         state=state,
-        source_kind="uploaded_real_case",
+        source_kind=values.get("source_kind", "uploaded_real_case"),
         segmentation_runtime_ms=values.get("segmentation_runtime_ms"),
         total_runtime_ms=(perf_counter() - started) * 1000,
         tooth_instance_count=values.get("tooth_instance_count", 0),
@@ -106,4 +137,50 @@ def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineD
         failures=values.get("failures", ()),
         arch_analysis_available=values.get("arch_analysis_available", False),
         notes=values.get("notes", ("Engineering measurements only; no clinical accuracy claim.",)),
+        provenance=values.get("provenance", "experimental"),
+        fixture=values.get("fixture", False),
+        experimental=values.get("experimental", True),
+        fdi_assignments=values.get("fdi_assignments", ()),
+        duplicate_fdi_numbers=values.get("duplicate_fdi_numbers", ()),
+        missing_fdi_numbers=values.get("missing_fdi_numbers", ()),
+        excluded_fragment_count=values.get("excluded_fragment_count", 0),
+        tooth_instances=values.get("tooth_instances", ()),
     )
+
+
+def _diagnostic_from_result(result, started: float, *, source_kind: str):
+    identification = result.identification
+    scores = [item.confidence.score for item in identification.teeth]
+    base = {
+        "segmentation_runtime_ms": (perf_counter() - started) * 1000,
+        "tooth_instance_count": len(result.segmentation.instances),
+        "identification_confidence": sum(scores) / len(scores) if scores else None,
+        "identified_teeth": len(identification.identified),
+        "uncertain_teeth": len(identification.uncertain),
+        "unidentified_teeth": len(identification.unidentified),
+        "provenance": result.segmentation.metadata.provenance.value,
+        "fixture": result.segmentation.metadata.fixture,
+        "experimental": True,
+        "fdi_assignments": result.diagnostics.fdi_by_instance,
+        "duplicate_fdi_numbers": result.diagnostics.duplicate_fdi_numbers,
+        "missing_fdi_numbers": result.diagnostics.missing_fdi_numbers,
+        "excluded_fragment_count": len(result.diagnostics.empty_instance_ids),
+        "tooth_instances": tuple(
+            {
+                "instance_id": tooth.instance.instance_id,
+                "fdi_number": tooth.identity.number if tooth.identity else None,
+                "arch": identification.arch.value,
+                "vertices": tooth.instance.mesh_vertices,
+                "faces": tooth.instance.mesh_faces,
+                "centroid": tooth.instance.centroid,
+                "confidence": tooth.instance.confidence,
+                "provenance": tooth.instance.provenance.value,
+                "fixture": tooth.instance.fixture,
+                "experimental": True,
+            }
+            for tooth in identification.teeth
+        ),
+        "notes": result.diagnostics.notes,
+    }
+    state = PipelineState(result.status)
+    return _diagnostic(state, started, source_kind=source_kind, **base)

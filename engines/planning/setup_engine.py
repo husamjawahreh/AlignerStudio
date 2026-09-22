@@ -11,6 +11,7 @@ import numpy as np
 
 from domain.case.provenance import DataProvenance
 from domain.tooth.identification import ToothIdentificationResult
+from domain.treatment_plan.input import TreatmentPlanningInput
 from domain.treatment_plan.setup import (
     DoctorMovementEdit,
     ProposalKind,
@@ -33,6 +34,22 @@ class TreatmentPlanningEngine:
 
     geometry_validator: BasicGeometryValidator = BasicGeometryValidator()
     engine_version: str = "phase5-setup-1"
+
+    def generate_from_input(
+        self,
+        case_id: str,
+        treatment_input: TreatmentPlanningInput,
+        objectives: tuple[TreatmentObjective, ...],
+    ) -> TreatmentPlanProposal:
+        """Plan from the domain input without depending on segmentation infrastructure."""
+        if treatment_input.diagnostics:
+            return self._limited_proposal(
+                case_id,
+                treatment_input.identification,
+                objectives,
+                treatment_input.diagnostics,
+            )
+        return self.generate(case_id, treatment_input.identification, objectives)
 
     def generate(
         self,

@@ -23,16 +23,19 @@ export interface MovementSummary {
 }
 
 export interface ReviewToothMesh {
+  instanceId: number;
   fdiNumber: number;
   arch: ReviewArch;
   confidence: number;
   vertices: readonly [number, number, number][];
   faces: readonly [number, number, number][];
+  centroid?: readonly [number, number, number];
   movement: MovementSummary;
   validationStatus: ValidationStatus;
   validationMessage: string;
   provenance: DataProvenance;
   fixture: boolean;
+  experimental?: boolean;
 }
 
 export interface ReviewStage {
@@ -92,4 +95,6 @@ export interface ReviewBundle {
   editHistory: readonly ReviewEditRecord[];
   iprSites: readonly ReviewIPRSite[];
   attachmentSites: readonly ReviewAttachmentSite[];
+  sourceKind?: string;
+  experimental?: boolean;
 }

@@ -1,3 +1,6 @@
+from domain.treatment_plan.input import TreatmentPlanningInput
+
+__all__ = ["TreatmentPlanningInput"]
 from domain.treatment_plan.models import Stage, ToothPosition, TreatmentPlan
 from domain.treatment_plan.proposals import (
     AttachmentProposal,

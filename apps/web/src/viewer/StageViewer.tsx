@@ -10,6 +10,7 @@ interface StageViewerProps {
   showLower: boolean;
   showOriginal: boolean;
   wireframe: boolean;
+  hiddenToothIds: ReadonlySet<number>;
   onSelectTooth: (fdiNumber: number) => void;
   onFit: () => void;
   onReset: () => void;
@@ -22,6 +23,7 @@ export function StageViewer({
   showLower,
   showOriginal,
   wireframe,
+  hiddenToothIds,
   onSelectTooth,
   onFit,
   onReset,
@@ -57,12 +59,16 @@ export function StageViewer({
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const meshes: THREE.Mesh[] = [];
+    const labels: HTMLDivElement[] = [];
     const allObjects = new THREE.Group();
     scene.add(allObjects);
+    const visibleTeeth = stage.teeth.filter(
+      (tooth) =>
+        (tooth.arch === "upper" ? showUpper : showLower) &&
+        !hiddenToothIds.has(tooth.instanceId),
+    );
 
-    for (const tooth of stage.teeth) {
-      if ((tooth.arch === "upper" && !showUpper) || (tooth.arch === "lower" && !showLower))
-        continue;
+    for (const tooth of visibleTeeth) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute(
         "position",
@@ -84,8 +90,17 @@ export function StageViewer({
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.userData.fdiNumber = tooth.fdiNumber;
+      mesh.userData.instanceId = tooth.instanceId;
       meshes.push(mesh);
       allObjects.add(mesh);
+      const label = document.createElement("div");
+      label.className = `stage-tooth-label${selected ? " is-selected" : ""}`;
+      label.textContent = tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : "FDI pending";
+      label.setAttribute("data-testid", `tooth-label-${tooth.instanceId}`);
+      label.style.left = "0px";
+      label.style.top = "0px";
+      container.appendChild(label);
+      labels.push(label);
       if (showOriginal) {
         const originalMaterial = new THREE.MeshBasicMaterial({
           color: 0x71808d,
@@ -134,6 +149,19 @@ export function StageViewer({
     let animationFrame = 0;
     const animate = () => {
       controls.update();
+      labels.forEach((label, index) => {
+        const tooth = visibleTeeth[index];
+        if (!tooth) return;
+        const centroid =
+          tooth.centroid ??
+          tooth.vertices.reduce(
+            (sum, vertex) => [sum[0] + vertex[0], sum[1] + vertex[1], sum[2] + vertex[2]],
+            [0, 0, 0],
+          ).map((value) => value / tooth.vertices.length) as [number, number, number];
+        const point = new THREE.Vector3(...centroid).project(camera);
+        label.style.transform = `translate(-50%, -50%) translate(${(point.x * 0.5 + 0.5) * container.clientWidth}px, ${(-point.y * 0.5 + 0.5) * container.clientHeight}px)`;
+        label.style.display = point.z < 1 ? "block" : "none";
+      });
       renderer.render(scene, camera);
       animationFrame = requestAnimationFrame(animate);
     };
@@ -151,8 +179,9 @@ export function StageViewer({
       controls.dispose();
       renderer.dispose();
       geometryCleanup(allObjects);
+      labels.forEach((label) => label.remove());
     };
-  }, [stage, selectedTooth, showUpper, showLower, showOriginal, wireframe, onSelectTooth]);
+  }, [stage, selectedTooth, showUpper, showLower, showOriginal, wireframe, hiddenToothIds, onSelectTooth]);
 
   function handleFit(): void {
     fitRef.current?.();

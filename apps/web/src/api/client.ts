@@ -30,7 +30,7 @@ export interface PipelineDiagnostic {
     | "identification_incomplete"
     | "planning_unavailable"
     | "planning_ready";
-  source_kind: "uploaded_real_case";
+  source_kind: "uploaded_real_case" | "validated_real_case";
   segmentation_runtime_ms: number | null;
   total_runtime_ms: number;
   tooth_instance_count: number;
@@ -42,6 +42,27 @@ export interface PipelineDiagnostic {
   failures: string[];
   arch_analysis_available: boolean;
   notes: string[];
+  provenance?: "real" | "generated" | "experimental" | "fixture" | "clinically_reviewed";
+  fixture?: boolean;
+  experimental?: boolean;
+  fdi_assignments?: [number, number | null][];
+  duplicate_fdi_numbers?: number[];
+  missing_fdi_numbers?: number[];
+  excluded_fragment_count?: number;
+  tooth_instances?: PipelineToothInstance[];
+}
+
+export interface PipelineToothInstance {
+  instance_id: number;
+  fdi_number: number | null;
+  arch: "upper" | "lower";
+  vertices: [number, number, number][];
+  faces: [number, number, number][];
+  centroid: [number, number, number];
+  confidence: number;
+  provenance: "real" | "generated" | "experimental" | "fixture" | "clinically_reviewed";
+  fixture: boolean;
+  experimental: boolean;
 }
 
 export const api = {

@@ -119,3 +119,44 @@ sha256sum data/benchmark/real-case/upper.stl data/benchmark/real-case/lower.stl
 
 Expected current suite: 86 Python tests and 22 TypeScript tests. The final hash
 check must match the canonical values above.
+
+## Real-case artifact generation
+
+The current developer environment does not contain the validated real-case
+artifact and must not fabricate one. In the validated Kaggle GPU environment,
+run the existing real inference runner first, then generate the package only
+from its raw `CASE_upper.json`/`CASE_lower.json` outputs and actual upstream
+correspondence NPZ files:
+
+```bash
+python research/benchmark/toothinstancenet/kaggle/generate_real_case_artifact.py \
+   --input-dir /kaggle/input/datasets/husamjawahreh/alignerstudio-real-case \
+   --prediction-dir /kaggle/working/toothinstancenet-benchmark \
+   --output-dir /kaggle/working/toothinstancenet-real-case-artifact \
+   --checkpoint /kaggle/input/datasets/husamjawahreh/toothinstancenet-checkpoints/instseg_full.ckpt \
+   --source /kaggle/working/3dteethland \
+   --selected-mapping /kaggle/working/toothinstancenet-benchmark/selected_to_original_vertex_mapping.npz \
+   --instseg-coordinates /kaggle/working/toothinstancenet-benchmark/exact_instseg_coordinates.npz
+```
+
+Audit independently:
+
+```bash
+python research/benchmark/toothinstancenet/kaggle/audit_real_case_artifact.py \
+   --artifact-dir /kaggle/working/toothinstancenet-real-case-artifact \
+   --input-dir /kaggle/input/datasets/husamjawahreh/alignerstudio-real-case \
+   --checkpoint-sha256 100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803
+```
+
+Package only after the independent audit passes:
+
+```bash
+bash research/benchmark/toothinstancenet/kaggle/package_real_case_artifact.sh \
+   /kaggle/working/toothinstancenet-real-case-artifact \
+   /kaggle/working/toothinstancenet-real-case-artifact.zip
+```
+
+Use the unpacked artifact in development only through the explicit
+`ALIGNERSTUDIO_SEGMENTATION_BACKEND=toothinstancenet_fixture` and
+`ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR` settings. No automatic
+matching or fallback is permitted.

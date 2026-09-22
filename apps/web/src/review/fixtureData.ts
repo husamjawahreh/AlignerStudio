@@ -39,11 +39,13 @@ function toothMesh(fdiNumber: number, stageIndex: number): ReviewToothMesh {
   const centerY = isUpper ? 0.8 + Math.abs(position - 1.5) * 0.08 : -0.8;
   const shift = stageIndex * (position === 1 ? 0.12 : position === 2 ? -0.08 : 0.04);
   return {
+    instanceId: fdiNumber,
     fdiNumber,
     arch: isUpper ? "upper" : "lower",
     confidence: 0.98,
     vertices: cuboidVertices(centerX + shift, centerY, 0),
     faces: FACES,
+    centroid: [centerX + shift, centerY, 0],
     movement: {
       translationX: shift,
       translationY: 0,
@@ -112,6 +114,8 @@ export const engineeringFixtureBundle: ReviewBundle = {
       fixture: true,
     },
   ],
+  sourceKind: "development_treatment_fixture",
+  experimental: true,
   unavailableReason:
     "Real staged mesh and validation payloads are not available from the current API.",
 };

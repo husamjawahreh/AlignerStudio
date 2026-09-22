@@ -7,12 +7,14 @@ from uuid import uuid4
 
 from domain.case.models import Case, MeshAsset
 from domain.tooth.identification import ArchType
+from domain.treatment_plan.input import TreatmentPlanningInput
 from engines.geometry.mesh_validation import validate_mesh_file
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.config import UPLOAD_DIR
+from app.engineering_fixture import demo_objectives
 from app.pipeline_diagnostics import process_uploaded_case
 from app.schemas.cases import (
     CaseResponse,
@@ -22,6 +24,10 @@ from app.schemas.cases import (
     TreatmentPlanResponse,
 )
 from app.store import case_store
+from app.toothinstancenet_configuration import (
+    load_validated_fixture_result,
+    selected_backend,
+)
 from app.treatment_sessions import (
     TreatmentSessionError,
     manifest_header,
@@ -152,6 +158,34 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
                 "Both upper and lower STL files are required; "
                 f"missing: {', '.join(missing_arches)}."
             ),
+        )
+    if selected_backend() == "toothinstancenet_fixture":
+        try:
+            reviewed = load_validated_fixture_result(ArchType.UPPER)
+        except Exception as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        treatment_input = TreatmentPlanningInput.from_identification(
+            reviewed.identification,
+            diagnostics=tuple(reviewed.diagnostics.notes)
+            if reviewed.status != "planning_ready"
+            else (),
+        )
+        session = treatment_sessions.create_from_treatment_input(
+            case_id, treatment_input, demo_objectives()
+        )
+        if session.proposal.limitations:
+            raise HTTPException(status_code=409, detail=list(session.proposal.limitations))
+        return TreatmentPlanResponse(
+            id=session.proposal.plan_id,
+            case_id=case_id,
+            stages=[],
+            provenance=session.proposal.provenance,
+            fixture=session.proposal.fixture,
+            notes=(
+                "Development fixture treatment proposal created; review stages are "
+                "available via treatment session."
+            ),
+            created_at=case.created_at,
         )
     raise HTTPException(
         status_code=503,
