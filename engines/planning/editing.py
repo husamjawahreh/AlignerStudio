@@ -50,7 +50,7 @@ class TreatmentEditingApplication:
     def apply_edit(
         self,
         proposal: TreatmentPlanProposal,
-        tooth_number: int,
+        tooth_number: int | str,
         new_movement: ToothMovement,
         *,
         timestamp: str | None = None,
@@ -97,7 +97,7 @@ class TreatmentEditingApplication:
     def reset_tooth(
         self,
         proposal: TreatmentPlanProposal,
-        tooth_number: int,
+        tooth_number: int | str,
         *,
         timestamp: str | None = None,
     ) -> TreatmentPlanProposal:
@@ -147,16 +147,18 @@ class TreatmentEditingApplication:
         return RecalculatedTreatmentPlan(recalculated, staging, validation, recalculation_id)
 
     @staticmethod
-    def _movement_for(proposal: TreatmentPlanProposal, tooth_number: int) -> ToothMovement:
+    def _movement_for(proposal: TreatmentPlanProposal, tooth_number: int | str) -> ToothMovement:
         if proposal.setup is None:
             raise TreatmentEditingError("Proposal has no editable setup")
         for state in proposal.setup.target_states:
-            if state.tooth_number == tooth_number:
+            if state.tooth_number == tooth_number or state.tooth_ref == tooth_number:
                 return state.movement
         raise TreatmentEditingError(f"Tooth {tooth_number} is not editable in this proposal")
 
     @staticmethod
-    def _original_movement(proposal: TreatmentPlanProposal, tooth_number: int) -> ToothMovement:
+    def _original_movement(
+        proposal: TreatmentPlanProposal, tooth_number: int | str
+    ) -> ToothMovement:
         edits = [edit for edit in proposal.edit_history if edit.tooth_number == tooth_number]
         if edits:
             return edits[0].previous_movement

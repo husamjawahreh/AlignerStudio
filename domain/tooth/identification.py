@@ -103,6 +103,9 @@ class IdentifiedTooth:
     provenance: DataProvenance
     fixture: bool
     notes: str = ""
+    tooth_ref: str | None = None
+    semantic_label: int | None = None
+    planning_mode: str = "clinical_fdi"
 
 
 @dataclass(frozen=True)

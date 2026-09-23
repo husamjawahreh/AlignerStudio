@@ -25,6 +25,9 @@ class ToothInstance:
     provenance: DataProvenance
     fixture: bool = False
     notes: str = ""
+    tooth_ref: str | None = None
+    semantic_label: int | None = None
+    arch: str | None = None
 
 
 @dataclass(frozen=True)

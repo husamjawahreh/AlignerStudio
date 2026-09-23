@@ -63,7 +63,7 @@ class DoctorMovementEdit:
     """One explicit doctor change to one tooth movement."""
 
     edit_id: str
-    tooth_number: int
+    tooth_number: int | str
     previous_movement: ToothMovement
     new_movement: ToothMovement
     timestamp: str
@@ -79,22 +79,22 @@ class TreatmentObjective:
     objective_id: str
     objective_type: TreatmentObjectiveType
     description: str
-    movements: tuple[tuple[int, ToothMovement], ...]
+    movements: tuple[tuple[int | str, ToothMovement], ...]
     assumptions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.objective_id.strip():
             raise ValueError("Treatment objective requires a stable objective_id")
-        tooth_numbers = [number for number, _ in self.movements]
-        if tooth_numbers != sorted(set(tooth_numbers)):
-            raise ValueError("Objective movements must have unique sorted FDI tooth numbers")
+        tooth_refs = [ref for ref, _ in self.movements]
+        if len(tooth_refs) != len(set(tooth_refs)):
+            raise ValueError("Objective movements must have unique tooth references")
 
 
 @dataclass(frozen=True)
 class TargetToothState:
     """A proposed transformed state; source geometry remains unchanged."""
 
-    tooth_number: int
+    tooth_number: int | None
     source_instance_id: int
     source_vertices: tuple[Vector3, ...]
     source_faces: tuple[tuple[int, int, int], ...]
@@ -105,6 +105,10 @@ class TargetToothState:
     provenance: DataProvenance
     fixture: bool
     notes: str = ""
+    tooth_ref: str | None = None
+    semantic_label: int | None = None
+    arch: str | None = None
+    planning_mode: str = "clinical_fdi"
 
 
 @dataclass(frozen=True)
@@ -136,3 +140,4 @@ class TreatmentPlanProposal:
     clinical_approval: bool = False
     proposal_kind: ProposalKind = ProposalKind.ORIGINAL_GENERATED
     edit_history: tuple[DoctorMovementEdit, ...] = ()
+    planning_mode: str = "clinical_fdi"

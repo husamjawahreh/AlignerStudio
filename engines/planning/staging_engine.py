@@ -44,8 +44,8 @@ class TreatmentStagingEngine:
                 ("Treatment setup contains no tooth states to stage.",),
             )
 
-        source_by_tooth = {state.tooth_number: state for state in proposal.setup.source_states}
-        target_by_tooth = {state.tooth_number: state for state in proposal.setup.target_states}
+        source_by_tooth = {self._state_key(state): state for state in proposal.setup.source_states}
+        target_by_tooth = {self._state_key(state): state for state in proposal.setup.target_states}
         if set(source_by_tooth) != set(target_by_tooth):
             return self._limited_result(
                 proposal,
@@ -95,12 +95,12 @@ class TreatmentStagingEngine:
         denominator = configuration.stage_count - 1
         progress = stage_index / denominator
         states = []
-        for tooth_number in sorted(source_by_tooth):
-            source = source_by_tooth[tooth_number]
-            target = target_by_tooth[tooth_number]
+        for tooth_key in sorted(source_by_tooth, key=str):
+            source = source_by_tooth[tooth_key]
+            target = target_by_tooth[tooth_key]
             if len(source.source_vertices) != len(target.target_vertices):
                 raise TreatmentStagingError(
-                    f"Tooth {tooth_number} source and target vertex counts differ."
+                    f"Tooth {tooth_key} source and target vertex counts differ."
                 )
             if stage_index == 0:
                 vertices = source.source_vertices
@@ -122,7 +122,11 @@ class TreatmentStagingEngine:
             movement = self._scale_movement(target.movement, progress)
             states.append(
                 StageToothState(
-                    tooth_number=tooth_number,
+                    tooth_number=target.tooth_number,
+                    tooth_ref=target.tooth_ref,
+                    semantic_label=target.semantic_label,
+                    arch=target.arch,
+                    planning_mode=target.planning_mode,
                     source_instance_id=source.source_instance_id,
                     source_vertices=source.source_vertices,
                     source_faces=source.source_faces,
@@ -130,7 +134,11 @@ class TreatmentStagingEngine:
                     final_target_faces=target.target_faces,
                     vertices=vertices,
                     coordinate_system=target.coordinate_system,
-                    movement=StageMovement(tooth_number, movement, progress),
+                    movement=StageMovement(
+                        target.tooth_number or target.tooth_ref or tooth_key,
+                        movement,
+                        progress,
+                    ),
                     provenance=target.provenance,
                     fixture=target.fixture,
                     notes=(
@@ -170,6 +178,14 @@ class TreatmentStagingEngine:
             )
         }
         return ToothMovement(**values)
+
+    @staticmethod
+    def _state_key(state):
+        return (
+            state.tooth_ref
+            if state.planning_mode == "semantic_only_experimental"
+            else state.tooth_number
+        )
 
     def _limited_result(self, proposal, configuration, limitations):
         payload = json.dumps(

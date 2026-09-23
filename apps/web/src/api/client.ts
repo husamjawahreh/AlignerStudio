@@ -55,6 +55,9 @@ export interface PipelineDiagnostic {
 export interface PipelineToothInstance {
   instance_id: number;
   fdi_number: number | null;
+  tooth_ref?: string | null;
+  semantic_label?: number | null;
+  planning_mode?: "clinical_fdi" | "semantic_only_experimental";
   arch: "upper" | "lower";
   vertices: [number, number, number][];
   faces: [number, number, number][];
@@ -111,14 +114,16 @@ export const api = {
 
   applyTreatmentEdit(
     caseId: string,
-    toothNumber: number,
+    toothNumber: number | string,
     movement: MovementSummary,
   ): Promise<ReviewBundle> {
     return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/edits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tooth_number: toothNumber,
+        ...(typeof toothNumber === "string" && toothNumber.includes(":instance:")
+          ? { tooth_ref: toothNumber }
+          : { tooth_number: Number(toothNumber) }),
         translation_x: movement.translationX,
         translation_y: movement.translationY,
         translation_z: movement.translationZ,

@@ -7,14 +7,14 @@ from uuid import uuid4
 
 from domain.case.models import Case, MeshAsset
 from domain.tooth.identification import ArchType
-from domain.treatment_plan.input import TreatmentPlanningInput
+from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
+from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
 from engines.geometry.mesh_validation import validate_mesh_file
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.config import UPLOAD_DIR
-from app.engineering_fixture import demo_objectives
 from app.pipeline_diagnostics import process_uploaded_case
 from app.schemas.cases import (
     CaseResponse,
@@ -41,7 +41,8 @@ ALLOWED_ARCHES = {"upper", "lower"}
 
 
 class MovementEditRequest(BaseModel):
-    tooth_number: int
+    tooth_number: int | None = None
+    tooth_ref: str | None = None
     translation_x: float = 0.0
     translation_y: float = 0.0
     translation_z: float = 0.0
@@ -169,9 +170,27 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
             diagnostics=tuple(reviewed.diagnostics.notes)
             if reviewed.status != "planning_ready"
             else (),
+            planning_mode=TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL,
+        )
+        refs = [tooth.tooth_ref for tooth in reviewed.identification.teeth]
+        if not refs or any(ref is None for ref in refs):
+            raise HTTPException(
+                status_code=409, detail="Semantic-only artifact is missing tooth_ref"
+            )
+        objectives = (
+            TreatmentObjective(
+                "semantic-only-experimental-review",
+                TreatmentObjectiveType.ALIGNMENT,
+                "Non-clinical experimental demonstration objective; explicit review required.",
+                ((refs[0], ToothMovement(translation_x=0.2)),),
+                assumptions=(
+                    "This movement is a deterministic engineering demonstration, "
+                    "not a clinical recommendation.",
+                ),
+            ),
         )
         session = treatment_sessions.create_from_treatment_input(
-            case_id, treatment_input, demo_objectives()
+            case_id, treatment_input, objectives
         )
         if session.proposal.limitations:
             raise HTTPException(status_code=409, detail=list(session.proposal.limitations))
@@ -182,8 +201,8 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
             provenance=session.proposal.provenance,
             fixture=session.proposal.fixture,
             notes=(
-                "Development fixture treatment proposal created; review stages are "
-                "available via treatment session."
+                "Semantic-only experimental treatment proposal created; no clinical FDI "
+                "identity is asserted. Review stages are available via treatment session."
             ),
             created_at=case.created_at,
         )
@@ -234,11 +253,14 @@ def get_treatment(case_id: str) -> dict:
 @router.post("/{case_id}/treatment/edits")
 def apply_treatment_edit(case_id: str, request: MovementEditRequest) -> dict:
     try:
+        tooth_key = request.tooth_ref if request.tooth_ref is not None else request.tooth_number
+        if tooth_key is None:
+            raise ValueError("Either tooth_number or tooth_ref is required")
         return review_bundle(
             treatment_sessions.apply_edit(
                 case_id,
-                request.tooth_number,
-                request.model_dump(exclude={"tooth_number"}),
+                tooth_key,
+                request.model_dump(exclude={"tooth_number", "tooth_ref"}),
             )
         )
     except (TreatmentSessionError, ValueError) as error:

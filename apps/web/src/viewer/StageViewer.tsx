@@ -5,13 +5,13 @@ import type { ReviewStage } from "../review/types";
 
 interface StageViewerProps {
   stage: ReviewStage;
-  selectedTooth: number | null;
+  selectedTooth: string | null;
   showUpper: boolean;
   showLower: boolean;
   showOriginal: boolean;
   wireframe: boolean;
   hiddenToothIds: ReadonlySet<number>;
-  onSelectTooth: (fdiNumber: number) => void;
+  onSelectTooth: (toothRef: string) => void;
   onFit: () => void;
   onReset: () => void;
 }
@@ -79,7 +79,8 @@ export function StageViewer({
       );
       geometry.setIndex(tooth.faces.flatMap((face) => [...face]));
       geometry.computeVertexNormals();
-      const selected = selectedTooth === tooth.fdiNumber;
+      const toothKey = tooth.toothRef ?? (tooth.fdiNumber === null ? `instance:${tooth.instanceId}` : String(tooth.fdiNumber));
+      const selected = selectedTooth === toothKey;
       const material = new THREE.MeshStandardMaterial({
         color: selected ? 0xf0c96a : tooth.arch === "upper" ? 0x8acbd0 : 0x557aa2,
         roughness: 0.42,
@@ -89,13 +90,13 @@ export function StageViewer({
         wireframe,
       });
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.userData.fdiNumber = tooth.fdiNumber;
+      mesh.userData.toothRef = toothKey;
       mesh.userData.instanceId = tooth.instanceId;
       meshes.push(mesh);
       allObjects.add(mesh);
       const label = document.createElement("div");
       label.className = `stage-tooth-label${selected ? " is-selected" : ""}`;
-      label.textContent = tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : "FDI pending";
+      label.textContent = tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : `${toothKey} · semantic`;
       label.setAttribute("data-testid", `tooth-label-${tooth.instanceId}`);
       label.style.left = "0px";
       label.style.top = "0px";
@@ -143,7 +144,7 @@ export function StageViewer({
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObjects(meshes)[0];
-      if (hit?.object.userData.fdiNumber) onSelectTooth(hit.object.userData.fdiNumber as number);
+      if (hit?.object.userData.toothRef) onSelectTooth(hit.object.userData.toothRef as string);
     };
     renderer.domElement.addEventListener("pointerup", handlePointer);
     let animationFrame = 0;

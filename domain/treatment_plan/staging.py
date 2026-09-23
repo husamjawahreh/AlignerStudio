@@ -13,7 +13,7 @@ from domain.treatment_plan.setup import ToothMovement
 class StageMovement:
     """Movement applied to one tooth at one deterministic stage."""
 
-    tooth_number: int
+    tooth_number: int | str
     movement: ToothMovement
     progress: float
 
@@ -22,7 +22,7 @@ class StageMovement:
 class StageToothState:
     """One tooth scene state at a stage, retaining source and final relationship."""
 
-    tooth_number: int
+    tooth_number: int | str | None
     source_instance_id: int
     source_vertices: tuple[Vector3, ...]
     source_faces: tuple[tuple[int, int, int], ...]
@@ -34,6 +34,10 @@ class StageToothState:
     provenance: DataProvenance
     fixture: bool
     notes: str = ""
+    tooth_ref: str | None = None
+    semantic_label: int | None = None
+    arch: str | None = None
+    planning_mode: str = "clinical_fdi"
 
 
 @dataclass(frozen=True)

@@ -51,7 +51,7 @@ export function InspectionPanel({
       <div className="panel-heading">
         <div>
           <span className="eyebrow">Tooth inspection</span>
-          <h2>FDI {tooth.fdiNumber}</h2>
+          <h2>{tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : tooth.toothRef ?? "Semantic tooth"}</h2>
         </div>
         <span
           className={`status-dot ${tooth.validationStatus}`}
@@ -61,6 +61,10 @@ export function InspectionPanel({
       <FixtureBadge fixture={tooth.fixture} provenance={tooth.provenance} />
       <div className="inspection-meta">
         <span>{tooth.arch} arch</span>
+        {tooth.semanticLabel !== null && tooth.semanticLabel !== undefined && (
+          <span>Artifact semantic label {tooth.semanticLabel}</span>
+        )}
+        {!tooth.fdiNumber && <span>Experimental · no clinical FDI identity</span>}
         <span>Identification confidence {(tooth.confidence * 100).toFixed(0)}%</span>
       </div>
       <div className="inspection-status">

@@ -24,7 +24,10 @@ export interface MovementSummary {
 
 export interface ReviewToothMesh {
   instanceId: number;
-  fdiNumber: number;
+  fdiNumber: number | null;
+  toothRef?: string | null;
+  semanticLabel?: number | null;
+  planningMode?: "clinical_fdi" | "semantic_only_experimental";
   arch: ReviewArch;
   confidence: number;
   vertices: readonly [number, number, number][];
@@ -53,7 +56,7 @@ export interface ReviewStage {
 
 export interface ReviewEditRecord {
   editId: string;
-  toothNumber: number;
+  toothNumber: number | string;
   previousMovement: MovementSummary;
   newMovement: MovementSummary;
   timestamp: string;
@@ -97,4 +100,5 @@ export interface ReviewBundle {
   attachmentSites: readonly ReviewAttachmentSite[];
   sourceKind?: string;
   experimental?: boolean;
+  planningMode?: "clinical_fdi" | "semantic_only_experimental";
 }

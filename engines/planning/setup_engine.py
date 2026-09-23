@@ -11,7 +11,7 @@ import numpy as np
 
 from domain.case.provenance import DataProvenance
 from domain.tooth.identification import ToothIdentificationResult
-from domain.treatment_plan.input import TreatmentPlanningInput
+from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
 from domain.treatment_plan.setup import (
     DoctorMovementEdit,
     ProposalKind,
@@ -42,26 +42,38 @@ class TreatmentPlanningEngine:
         objectives: tuple[TreatmentObjective, ...],
     ) -> TreatmentPlanProposal:
         """Plan from the domain input without depending on segmentation infrastructure."""
-        if treatment_input.diagnostics:
+        if (
+            treatment_input.diagnostics
+            and treatment_input.planning_mode is TreatmentPlanningMode.CLINICAL_FDI
+        ):
             return self._limited_proposal(
                 case_id,
                 treatment_input.identification,
                 objectives,
                 treatment_input.diagnostics,
             )
-        return self.generate(case_id, treatment_input.identification, objectives)
+        return self.generate(
+            case_id,
+            treatment_input.identification,
+            objectives,
+            planning_mode=treatment_input.planning_mode,
+        )
 
     def generate(
         self,
         case_id: str,
         identification: ToothIdentificationResult,
         objectives: tuple[TreatmentObjective, ...],
+        *,
+        planning_mode: TreatmentPlanningMode = TreatmentPlanningMode.CLINICAL_FDI,
     ) -> TreatmentPlanProposal:
-        limitations = self._limitations(identification, objectives)
+        limitations = self._limitations(identification, objectives, planning_mode)
         if limitations:
-            return self._limited_proposal(case_id, identification, objectives, limitations)
+            return self._limited_proposal(
+                case_id, identification, objectives, limitations, planning_mode
+            )
 
-        movement_by_tooth: dict[int, ToothMovement] = {}
+        movement_by_tooth: dict[int | str, ToothMovement] = {}
         for objective in sorted(objectives, key=lambda item: item.objective_id):
             for tooth_number, movement in objective.movements:
                 movement_by_tooth[tooth_number] = movement_by_tooth.get(
@@ -70,16 +82,24 @@ class TreatmentPlanningEngine:
 
         target_states: list[TargetToothState] = []
         source_states: list[TargetToothState] = []
-        identified_by_number = {
-            tooth.identity.number: tooth
+        identified_by_key = {
+            self._tooth_key(tooth, planning_mode): tooth
             for tooth in identification.identified
-            if tooth.identity is not None
+            if self._tooth_key(tooth, planning_mode) is not None
         }
-        for tooth_number in sorted(movement_by_tooth):
-            tooth = identified_by_number[tooth_number]
+        if planning_mode is TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL:
+            identified_by_key = {
+                tooth.tooth_ref: tooth
+                for tooth in identification.teeth
+                if tooth.tooth_ref is not None
+            }
+        for tooth_key in sorted(movement_by_tooth, key=str):
+            tooth = identified_by_key.get(tooth_key)
+            if tooth is None:
+                raise TreatmentPlanningError(f"Unknown tooth reference: {tooth_key}")
             if tooth.coordinate_system is None:
-                raise TreatmentPlanningError(f"Tooth {tooth_number} has no coordinate system")
-            movement = movement_by_tooth[tooth_number]
+                raise TreatmentPlanningError(f"Tooth {tooth_key} has no coordinate system")
+            movement = movement_by_tooth[tooth_key]
             source_vertices = tuple(
                 tuple(float(value) for value in vertex) for vertex in tooth.instance.mesh_vertices
             )
@@ -87,7 +107,7 @@ class TreatmentPlanningEngine:
                 source_vertices, tooth.coordinate_system, movement
             )
             state = TargetToothState(
-                tooth_number=tooth_number,
+                tooth_number=tooth.identity.number if tooth.identity else None,
                 source_instance_id=tooth.instance.instance_id,
                 source_vertices=source_vertices,
                 source_faces=tooth.instance.mesh_faces,
@@ -98,6 +118,10 @@ class TreatmentPlanningEngine:
                 provenance=DataProvenance.GENERATED,
                 fixture=identification.fixture or tooth.fixture,
                 notes="Proposed geometric target; not clinically approved.",
+                tooth_ref=tooth.tooth_ref,
+                semantic_label=tooth.semantic_label,
+                arch=tooth.instance.arch,
+                planning_mode=planning_mode.value,
             )
             source_states.append(state)
             target_states.append(state)
@@ -134,6 +158,7 @@ class TreatmentPlanningEngine:
             assumptions=setup.assumptions,
             warnings=warnings,
             limitations=(),
+            planning_mode=planning_mode.value,
         )
 
     def rebuild_proposal(
@@ -147,7 +172,12 @@ class TreatmentPlanningEngine:
         if proposal.setup is None:
             raise TreatmentPlanningError("Cannot rebuild a proposal without a setup")
         target_states: list[TargetToothState] = []
-        known_teeth = {state.tooth_number for state in proposal.setup.source_states}
+        known_teeth = {
+            state.tooth_ref
+            if proposal.planning_mode == "semantic_only_experimental"
+            else state.tooth_number
+            for state in proposal.setup.source_states
+        }
         unknown_teeth = sorted(set(movement_overrides) - known_teeth)
         if unknown_teeth:
             raise TreatmentPlanningError(f"Edit references unknown teeth: {unknown_teeth}")
@@ -156,7 +186,12 @@ class TreatmentPlanningEngine:
             proposal.setup.target_states,
             strict=True,
         ):
-            movement = movement_overrides.get(source_state.tooth_number, previous_target.movement)
+            state_key = (
+                source_state.tooth_ref
+                if proposal.planning_mode == "semantic_only_experimental"
+                else source_state.tooth_number
+            )
+            movement = movement_overrides.get(state_key, previous_target.movement)
             target_vertices = self._transform_vertices(
                 source_state.source_vertices, source_state.coordinate_system, movement
             )
@@ -200,26 +235,41 @@ class TreatmentPlanningEngine:
             limitations=(),
         )
 
-    def _limitations(self, identification, objectives):
+    def _limitations(self, identification, objectives, planning_mode):
         limitations: list[str] = []
         if not objectives:
             limitations.append("No explicit treatment objectives were provided.")
-        if identification.uncertain:
+        if identification.uncertain and planning_mode is TreatmentPlanningMode.CLINICAL_FDI:
             limitations.append("Uncertain tooth identification prevents setup generation.")
         if identification.unidentified:
             limitations.append("Unidentified tooth geometry prevents setup generation.")
-        identified_numbers = {
-            tooth.identity.number for tooth in identification.identified if tooth.identity
-        }
+        if planning_mode is TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL:
+            identified_numbers = {
+                tooth.tooth_ref for tooth in identification.teeth if tooth.tooth_ref
+            }
+        else:
+            identified_numbers = {
+                tooth.identity.number for tooth in identification.identified if tooth.identity
+            }
         requested_numbers = {
             number for objective in objectives for number, _ in objective.movements
         }
         missing = sorted(requested_numbers - identified_numbers)
         if missing:
-            limitations.append(f"Objectives reference unidentified teeth: {missing}.")
+            if planning_mode is TreatmentPlanningMode.CLINICAL_FDI:
+                limitations.append(f"Objectives reference unidentified teeth: {missing}.")
+            else:
+                limitations.append(f"Objectives reference unknown tooth references: {missing}.")
         return tuple(limitations)
 
-    def _limited_proposal(self, case_id, identification, objectives, limitations):
+    def _limited_proposal(
+        self,
+        case_id,
+        identification,
+        objectives,
+        limitations,
+        planning_mode=TreatmentPlanningMode.CLINICAL_FDI,
+    ):
         payload = self._canonical_payload(case_id, objectives, None, limitations)
         plan_id = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         version_id = hashlib.sha256(
@@ -236,7 +286,14 @@ class TreatmentPlanningEngine:
             assumptions=(),
             warnings=("Planning stopped before target setup generation.",),
             limitations=limitations,
+            planning_mode=planning_mode.value,
         )
+
+    @staticmethod
+    def _tooth_key(tooth, planning_mode):
+        if planning_mode is TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL:
+            return tooth.tooth_ref
+        return tooth.identity.number if tooth.identity else None
 
     @staticmethod
     def _transform_vertices(vertices, coordinate_system, movement):

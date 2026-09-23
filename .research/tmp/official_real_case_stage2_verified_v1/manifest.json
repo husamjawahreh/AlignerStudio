@@ -1,0 +1,155 @@
+{
+  "artifact_name": "official_real_case_stage2_verified_v1",
+  "stage": "instances",
+  "repository": "nnistelrooij/3dteethland",
+  "instance_checkpoint": "/kaggle/input/datasets/husamjawahreh/toothinstancenet-checkpoints/instseg_full.ckpt",
+  "alignment_checkpoint": "/kaggle/input/datasets/husamjawahreh/toothinstancenet-checkpoints/align.ckpt",
+  "real_case": {
+    "lower": "/kaggle/input/datasets/husamjawahreh/alignerstudio-real-case/lower.stl",
+    "upper": "/kaggle/input/datasets/husamjawahreh/alignerstudio-real-case/upper.stl"
+  },
+  "configuration": {
+    "m3_as_m2": true,
+    "distinguish_left_right": false,
+    "distinguish_upper_lower": false,
+    "norm": true,
+    "clean": true,
+    "uniform_density_voxel_size": [
+      0.025,
+      0.01
+    ],
+    "stage2_iters": 0,
+    "post_process_labels": false,
+    "do_align": true
+  },
+  "pointops": {
+    "fps_t4_thread_cap": 256,
+    "cuda_arch": "7.5"
+  },
+  "runtime_compatibility": {
+    "lingualsystems_shim": true,
+    "pointops_aliases": true,
+    "fullnet_predict_step_runtime_patch": true,
+    "persistent_repository_source_modified": false
+  },
+  "semantic_audit": [
+    {
+      "arch": "lower",
+      "instances_length": 70475,
+      "labels_length": 70475,
+      "unique_instances": [
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "unique_labels": [
+        0,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "instance_to_label": {
+        "0": 36,
+        "1": 37,
+        "2": 35,
+        "3": 34,
+        "4": 35,
+        "5": 34,
+        "6": 36,
+        "7": 37,
+        "8": 33,
+        "9": 32,
+        "10": 33,
+        "11": 31,
+        "12": 32,
+        "13": 31
+      },
+      "expected_labels": [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "semantic_pass": true
+    },
+    {
+      "arch": "upper",
+      "instances_length": 86401,
+      "labels_length": 86401,
+      "unique_instances": [
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "unique_labels": [
+        0,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "instance_to_label": {
+        "0": 13,
+        "1": 13,
+        "2": 14,
+        "3": 16,
+        "4": 15,
+        "5": 12,
+        "6": 15,
+        "7": 16,
+        "8": 12,
+        "9": 11,
+        "10": 17,
+        "11": 17,
+        "12": 14,
+        "13": 11
+      },
+      "expected_labels": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "semantic_pass": true
+    }
+  ],
+  "clinical_accuracy_claim": false,
+  "exact_28_tooth_fdi_anatomical_accuracy_claim": false
+}

@@ -38,6 +38,7 @@ class TreatmentSession:
     adjuncts: Any
     source_kind: str = "development_treatment_fixture"
     experimental: bool = True
+    planning_mode: str = "clinical_fdi"
 
 
 class TreatmentSessionStore:
@@ -80,7 +81,7 @@ class TreatmentSessionStore:
         return session
 
     def apply_edit(
-        self, case_id: str, tooth_number: int, movement: dict[str, float]
+        self, case_id: str, tooth_number: int | str, movement: dict[str, float]
     ) -> TreatmentSession:
         session = self.get(case_id)
         proposal = self._editing.apply_edit(
@@ -102,6 +103,9 @@ class TreatmentSessionStore:
             staging=result.staging,
             validation=result.validation,
             adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
         )
         self._sessions[case_id] = session
         return session
@@ -122,8 +126,13 @@ class TreatmentSessionStore:
             staging,
             validation,
             self._proposals.generate(proposal),
-            source_kind="development_treatment_fixture" if proposal.fixture else "treatment_result",
+            source_kind=(
+                "validated_real_case"
+                if proposal.planning_mode == "semantic_only_experimental"
+                else ("development_treatment_fixture" if proposal.fixture else "treatment_result")
+            ),
             experimental=True,
+            planning_mode=proposal.planning_mode,
         )
 
 
@@ -147,7 +156,9 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "teeth": [
                     {
                         "fdiNumber": state.tooth_number,
-                        "arch": "upper" if state.tooth_number < 30 else "lower",
+                        "toothRef": state.tooth_ref,
+                        "semanticLabel": state.semantic_label,
+                        "arch": state.arch or ("upper" if state.tooth_number < 30 else "lower"),
                         "confidence": 1.0,
                         "vertices": state.vertices,
                         "faces": state.final_target_faces,
@@ -176,6 +187,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         "fixture": session.proposal.fixture,
         "sourceKind": session.source_kind,
         "experimental": session.experimental,
+        "planningMode": session.planning_mode,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
         "editHistory": [

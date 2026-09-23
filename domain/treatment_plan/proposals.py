@@ -36,8 +36,8 @@ class IPRMeasurement:
 @dataclass(frozen=True)
 class IPRSite:
     site_id: str
-    tooth_a: int
-    tooth_b: int
+    tooth_a: int | str
+    tooth_b: int | str
     current_measurement: IPRMeasurement
     target_measurement: IPRMeasurement
     required_space: float | None
@@ -72,7 +72,7 @@ class AttachmentType(str, Enum):
 @dataclass(frozen=True)
 class AttachmentSite:
     site_id: str
-    tooth_number: int
+    tooth_number: int | str
     attachment_type: AttachmentType
     reference_point: Vector3 | None
     orientation: tuple[Vector3, Vector3, Vector3] | None

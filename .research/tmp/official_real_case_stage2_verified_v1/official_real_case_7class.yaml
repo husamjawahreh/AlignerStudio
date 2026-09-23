@@ -1,0 +1,268 @@
+work_dir: /home/mkaailab/Documents/logs/tooth_segmentation
+version: katja_withattributes_200epochs_01identify
+seed: 0
+model:
+  align:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.4
+    - 0.8
+    - 1.6
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.04
+      kpconv_ball_radius: 0.1
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: /kaggle/input/datasets/husamjawahreh/toothinstancenet-checkpoints/align.ckpt
+    lr: 0.001
+    weight_decay: 0.0001
+    epochs: 1000
+    warmup_epochs: 5
+    do_seg: true
+  instseg:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.4
+    - 0.8
+    - 1.6
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.04
+      kpconv_ball_radius: 0.1
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: /kaggle/input/datasets/husamjawahreh/toothinstancenet-checkpoints/instseg_full.ckpt
+    lr: 0.0006
+    weight_decay: 0.0001
+    epochs: 200
+    warmup_epochs: 5
+    stage2_iters: 0
+    post_process_labels: false
+  mixedseg:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.4
+    - 0.8
+    - 1.6
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.04
+      kpconv_ball_radius: 0.1
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: checkpoints/mixedseg_fold4.ckpt
+    lr: 0.0006
+    weight_decay: 0.0001
+    epochs: 200
+    warmup_epochs: 0
+  landmarks:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.1
+    - 0.2
+    - 0.4
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.02
+      kpconv_ball_radius: 0.05
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: ''
+    lr: 0.0006
+    weight_decay: 0.0001
+    epochs: 500
+    warmup_epochs: 5
+  binseg:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.1
+    - 0.2
+    - 0.4
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.015
+      kpconv_ball_radius: 0.03
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: /mnt/diag/IOS/partials/checkpoints/3dteethseg_binseg_all.ckpt
+    lr: 0.0006
+    weight_decay: 0.0001
+    epochs: 80
+    warmup_epochs: 5
+  binseg_attributes:
+    channels_list:
+    - 48
+    - 96
+    - 192
+    - 256
+    depths:
+    - 3
+    - 9
+    - 3
+    heads_list:
+    - 6
+    - 12
+    - 24
+    window_sizes:
+    - 0.1
+    - 0.2
+    - 0.4
+    point_embedding:
+      use: true
+      kpconv_point_influence: 0.015
+      kpconv_ball_radius: 0.03
+    stratified_union: false
+    downsample_ratio: 0.26
+    max_drop_path_prob: 0.3
+    stratified_downsample_ratio: 0.26
+    crpe_bins: 80
+    transformer_lr_ratio: 0.1
+    checkpoint_path: /home/mkaailab/Documents/logs/tooth_segmentation/katja_withattributes_200epochs_01identify/checkpoints/weights-epoch=199.ckpt
+    lr: 0.0006
+    weight_decay: 0.0001
+    epochs: 200
+    warmup_epochs: 5
+  proposal_points: 15000
+  dbscan_cfg:
+    max_neighbor_dist: 0.03
+    min_points: 40
+    weighted_cluster: true
+    weighted_average: true
+  do_align: true
+  tta: true
+  stage2_iters: 0
+  post_process_seg: true
+  post_process_labels: false
+accumulate_grad_batches: 1
+gradient_clip_norm: 35
+out_dir: /kaggle/working/official_real_case_stage2_final
+datamodule:
+  root: /kaggle/input/datasets/husamjawahreh/alignerstudio-real-case
+  landmarks_root: /home/mkaailab/Documents/IOS/3dteethland/data/3DTeethLand_landmarks_train
+  regex_filter: ''
+  extensions:
+  - ply
+  - stl
+  - obj
+  fold: /kaggle/working/real_case_predict_fold.txt
+  norm: true
+  clean: true
+  val_size: 0.2
+  include_val_as_train: true
+  sampler: binary
+  batch: null
+  batch_size: 1
+  num_workers: 0
+  pin_memory: true
+  persistent_workers: false
+  uniform_density_voxel_size:
+  - 0.025
+  - 0.01
+  proposal_points: 12000
+  max_proposals: 8
+  m3_as_m2: true
+  distinguish_left_right: false
+  random_partial: false
+  distinguish_upper_lower: false
+  label_as_instance: true
+  with_color: true
+data:
+  root: /kaggle/input/datasets/husamjawahreh/alignerstudio-real-case
+  regex_filter: ''
+  extensions:
+  - ply
+  - stl
+  - obj
+  batch_size: 1
+  m3_as_m2: true
+  distinguish_left_right: false
+  distinguish_upper_lower: false
+  norm: true
+  clean: true
+  uniform_density_voxel_size:
+  - 0.025
+  - 0.01
+  fold: /kaggle/working/real_case_predict_fold.txt
+  include_val_as_train: true
+do_align: true

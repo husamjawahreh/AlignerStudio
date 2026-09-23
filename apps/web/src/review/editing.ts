@@ -23,7 +23,7 @@ export function hasMovementChanges(first: MovementSummary, second: MovementSumma
 
 export function applyFixtureMovementEdit(
   bundle: ReviewBundle,
-  toothNumber: number,
+  toothNumber: number | string,
   movement: MovementSummary,
   timestamp: string,
   reason: "doctor_edit" | "doctor_reset" = "doctor_edit",
@@ -54,7 +54,7 @@ export function applyFixtureMovementEdit(
 
 export function resetFixtureTooth(
   bundle: ReviewBundle,
-  toothNumber: number,
+  toothNumber: number | string,
   timestamp: string,
 ): ReviewBundle {
   const firstEdit = [...bundle.editHistory]
@@ -98,7 +98,7 @@ export function recalculateFixtureBundle(bundle: ReviewBundle): ReviewBundle {
 
 function rebuildFixtureBundle(
   bundle: ReviewBundle,
-  toothNumber: number,
+  toothNumber: number | string,
   movement: MovementSummary,
   editHistory: readonly ReviewEditRecord[],
 ): ReviewBundle {
@@ -107,8 +107,11 @@ function rebuildFixtureBundle(
     return {
       ...stage,
       teeth: stage.teeth.map((tooth) => {
-        if (tooth.fdiNumber !== toothNumber) return tooth;
-        const source = bundle.stages[0].teeth.find((item) => item.fdiNumber === toothNumber);
+        const key = tooth.toothRef ?? tooth.fdiNumber;
+        if (String(key) !== String(toothNumber)) return tooth;
+        const source = bundle.stages[0].teeth.find(
+          (item) => String(item.toothRef ?? item.fdiNumber) === String(toothNumber),
+        );
         if (!source) return tooth;
         return {
           ...tooth,
@@ -126,8 +129,10 @@ function rebuildFixtureBundle(
   };
 }
 
-function findTooth(stage: ReviewStage, toothNumber: number) {
-  return stage.teeth.find((tooth) => tooth.fdiNumber === toothNumber);
+function findTooth(stage: ReviewStage, toothNumber: number | string) {
+  return stage.teeth.find(
+    (tooth) => String(tooth.toothRef ?? tooth.fdiNumber) === String(toothNumber),
+  );
 }
 
 function scaleMovement(movement: MovementSummary, progress: number): MovementSummary {

@@ -169,6 +169,11 @@ def _diagnostic_from_result(result, started: float, *, source_kind: str):
             {
                 "instance_id": tooth.instance.instance_id,
                 "fdi_number": tooth.identity.number if tooth.identity else None,
+                "tooth_ref": tooth.instance.tooth_ref,
+                "semantic_label": tooth.instance.semantic_label,
+                "planning_mode": "semantic_only_experimental"
+                if tooth.instance.tooth_ref
+                else "clinical_fdi",
                 "arch": identification.arch.value,
                 "vertices": tooth.instance.mesh_vertices,
                 "faces": tooth.instance.mesh_faces,

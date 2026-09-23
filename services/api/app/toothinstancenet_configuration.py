@@ -37,7 +37,7 @@ def load_validated_fixture_result(
     fixture_path = os.environ.get("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE")
     fixture_dir = os.environ.get("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR")
     if fixture_dir:
-        fixture_path = str(Path(fixture_dir) / f"{arch.value}.json")
+        fixture_path = fixture_dir
     if not fixture_path:
         raise ToothInstanceNetConfigurationError(
             "Validated fixture backend requires an explicit fixture file or fixture directory."

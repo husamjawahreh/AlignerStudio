@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
-import { api, type PipelineDiagnostic, type PipelineToothInstance } from "../api/client";
+import { api, type PipelineDiagnostic } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
 import { FixtureBadge } from "../components/FixtureBadge";
 import { InspectionPanel } from "../components/InspectionPanel";
@@ -64,10 +64,12 @@ function unavailableReviewBundle(reason: string): ReviewBundle {
 
 function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | null {
   const teeth = (diagnostic?.tooth_instances ?? [])
-    .filter((tooth): tooth is PipelineToothInstance & { fdi_number: number } => tooth.fdi_number !== null)
     .map<ReviewToothMesh>((tooth) => ({
       instanceId: tooth.instance_id,
       fdiNumber: tooth.fdi_number,
+      toothRef: tooth.tooth_ref,
+      semanticLabel: tooth.semantic_label,
+      planningMode: tooth.planning_mode,
       arch: tooth.arch,
       confidence: tooth.confidence,
       vertices: tooth.vertices,
@@ -150,7 +152,7 @@ export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [stageIndex, setStageIndex] = useState(0);
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [selectedTooth, setSelectedTooth] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showUpper, setShowUpper] = useState(true);
   const [showLower, setShowLower] = useState(true);
@@ -172,7 +174,7 @@ export function App(): JSX.Element {
   const pipelineReviewStage = useMemo(() => pipelineStage(pipelineDiagnostic), [pipelineDiagnostic]);
   const activeReviewStage = treatmentAvailable ? fixtureStage : pipelineReviewStage;
   const selectedFixtureTooth = useMemo(
-    () => activeReviewStage?.teeth.find((tooth) => tooth.fdiNumber === selectedTooth) ?? null,
+    () => activeReviewStage?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ?? null,
     [activeReviewStage, selectedTooth],
   );
   const originalTooth =
@@ -180,11 +182,11 @@ export function App(): JSX.Element {
       ? null
       : (engineeringFixtureBundle.stages
           .at(-1)
-          ?.teeth.find((tooth) => tooth.fdiNumber === selectedTooth) ?? null);
+          ?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ?? null);
   const currentProposalTooth =
     selectedTooth === null
       ? null
-      : (reviewBundle.stages.at(-1)?.teeth.find((tooth) => tooth.fdiNumber === selectedTooth) ??
+      : (reviewBundle.stages.at(-1)?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ??
         null);
   const bothArchesValid =
     archUploads.upper.state === "valid" && archUploads.lower.state === "valid";
@@ -213,9 +215,9 @@ export function App(): JSX.Element {
     return () => window.clearInterval(timer);
   }, [isPlaying, reviewBundle.stages.length]);
 
-  function handleSelectTooth(toothNumber: number): void {
+  function handleSelectTooth(toothNumber: string): void {
     setSelectedTooth(toothNumber);
-    const tooth = reviewBundle.stages.at(-1)?.teeth.find((item) => item.fdiNumber === toothNumber);
+    const tooth = reviewBundle.stages.at(-1)?.teeth.find((item) => (item.toothRef ?? String(item.fdiNumber)) === toothNumber);
     setDraftMovement(tooth ? cloneMovement(tooth.movement) : null);
   }
 
@@ -633,7 +635,7 @@ export function App(): JSX.Element {
                         })
                       }
                     />
-                    <span>FDI {tooth.fdiNumber}</span>
+                    <span>{tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : tooth.toothRef ?? "Semantic tooth"}</span>
                   </label>
                 ))}
               </div>

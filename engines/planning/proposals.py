@@ -44,12 +44,17 @@ class TreatmentProposalEngine:
                 "Target setup is unavailable; adjunct proposals cannot be determined.",
             )
             return self._empty_result(plan, warning, previous)
-        source = {state.tooth_number: state for state in plan.setup.source_states}
-        target = {state.tooth_number: state for state in plan.setup.target_states}
+        source = {self._state_key(state): state for state in plan.setup.source_states}
+        target = {self._state_key(state): state for state in plan.setup.target_states}
         ipr_sites: list[IPRSite] = []
-        sorted_teeth = sorted(source)
+        sorted_teeth = sorted(source, key=str)
         for tooth_a, tooth_b in zip(sorted_teeth, sorted_teeth[1:], strict=False):
-            if tooth_a // 10 != tooth_b // 10:
+            if plan.planning_mode == "clinical_fdi" and tooth_a // 10 != tooth_b // 10:
+                continue
+            if plan.planning_mode == "semantic_only_experimental":
+                if source[tooth_a].arch != source[tooth_b].arch:
+                    continue
+            if plan.planning_mode not in ("clinical_fdi", "semantic_only_experimental"):
                 continue
             ipr_sites.append(
                 self._ipr_site(
@@ -58,7 +63,7 @@ class TreatmentProposalEngine:
             )
         attachment_sites = tuple(
             self._attachment_site(plan, state)
-            for state in sorted(target.values(), key=lambda item: item.tooth_number)
+            for state in sorted(target.values(), key=lambda item: str(self._state_key(item)))
             if any(
                 value != 0.0
                 for value in (
@@ -280,6 +285,14 @@ class TreatmentProposalEngine:
             plan.fixture,
             (warning,),
             history,
+        )
+
+    @staticmethod
+    def _state_key(state):
+        return (
+            state.tooth_ref
+            if state.planning_mode == "semantic_only_experimental"
+            else state.tooth_number
         )
 
     def _replace_ipr(self, result, sites):
