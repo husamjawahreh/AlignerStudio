@@ -37,11 +37,27 @@ export interface DentalToothMesh {
   vertices: readonly [number, number, number][];
   faces: readonly [number, number, number][];
   centroid?: readonly [number, number, number];
+  landmarks?: {
+    centroid: readonly [number, number, number];
+    mesial_point: readonly [number, number, number];
+    distal_point: readonly [number, number, number];
+    occlusal_point: readonly [number, number, number];
+    gingival_point: readonly [number, number, number];
+  } | null;
+  coordinateSystem?: {
+    origin: readonly [number, number, number];
+    lateral_axis: readonly [number, number, number];
+    anterior_axis: readonly [number, number, number];
+    vertical_axis: readonly [number, number, number];
+    semantics: readonly string[];
+  } | null;
+  anatomyExtent?: "crown_only_stl" | "root_bone_cbct";
   confidence?: number | null;
   provenance: DataProvenance;
   fixture: boolean;
   experimental?: boolean;
 }
+
 
 export interface DentalScene {
   originalScans: Readonly<Record<DentalArch, DentalToothMesh[]>>;

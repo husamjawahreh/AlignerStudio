@@ -138,9 +138,10 @@ export function StageViewer({
         translationX: object.position.x,
         translationY: object.position.y,
         translationZ: object.position.z,
-        rotation: object.rotation.y,
-        tip: object.rotation.x,
-        torque: object.rotation.z,
+        rotation: (object.rotation.y * 180) / Math.PI,
+        tip: (object.rotation.x * 180) / Math.PI,
+        torque: (object.rotation.z * 180) / Math.PI,
+        angulation: 0,
         intrusion: 0,
         extrusion: 0,
       });

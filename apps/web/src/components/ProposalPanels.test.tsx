@@ -15,7 +15,7 @@ describe("ProposalPanels", () => {
         onReset={vi.fn()}
       />,
     );
-    expect(screen.getByText("IPR review")).toBeInTheDocument();
+    expect(screen.getByText("IPR")).toBeInTheDocument();
     expect(screen.getByText("Attachments")).toBeInTheDocument();
     expect(screen.getAllByText(/not a clinical/).length).toBeGreaterThan(0);
     expect(screen.getByText(/dimensions require doctor review/)).toBeInTheDocument();

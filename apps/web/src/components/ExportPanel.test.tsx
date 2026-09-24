@@ -7,8 +7,8 @@ describe("ExportPanel", () => {
   it("labels fixture exports as incomplete and invokes the export action", async () => {
     const onExport = vi.fn();
     render(<ExportPanel bundle={engineeringFixtureBundle} onExport={onExport} />);
-    expect(screen.getByText(/Incomplete engineering export/)).toBeInTheDocument();
-    screen.getByRole("button", { name: "Export ZIP package" }).click();
+    expect(screen.getByText(/Incomplete Export Package/)).toBeInTheDocument();
+    screen.getByRole("button", { name: "Export Package" }).click();
     expect(onExport).toHaveBeenCalledOnce();
   });
 });

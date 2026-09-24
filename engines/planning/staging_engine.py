@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 
 from domain.treatment_plan.setup import ToothMovement, TreatmentPlanProposal
@@ -18,6 +19,40 @@ from domain.treatment_plan.staging import (
 
 class TreatmentStagingError(ValueError):
     """Raised for invalid or unavailable staging inputs."""
+
+
+def resolve_dynamic_stage_count(
+    proposal: TreatmentPlanProposal,
+    *,
+    base_count: int,
+    mode: str,
+) -> int:
+    """Derive stage count from explicit movement magnitude (engineering only).
+
+    Macro uses coarser steps; micro uses finer steps. Never invents clinical timing.
+    """
+    if proposal.setup is None:
+        return max(2, base_count)
+    max_magnitude = 0.0
+    for state in proposal.setup.target_states:
+        movement = state.movement
+        if movement.excluded:
+            continue
+        translation = math.hypot(
+            movement.translation_x,
+            movement.translation_y,
+            movement.vertical_translation,
+        )
+        rotation = (
+            abs(movement.rotation)
+            + abs(movement.tip)
+            + abs(movement.torque)
+            + abs(movement.angulation)
+        ) * (math.pi / 180.0)
+        max_magnitude = max(max_magnitude, translation + rotation)
+    step = 0.25 if mode == "micro" else 0.5
+    derived = int(math.ceil(max_magnitude / step)) + 1 if max_magnitude > 0 else base_count
+    return min(24, max(2, base_count, derived))
 
 
 @dataclass(frozen=True)
@@ -191,6 +226,7 @@ class TreatmentStagingEngine:
                 "rotation",
                 "tip",
                 "torque",
+                "angulation",
                 "intrusion",
                 "extrusion",
             )
@@ -208,6 +244,7 @@ class TreatmentStagingEngine:
             rotation=current.rotation - previous.rotation,
             tip=current.tip - previous.tip,
             torque=current.torque - previous.torque,
+            angulation=current.angulation - previous.angulation,
             intrusion=current.intrusion - previous.intrusion,
             extrusion=current.extrusion - previous.extrusion,
             locked=current.locked,
@@ -219,8 +256,15 @@ class TreatmentStagingEngine:
         if limits is None:
             return "not_configured"
         fields = (
-            "translation_x", "translation_y", "translation_z", "rotation",
-            "tip", "torque", "intrusion", "extrusion",
+            "translation_x",
+            "translation_y",
+            "translation_z",
+            "rotation",
+            "tip",
+            "torque",
+            "angulation",
+            "intrusion",
+            "extrusion",
         )
         exceeded = any(
             abs(getattr(movement, field)) > abs(getattr(limits, field))

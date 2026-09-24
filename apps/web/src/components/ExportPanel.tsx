@@ -20,17 +20,17 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
   const editCount = bundle.editHistory.length;
 
   return (
-    <section className="export-panel" aria-label="Engineering export">
+    <section className="export-panel" aria-label="Export Package">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">Engineering export</span>
-          <h2>Package readiness</h2>
+          <span className="eyebrow">Export Package</span>
+          <h2>Production QA</h2>
         </div>
         <FixtureBadge fixture={bundle.fixture} provenance={bundle.provenance} />
       </div>
       <div className="export-metrics">
         <div>
-          <span>Stages</span>
+          <span>Appliance Stages</span>
           <strong>{bundle.stages.length}</strong>
         </div>
         <div>
@@ -38,7 +38,7 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
           <strong>{validationStatus}</strong>
         </div>
         <div>
-          <span>Proposals</span>
+          <span>IPR / Attachments</span>
           <strong>{proposalStatuses.length === 0 ? "none" : "review"}</strong>
         </div>
         <div>
@@ -48,12 +48,15 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
       </div>
       <div className="export-audit-summary">
         <span>Package contents</span>
-        <small>Original metadata · target setup · stages · validation · IPR · attachments · edit history · provenance</small>
+        <small>
+          Case metadata · Target Position · Appliance Stages · Validation · IPR Report · Attachment
+          Plan · Edit History · provenance
+        </small>
       </div>
       {incomplete && (
         <p className="export-warning">
-          Incomplete engineering export: the current workspace uses fixture data or lacks a full API
-          export bundle.
+          Incomplete Export Package: a full treatment session export is not available in this
+          workspace yet.
         </p>
       )}
       {warnings.slice(0, 2).map((warning) => (
@@ -62,10 +65,10 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
         </p>
       ))}
       <button className="secondary-button export-button" onClick={onExport}>
-        Export ZIP package
+        Export Package
       </button>
       <p className="muted-copy">
-        Export is an auditable review artifact and never indicates clinical approval.
+        Export Package is an auditable review artifact and never indicates clinical approval.
       </p>
     </section>
   );

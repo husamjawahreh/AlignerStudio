@@ -53,6 +53,7 @@ function toothMesh(fdiNumber: number, stageIndex: number): ReviewToothMesh {
       rotation: stageIndex * (position === 1 ? 2 : 0),
       tip: 0,
       torque: 0,
+      angulation: 0,
       intrusion: 0,
       extrusion: 0,
     },

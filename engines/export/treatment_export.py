@@ -313,6 +313,7 @@ class TreatmentExportEngine:
             "rotation",
             "tip",
             "torque",
+            "angulation",
             "intrusion",
             "extrusion",
             "locked",

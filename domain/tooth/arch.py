@@ -30,4 +30,8 @@ class ArchMeasurements:
     anterior_to_posterior_order: tuple[int, ...]
     provenance: DataProvenance
     fixture: bool
+    orientation_lateral_axis: Vector3 | None = None
+    orientation_anterior_axis: Vector3 | None = None
+    orientation_vertical_axis: Vector3 | None = None
+    geometric_midline_point: Vector3 | None = None
     notes: str = ""

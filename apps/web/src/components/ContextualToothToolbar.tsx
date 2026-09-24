@@ -78,9 +78,9 @@ export function ContextualToothToolbar({
           type="button"
           className={showMovementVectors ? "viewer-tool is-active" : "viewer-tool"}
           onClick={onToggleMovementVectors}
-          title="Toggle movement vectors"
+          title="Toggle Tooth Movement overlay"
         >
-          Vectors
+          Movement
         </button>
         <button
           type="button"

@@ -7,6 +7,11 @@ from enum import StrEnum
 from time import perf_counter
 
 from domain.tooth.identification import ArchType
+from engines.arrangement.anatomical_intelligence import (
+    build_anatomical_intelligence_summary,
+    serialize_arch_measurements,
+    serialize_identified_tooth,
+)
 from engines.arrangement.arch_analysis import ArchAnalysisEngine, ArchAnalysisError
 from engines.arrangement.identification import ToothIdentificationEngine
 from engines.segmentation.onnx_engine import OnnxSegmentationEngine
@@ -51,6 +56,8 @@ class CasePipelineDiagnostic:
     missing_fdi_numbers: tuple[int, ...] = ()
     excluded_fragment_count: int = 0
     tooth_instances: tuple[dict, ...] = ()
+    arch_measurements: dict | None = None
+    anatomical_intelligence: dict | None = None
 
     def payload(self) -> dict:
         return {**asdict(self), "state": self.state.value}
@@ -89,6 +96,12 @@ def process_uploaded_case(mesh_path: str, arch: ArchType) -> CasePipelineDiagnos
     segmentation_ms = (perf_counter() - started) * 1000
     identification = ToothIdentificationEngine().identify(segmented, arch)
     scores = [item.confidence.score for item in identification.teeth]
+    tooth_instances = tuple(serialize_identified_tooth(tooth) for tooth in identification.teeth)
+    # Ensure arch field is set from the requested arch context.
+    tooth_instances = tuple(
+        {**tooth, "arch": arch.value if tooth.get("arch") is None else tooth["arch"]}
+        for tooth in tooth_instances
+    )
     base = {
         "segmentation_runtime_ms": segmentation_ms,
         "tooth_instance_count": len(segmented.instances),
@@ -96,25 +109,55 @@ def process_uploaded_case(mesh_path: str, arch: ArchType) -> CasePipelineDiagnos
         "identified_teeth": len(identification.identified),
         "uncertain_teeth": len(identification.uncertain),
         "unidentified_teeth": len(identification.unidentified),
+        "tooth_instances": tooth_instances,
+        "provenance": identification.provenance.value,
+        "fixture": identification.fixture,
+        "fdi_assignments": tuple(
+            (
+                tooth.instance.instance_id,
+                tooth.identity.number if tooth.identity else None,
+            )
+            for tooth in identification.teeth
+        ),
     }
+    arch_measurements = None
     if identification.uncertain or identification.unidentified:
+        summary = build_anatomical_intelligence_summary(
+            identification=identification,
+            arch_measurements=None,
+        )
         return _diagnostic(
             PipelineState.IDENTIFICATION_INCOMPLETE,
             started,
             **base,
             failures=("Identification is incomplete; planning is blocked.",),
+            anatomical_intelligence=summary.payload(),
         )
     try:
-        ArchAnalysisEngine().analyze(identification)
+        arch_measurements = ArchAnalysisEngine().analyze(identification)
     except ArchAnalysisError as error:
-        return _diagnostic(
-            PipelineState.IDENTIFICATION_INCOMPLETE, started, **base, failures=(str(error),)
+        summary = build_anatomical_intelligence_summary(
+            identification=identification,
+            arch_measurements=None,
         )
+        return _diagnostic(
+            PipelineState.IDENTIFICATION_INCOMPLETE,
+            started,
+            **base,
+            failures=(str(error),),
+            anatomical_intelligence=summary.payload(),
+        )
+    summary = build_anatomical_intelligence_summary(
+        identification=identification,
+        arch_measurements=arch_measurements,
+    )
     return _diagnostic(
         PipelineState.PLANNING_READY,
         started,
         **base,
         arch_analysis_available=True,
+        arch_measurements=serialize_arch_measurements(arch_measurements),
+        anatomical_intelligence=summary.payload(),
         notes=(
             "Segmentation and geometric identification completed. Explicit treatment objectives "
             "are still required before setup generation.",
@@ -145,12 +188,33 @@ def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineD
         missing_fdi_numbers=values.get("missing_fdi_numbers", ()),
         excluded_fragment_count=values.get("excluded_fragment_count", 0),
         tooth_instances=values.get("tooth_instances", ()),
+        arch_measurements=values.get("arch_measurements"),
+        anatomical_intelligence=values.get("anatomical_intelligence"),
     )
 
 
 def _diagnostic_from_result(result, started: float, *, source_kind: str):
     identification = result.identification
     scores = [item.confidence.score for item in identification.teeth]
+    tooth_instances = tuple(
+        {
+            **serialize_identified_tooth(tooth),
+            "arch": identification.arch.value,
+            "experimental": True,
+        }
+        for tooth in identification.teeth
+    )
+    arch_measurements = None
+    if identification.identified and not identification.uncertain and not identification.unidentified:
+        try:
+            arch_measurements = ArchAnalysisEngine().analyze(identification)
+        except ArchAnalysisError:
+            arch_measurements = None
+    # Semantic-only fixtures typically lack landmarks; arch analysis stays unavailable.
+    summary = build_anatomical_intelligence_summary(
+        identification=identification,
+        arch_measurements=arch_measurements,
+    )
     base = {
         "segmentation_runtime_ms": (perf_counter() - started) * 1000,
         "tooth_instance_count": len(result.segmentation.instances),
@@ -165,27 +229,11 @@ def _diagnostic_from_result(result, started: float, *, source_kind: str):
         "duplicate_fdi_numbers": result.diagnostics.duplicate_fdi_numbers,
         "missing_fdi_numbers": result.diagnostics.missing_fdi_numbers,
         "excluded_fragment_count": len(result.diagnostics.empty_instance_ids),
-        "tooth_instances": tuple(
-            {
-                "instance_id": tooth.instance.instance_id,
-                "fdi_number": tooth.identity.number if tooth.identity else None,
-                "tooth_ref": tooth.instance.tooth_ref,
-                "semantic_label": tooth.instance.semantic_label,
-                "planning_mode": "semantic_only_experimental"
-                if tooth.instance.tooth_ref
-                else "clinical_fdi",
-                "arch": identification.arch.value,
-                "vertices": tooth.instance.mesh_vertices,
-                "faces": tooth.instance.mesh_faces,
-                "centroid": tooth.instance.centroid,
-                "confidence": tooth.instance.confidence,
-                "provenance": tooth.instance.provenance.value,
-                "fixture": tooth.instance.fixture,
-                "experimental": True,
-            }
-            for tooth in identification.teeth
-        ),
+        "tooth_instances": tooth_instances,
         "notes": result.diagnostics.notes,
+        "arch_analysis_available": arch_measurements is not None,
+        "arch_measurements": serialize_arch_measurements(arch_measurements),
+        "anatomical_intelligence": summary.payload(),
     }
     state = PipelineState(result.status)
     return _diagnostic(state, started, source_kind=source_kind, **base)

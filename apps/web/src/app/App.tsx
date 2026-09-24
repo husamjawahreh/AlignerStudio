@@ -3,8 +3,19 @@ import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
+import { AnalysisInspector, AnalysisPanel } from "../components/AnalysisPanel";
+import { CaseIntakeInspector, CaseIntakePanel } from "../components/CaseIntakePanel";
+import { ProductionInspector, ProductionPanel } from "../components/ProductionPanel";
+import { RefinementInspector, RefinementPanel } from "../components/RefinementPanel";
+import { StagingInspector, StagingPanel } from "../components/StagingPanel";
+import { TreatmentSetupInspector, TreatmentSetupPanel } from "../components/TreatmentSetupPanel";
+import {
+  ValidationWorkflowInspector,
+  ValidationWorkflowPanel,
+} from "../components/ValidationWorkflowPanel";
 import { ContextualToothToolbar } from "../components/ContextualToothToolbar";
 import { InspectionPanel } from "../components/InspectionPanel";
+import { formatToothIdentity } from "../analysisPresentation";
 import { ProposalPanels } from "../components/ProposalPanels";
 import { StageTimeline } from "../components/StageTimeline";
 import { ValidationPanel } from "../components/ValidationPanel";
@@ -39,22 +50,11 @@ import {
   WorkflowHeader,
   WorkspaceContainer,
 } from "../components/workspace/WorkspacePrimitives";
-import { buildWorkflowSteps, type WorkflowStepId } from "../workflow";
+import { buildWorkflowActions, buildWorkflowSteps, workflowLabel, workflowPlanToken, workflowStepIndex, type WorkflowStepId } from "../workflow";
 import { CaseLoadingOverlay, ProductionEmptyState, StatusPill } from "../components/production/ProductionPrimitives";
 import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
 
-const WORKFLOW = [
-  ["case", "Case"],
-  ["analysis", "Analysis"],
-  ["segmentation", "Segmentation"],
-  ["treatment-plan", "Treatment Plan"],
-  ["stage-review", "Stage Review"],
-  ["tooth-editor", "Tooth Editor"],
-  ["validation", "Validation"],
-  ["export", "Export"],
-] as const;
-
-type WorkspaceId = (typeof WORKFLOW)[number][0];
+type WorkspaceId = WorkflowStepId;
 
 type Arch = "upper" | "lower";
 type UploadState = "empty" | "uploading" | "valid" | "invalid" | "error";
@@ -102,6 +102,11 @@ function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | nul
       vertices: tooth.vertices,
       faces: tooth.faces,
       centroid: tooth.centroid,
+      landmarks: tooth.landmarks ?? null,
+      coordinateSystem: tooth.coordinate_system ?? null,
+      movementReferenceFrame: tooth.movement_reference_frame ?? tooth.coordinate_system ?? null,
+      anatomyExtent: tooth.anatomy_extent ?? "crown_only_stl",
+      identificationStatus: tooth.identification_status,
       movement: {
         translationX: 0,
         translationY: 0,
@@ -109,6 +114,7 @@ function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | nul
         rotation: 0,
         tip: 0,
         torque: 0,
+        angulation: 0,
         intrusion: 0,
         extrusion: 0,
       },
@@ -150,6 +156,16 @@ function mergePipelineDiagnostics(
     ...lowerDiagnostic,
     tooth_instances: [...upperInstances, ...lowerInstances],
     tooth_instance_count: upperDiagnostic.tooth_instance_count + lowerDiagnostic.tooth_instance_count,
+    identified_teeth: upperDiagnostic.identified_teeth + lowerDiagnostic.identified_teeth,
+    uncertain_teeth: upperDiagnostic.uncertain_teeth + lowerDiagnostic.uncertain_teeth,
+    unidentified_teeth: upperDiagnostic.unidentified_teeth + lowerDiagnostic.unidentified_teeth,
+    arch_analysis_available:
+      upperDiagnostic.arch_analysis_available || lowerDiagnostic.arch_analysis_available,
+    arch_measurements: lowerDiagnostic.arch_measurements ?? upperDiagnostic.arch_measurements ?? null,
+    anatomical_intelligence: mergeAnatomicalIntelligence(
+      upperDiagnostic.anatomical_intelligence,
+      lowerDiagnostic.anatomical_intelligence,
+    ),
     duplicate_fdi_numbers: [
       ...(upperDiagnostic.duplicate_fdi_numbers ?? []),
       ...(lowerDiagnostic.duplicate_fdi_numbers ?? []),
@@ -161,6 +177,37 @@ function mergePipelineDiagnostics(
     excluded_fragment_count:
       (upperDiagnostic.excluded_fragment_count ?? 0) +
       (lowerDiagnostic.excluded_fragment_count ?? 0),
+  };
+}
+
+function mergeAnatomicalIntelligence(
+  upper: PipelineDiagnostic["anatomical_intelligence"],
+  lower: PipelineDiagnostic["anatomical_intelligence"],
+): PipelineDiagnostic["anatomical_intelligence"] {
+  if (!upper && !lower) return null;
+  if (!upper) return lower ?? null;
+  if (!lower) return upper;
+  return {
+    anatomy_extent: "crown_only_stl",
+    landmarks_available: upper.landmarks_available || lower.landmarks_available,
+    local_axes_available: upper.local_axes_available || lower.local_axes_available,
+    movement_frames_available: upper.movement_frames_available || lower.movement_frames_available,
+    arch_orientation_available: upper.arch_orientation_available || lower.arch_orientation_available,
+    arch_form_available: upper.arch_form_available || lower.arch_form_available,
+    midline_available: upper.midline_available || lower.midline_available,
+    occlusion: upper.occlusion.availability === "unavailable" ? upper.occlusion : lower.occlusion,
+    data_quality: {
+      ...lower.data_quality,
+      incomplete_scans: upper.data_quality.incomplete_scans || lower.data_quality.incomplete_scans,
+      missing_teeth: upper.data_quality.missing_teeth || lower.data_quality.missing_teeth,
+      ambiguous_identity:
+        upper.data_quality.ambiguous_identity || lower.data_quality.ambiguous_identity,
+      incomplete_occlusion: true,
+      missing_anatomy: true,
+      anatomy_extent: "crown_only_stl",
+      findings: [...upper.data_quality.findings, ...lower.data_quality.findings],
+      requires_review: true,
+    },
   };
 }
 
@@ -203,7 +250,7 @@ export function App(): JSX.Element {
   const [recalculationState, setRecalculationState] = useState<
     "idle" | "recalculating" | "complete"
   >("idle");
-  const [workspace, setWorkspace] = useState<WorkspaceId>("case");
+  const [workspace, setWorkspace] = useState<WorkspaceId>("case-intake");
   const [gizmoMode, setGizmoMode] = useState<"translate" | "rotate">("translate");
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([]);
@@ -351,7 +398,7 @@ export function App(): JSX.Element {
             setReviewBundle(bundle);
             setBackendTreatment(true);
             setStageIndex(0);
-            setWorkspace("stage-review");
+            setWorkspace("staging");
             stopBusy();
           }).catch((error: Error) => {
             if (cancelled) return;
@@ -388,8 +435,34 @@ export function App(): JSX.Element {
   }
 
   function handleGizmoMovement(movement: MovementSummary): void {
-    if (!draftMovement) return;
-    setDraftMovement((current) => current ? { ...current, ...movement } : current);
+    if (!draftMovement || draftMovement.locked) return;
+    const frame = selectedFixtureTooth?.coordinateSystem ?? selectedFixtureTooth?.movementReferenceFrame;
+    let next: MovementSummary = {
+      ...draftMovement,
+      translationX: movement.translationX,
+      translationY: movement.translationY,
+      translationZ: movement.translationZ,
+      rotation: movement.rotation,
+      tip: movement.tip,
+      torque: movement.torque,
+      // Preserve intrusion/extrusion/angulation/lock flags from draft.
+      angulation: draftMovement.angulation ?? 0,
+      intrusion: draftMovement.intrusion,
+      extrusion: draftMovement.extrusion,
+    };
+    if (frame) {
+      const world = [movement.translationX, movement.translationY, movement.translationZ] as const;
+      next = {
+        ...next,
+        translationX: dot3(world, frame.lateral_axis),
+        translationY: dot3(world, frame.anterior_axis),
+        translationZ: dot3(world, frame.vertical_axis),
+        tip: movement.tip,
+        torque: movement.torque,
+        rotation: movement.rotation,
+      };
+    }
+    setDraftMovement(next);
   }
 
   async function handleApplyEdit(): Promise<void> {
@@ -403,24 +476,86 @@ export function App(): JSX.Element {
     };
     if (backendTreatment && activeCase) {
       startBusy("Applying tooth edit");
+      setRecalculationState("recalculating");
       try {
+        // API apply_edit runs Target → Staging → Validation before returning.
         setReviewBundle(await api.applyTreatmentEdit(activeCase.id, selectedTooth, draftMovement));
         setUndoStack((current) => [...current, snapshot]);
         setRedoStack([]);
-        setRecalculationState("idle");
+        setRecalculationState("complete");
+        setStageIndex(0);
       } catch (err) {
         setError((err as Error).message);
+        setRecalculationState("idle");
       } finally {
         stopBusy();
       }
       return;
     }
     setReviewBundle((current) =>
-      applyFixtureMovementEdit(current, selectedTooth, draftMovement, new Date().toISOString()),
+      recalculateFixtureBundle(
+        applyFixtureMovementEdit(current, selectedTooth, draftMovement, new Date().toISOString()),
+      ),
     );
     setUndoStack((current) => [...current, snapshot]);
     setRedoStack([]);
-    setRecalculationState("idle");
+    setRecalculationState("complete");
+  }
+
+  async function handleResetTooth(): Promise<void> {
+    if (selectedTooth === null) return;
+    if (backendTreatment && activeCase) {
+      startBusy("Resetting tooth");
+      setRecalculationState("recalculating");
+      try {
+        setReviewBundle(await api.resetTreatmentTooth(activeCase.id, selectedTooth));
+        setRecalculationState("complete");
+        setStageIndex(0);
+      } catch (err) {
+        setError((err as Error).message);
+        setRecalculationState("idle");
+      } finally {
+        stopBusy();
+      }
+      return;
+    }
+    const next = recalculateFixtureBundle(
+      resetFixtureTooth(reviewBundle, selectedTooth, new Date().toISOString()),
+    );
+    setReviewBundle(next);
+    setDraftMovement(originalTooth ? cloneMovement(originalTooth.movement) : null);
+    setRecalculationState("complete");
+  }
+
+  async function handleResetAll(): Promise<void> {
+    if (backendTreatment && activeCase) {
+      startBusy("Resetting all edits");
+      setRecalculationState("recalculating");
+      try {
+        setReviewBundle(await api.resetAllTreatmentEdits(activeCase.id));
+        setRecalculationState("complete");
+        setStageIndex(0);
+      } catch (err) {
+        setError((err as Error).message);
+        setRecalculationState("idle");
+      } finally {
+        stopBusy();
+      }
+      return;
+    }
+    const next = recalculateFixtureBundle(
+      resetAllFixtureEdits(reviewBundle, new Date().toISOString()),
+    );
+    setReviewBundle(next);
+    setDraftMovement(originalTooth ? cloneMovement(originalTooth.movement) : null);
+    setRecalculationState("complete");
+  }
+
+  function dot3(
+    vector: readonly [number, number, number],
+    axis: readonly [number, number, number],
+  ): number {
+    return vector[0] * axis[0] + vector[1] * axis[1] + vector[2] * axis[2];
   }
 
   async function handleUndo(): Promise<void> {
@@ -429,7 +564,9 @@ export function App(): JSX.Element {
     setUndoStack((current) => current.slice(0, -1));
     setRedoStack((current) => [...current, snapshot]);
     if (backendTreatment && activeCase) {
+      setRecalculationState("recalculating");
       setReviewBundle(await api.applyTreatmentEdit(activeCase.id, snapshot.tooth, snapshot.beforeMovement));
+      setRecalculationState("complete");
     } else {
       setReviewBundle(snapshot.before);
     }
@@ -442,9 +579,15 @@ export function App(): JSX.Element {
     setRedoStack((current) => current.slice(0, -1));
     setUndoStack((current) => [...current, snapshot]);
     if (backendTreatment && activeCase) {
+      setRecalculationState("recalculating");
       setReviewBundle(await api.applyTreatmentEdit(activeCase.id, snapshot.tooth, snapshot.afterMovement));
+      setRecalculationState("complete");
     } else {
-      setReviewBundle((current) => applyFixtureMovementEdit(current, snapshot.tooth, snapshot.afterMovement, new Date().toISOString()));
+      setReviewBundle((current) =>
+        recalculateFixtureBundle(
+          applyFixtureMovementEdit(current, snapshot.tooth, snapshot.afterMovement, new Date().toISOString()),
+        ),
+      );
     }
     setDraftMovement(cloneMovement(snapshot.afterMovement));
   }
@@ -452,19 +595,6 @@ export function App(): JSX.Element {
   function handleCancelEdit(): void {
     setReviewBundle((current) => cancelFixtureEdits(current));
     setDraftMovement(currentProposalTooth ? cloneMovement(currentProposalTooth.movement) : null);
-  }
-
-  function handleResetTooth(): void {
-    if (selectedTooth === null) return;
-    const next = resetFixtureTooth(reviewBundle, selectedTooth, new Date().toISOString());
-    setReviewBundle(next);
-    setDraftMovement(originalTooth ? cloneMovement(originalTooth.movement) : null);
-  }
-
-  function handleResetAll(): void {
-    const next = resetAllFixtureEdits(reviewBundle, new Date().toISOString());
-    setReviewBundle(next);
-    setDraftMovement(originalTooth ? cloneMovement(originalTooth.movement) : null);
   }
 
   async function handleRecalculate(): Promise<void> {
@@ -491,7 +621,7 @@ export function App(): JSX.Element {
   async function handleExportRequest(): Promise<void> {
     if (!backendTreatment || !activeCase) {
       setExportMessage(
-        "Export requires an API-backed treatment session; local fixture mode cannot export.",
+        "Export Package requires an active treatment session. Local demo data cannot be exported.",
       );
       return;
     }
@@ -524,7 +654,7 @@ export function App(): JSX.Element {
       clearRealCaseReview(
         "Case preparation in progress. Import both arches to begin.",
       );
-      setWorkspace("case");
+      setWorkspace("case-intake");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -542,7 +672,7 @@ export function App(): JSX.Element {
       setBackendTreatment(true);
       setStageIndex(0);
       setPipelineDiagnostic(null);
-      setWorkspace("stage-review");
+      setWorkspace("staging");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -686,7 +816,7 @@ export function App(): JSX.Element {
       setStageIndex(0);
       clearSelection();
       setDraftMovement(null);
-      setWorkspace("stage-review");
+      setWorkspace("staging");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -704,7 +834,7 @@ export function App(): JSX.Element {
         api.processPipeline(activeCase.id, "lower"),
       ]);
       setPipelineDiagnostic(mergePipelineDiagnostics(upperDiagnostic, lowerDiagnostic));
-      setWorkspace("segmentation");
+      setWorkspace("analysis");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -712,10 +842,59 @@ export function App(): JSX.Element {
     }
   }
 
-  const workspaceLabel = WORKFLOW.find(([id]) => id === workspace)?.[1] ?? "Case";
+  const workspaceLabel = workflowLabel(workspace);
+  const workspaceToken = workflowPlanToken(workspace);
   const canShowScene = activeReviewStage !== null;
-  const renderCaseTools = workspace === "case" || workspace === "analysis";
-  const renderSegmentationTools = workspace === "segmentation";
+  const showStageTimeline =
+    (workspace === "staging" || workspace === "refinement") && treatmentAvailable;
+  const showSceneLayers =
+    workspace !== "case-intake" || canShowScene;
+  const contextualActions = useMemo(
+    () =>
+      buildWorkflowActions({
+        activeStep: workspace,
+        hasCase: activeCase !== null,
+        bothArchesValid,
+        hasSegmentation: pipelineReviewStage !== null,
+        hasTreatment: treatmentAvailable,
+        isBusy,
+      }),
+    [activeCase, bothArchesValid, isBusy, pipelineReviewStage, treatmentAvailable, workspace],
+  );
+
+  function handleContextualAction(label: string): void {
+    if (label === "New Case") {
+      void handleCreateCase();
+      return;
+    }
+    if (label === "Scan Import") {
+      setWorkspace("case-intake");
+      return;
+    }
+    if (label === "Analyze case") {
+      void handleReviewSegmentation();
+      return;
+    }
+    if (label === "Review Treatment Setup") {
+      void handleGeneratePlan();
+      return;
+    }
+    if (label === "Open Staging") {
+      setWorkspace("staging");
+      return;
+    }
+    if (label === "Open Refinement") {
+      setWorkspace("refinement");
+      return;
+    }
+    if (label === "Open Validation") {
+      setWorkspace("validation");
+      return;
+    }
+    if (label === "Export Package") {
+      void handleExportRequest();
+    }
+  }
 
   return (
     <AppShell>
@@ -727,77 +906,295 @@ export function App(): JSX.Element {
           <span className="eyebrow">Active case</span>
           <strong>{activeCase?.patient_reference || "No case loaded"}</strong>
         </div>
-        <nav className="cad-workflow-nav" aria-label="Treatment workflow">
+        <nav className="cad-workflow-nav" aria-label="Clinical CAD workflow">
           {workflowSteps.map((step, index) => {
             const id = step.id;
-            const label = step.label;
             return (
-            <button
-              className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}`}
-              key={id}
-              onClick={() => setWorkspace(id)}
-              aria-current={workspace === id ? "page" : undefined}
-            >
-              <span>{step.status === "complete" ? "✓" : String(index + 1).padStart(2, "0")}</span>{label}
-            </button>
+              <button
+                className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}`}
+                key={id}
+                onClick={() => setWorkspace(id)}
+                aria-current={workspace === id ? "step" : undefined}
+                title={step.planToken}
+              >
+                <span>{step.status === "complete" ? "✓" : String(index + 1).padStart(2, "0")}</span>
+                {step.label}
+              </button>
             );
           })}
         </nav>
-        <div className="cad-environment"><StatusPill tone={activeCase ? "success" : "neutral"}>{activeCase ? "Workspace ready" : "Start a case"}</StatusPill></div>
+        <div className="cad-environment">
+          <StatusPill tone={activeCase ? "success" : "neutral"}>
+            {activeCase ? "Workspace ready" : "Start a case"}
+          </StatusPill>
+        </div>
       </WorkflowHeader>
 
       <WorkspaceContainer>
         <LeftToolPanel>
           <div className="cad-panel-heading">
-            <div><span className="eyebrow">Workspace</span><h2>{workspaceLabel}</h2></div>
-            <span className="panel-index">{String(WORKFLOW.findIndex(([id]) => id === workspace) + 1).padStart(2, "0")}</span>
+            <div>
+              <span className="eyebrow">Current step</span>
+              <h2>{workspaceLabel}</h2>
+            </div>
+            <span className="panel-index">{String(workflowStepIndex(workspace) + 1).padStart(2, "0")}</span>
           </div>
-          {workspace !== "case" && <div className="cad-quick-actions"><button className="secondary-button" onClick={() => setWorkspace("case")}>Case setup</button><button aria-label="Create case" className="text-button" onClick={handleCreateCase} disabled={isBusy}>New case</button></div>}
-          {renderCaseTools && (
-            <div className="case-form">
-              <label htmlFor="patient-reference">Patient reference</label>
-              <input id="patient-reference" value={patientReference} onChange={(event) => setPatientReference(event.target.value)} placeholder="P-0001" />
-              <button className="primary-button" onClick={handleCreateCase} disabled={isBusy}>Create case</button>
-              {(["upper", "lower"] as const).map((arch) => {
-                const upload = archUploads[arch];
-                return <div className="mesh-upload" key={arch}>
-                  <label htmlFor={`${arch}-stl`}>{arch === "upper" ? "Upper" : "Lower"} arch STL</label>
-                  <input id={`${arch}-stl`} key={fileInputKeys[arch]} type="file" accept=".stl" disabled={!activeCase || backendTreatment || isBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleUploadAndValidate(arch, file); }} />
-                  {upload.state !== "empty" && <div className={`mesh-upload-status ${upload.state}`}><span>{upload.filename}</span><small>{(upload.size / 1024).toFixed(1)} KB · {upload.state}</small><button className="text-button" onClick={() => void handleRemoveMesh(arch)} disabled={isBusy || backendTreatment}>Remove</button></div>}
-                </div>;
-              })}
-              <button aria-label="Generate plan" className="secondary-button" onClick={handleGeneratePlan} disabled={!bothArchesValid || backendTreatment}>Review treatment proposal</button>
-              <button aria-label="Review segmentation" className="text-button" onClick={() => void handleReviewSegmentation()} disabled={!bothArchesValid}>Analyze case</button>
+          <div className="cad-step-token" aria-hidden="true">{workspaceToken}</div>
+          {workspace !== "case-intake" && (
+            <div className="cad-quick-actions">
+              <button className="secondary-button" onClick={() => setWorkspace("case-intake")}>
+                Case Intake
+              </button>
+              <button
+                aria-label="Create case"
+                className="text-button"
+                onClick={handleCreateCase}
+                disabled={isBusy}
+              >
+                New Case
+              </button>
             </div>
           )}
-          {import.meta.env.MODE === "test" && <button className="production-test-hook" aria-label="Load engineering demo" onClick={() => void handleLoadEngineeringDemo()} />}
-          {renderSegmentationTools && pipelineReviewStage && (
-            <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
-              <span className="eyebrow">Tooth map</span><strong>{pipelineReviewStage.teeth.length} visible meshes</strong>
-              <small>Tooth segmentation ready for review</small>{pipelineDiagnostic?.fixture && <span className="production-test-metadata">Validated real-case fixture FIXTURE · not clinically valid</span>}
-              {(pipelineDiagnostic?.duplicate_fdi_numbers?.length ?? 0) > 0 && <small className="diagnostic-warning">Duplicate FDI: {pipelineDiagnostic?.duplicate_fdi_numbers?.join(", ")}</small>}
-              {(pipelineDiagnostic?.missing_fdi_numbers?.length ?? 0) > 0 && <small className="diagnostic-warning">Missing FDI: {pipelineDiagnostic?.missing_fdi_numbers?.join(", ")}</small>}
-              {(pipelineDiagnostic?.excluded_fragment_count ?? 0) > 0 && <small>Excluded zero-face fragments: {pipelineDiagnostic?.excluded_fragment_count}</small>}
-              {pipelineReviewStage.teeth.map((tooth) => <label className="toggle-row" key={tooth.instanceId}><input type="checkbox" checked={!hiddenToothIds.has(tooth.instanceId)} onChange={() => setHiddenToothIds((current) => { const next = new Set(current); if (next.has(tooth.instanceId)) next.delete(tooth.instanceId); else next.add(tooth.instanceId); return next; })} /><span>{tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : tooth.toothRef ?? "Semantic tooth"}</span></label>)}
+          <div className="cad-contextual-actions" aria-label="Contextual actions">
+            {contextualActions.map((action) => (
+              <button
+                key={`${action.step}-${action.label}`}
+                className="secondary-button"
+                disabled={action.disabled}
+                onClick={() => handleContextualAction(action.label)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+
+          {workspace === "case-intake" && (
+            <CaseIntakePanel
+              patientReference={patientReference}
+              onPatientReferenceChange={setPatientReference}
+              caseId={activeCase?.id ?? null}
+              caseStatus={activeCase?.status ?? null}
+              archUploads={archUploads}
+              fileInputKeys={fileInputKeys}
+              scanImportDisabled={!activeCase || backendTreatment || isBusy}
+              isBusy={isBusy}
+              bothArchesValid={bothArchesValid}
+              backendTreatment={backendTreatment}
+              processingStatus={processingStatus}
+              onCreateCase={() => void handleCreateCase()}
+              onUpload={(arch, file) => void handleUploadAndValidate(arch, file)}
+              onRemoveMesh={(arch) => void handleRemoveMesh(arch)}
+              onAnalyzeCase={() => void handleReviewSegmentation()}
+              onReviewTreatmentProposal={() => void handleGeneratePlan()}
+            />
+          )}
+
+          {workspace === "analysis" && (
+            <AnalysisPanel
+              bothArchesValid={bothArchesValid}
+              diagnostic={pipelineDiagnostic}
+              teeth={pipelineReviewStage?.teeth ?? []}
+              validation={validation}
+              hiddenToothIds={hiddenToothIds}
+              onAnalyzeCase={() => void handleReviewSegmentation()}
+              onToggleToothVisibility={(instanceId) =>
+                setHiddenToothIds((current) => {
+                  const next = new Set(current);
+                  if (next.has(instanceId)) next.delete(instanceId);
+                  else next.add(instanceId);
+                  return next;
+                })
+              }
+            />
+          )}
+
+          {workspace === "treatment-setup" && (
+            <TreatmentSetupPanel
+              bundle={reviewBundle}
+              bothArchesValid={bothArchesValid}
+              backendTreatment={backendTreatment}
+              showOriginal={showOriginal}
+              showTargetGhost={showTargetGhost}
+              originalOpacity={originalOpacity}
+              treatmentAvailable={treatmentAvailable}
+              onGeneratePlan={() => void handleGeneratePlan()}
+              onToggleInitialPosition={setShowOriginal}
+              onToggleTargetPosition={setShowTargetGhost}
+              onOriginalOpacityChange={setOriginalOpacity}
+            />
+          )}
+
+          {workspace === "staging" && (
+            <StagingPanel
+              stages={reviewBundle.stages}
+              selectedIndex={stageIndex}
+              isPlaying={isPlaying}
+              showUpper={showUpper}
+              showLower={showLower}
+              showMovementVectors={showMovementVectors}
+              treatmentAvailable={treatmentAvailable}
+              recalculationState={recalculationState}
+              onSelectStage={(index) => {
+                setStageIndex(index);
+                setIsPlaying(false);
+              }}
+              onTogglePlay={() => setIsPlaying((playing) => !playing)}
+              onShowUpper={setShowUpper}
+              onShowLower={setShowLower}
+              onShowMovementVectors={setShowMovementVectors}
+              onRecalculate={() => void handleRecalculate()}
+            />
+          )}
+
+          {workspace === "refinement" && (
+            <RefinementPanel
+              bundle={reviewBundle}
+              gizmoMode={gizmoMode}
+              treatmentAvailable={treatmentAvailable}
+              onGizmoMode={setGizmoMode}
+            />
+          )}
+
+          {workspace === "validation" && (
+            <ValidationWorkflowPanel bundle={reviewBundle} stage={activeReviewStage} />
+          )}
+
+          {workspace === "production" && (
+            <ProductionPanel
+              bundle={reviewBundle}
+              treatmentAvailable={treatmentAvailable}
+              onExport={() => void handleExportRequest()}
+            />
+          )}
+
+          {import.meta.env.MODE === "test" && (
+            <button
+              className="production-test-hook"
+              aria-label="Load engineering demo"
+              onClick={() => void handleLoadEngineeringDemo()}
+            />
+          )}
+
+          {showSceneLayers && (
+            <div className="cad-layer-controls">
+              <span className="eyebrow">Layers</span>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showUpper}
+                  onChange={(event) => setShowUpper(event.target.checked)}
+                />
+                <span>Upper teeth</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showLower}
+                  onChange={(event) => setShowLower(event.target.checked)}
+                />
+                <span>Lower teeth</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showGingiva}
+                  onChange={(event) => setShowGingiva(event.target.checked)}
+                />
+                <span>Gingiva</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showTargetGhost}
+                  onChange={(event) => setShowTargetGhost(event.target.checked)}
+                  disabled={!treatmentAvailable}
+                />
+                <span>Target Position</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showSegmentation}
+                  onChange={(event) => setShowSegmentation(event.target.checked)}
+                />
+                <span>Segmentation</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showOriginal}
+                  onChange={(event) => setShowOriginal(event.target.checked)}
+                />
+                <span>Initial Position</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showMovementVectors}
+                  onChange={(event) => setShowMovementVectors(event.target.checked)}
+                  disabled={!treatmentAvailable}
+                />
+                <span>Tooth Movement</span>
+              </label>
+              {showOriginal && (
+                <label className="range-row">
+                  <span>Original opacity</span>
+                  <input
+                    type="range"
+                    min="0.08"
+                    max="0.75"
+                    step="0.01"
+                    value={originalOpacity}
+                    onChange={(event) => setOriginalOpacity(Number(event.target.value))}
+                  />
+                </label>
+              )}
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={wireframe}
+                  onChange={(event) => setWireframe(event.target.checked)}
+                />
+                <span>Wireframe</span>
+              </label>
             </div>
           )}
-          <div className="cad-layer-controls"><span className="eyebrow">Layers</span>
-            <label className="toggle-row"><input type="checkbox" checked={showUpper} onChange={(event) => setShowUpper(event.target.checked)} /><span>Upper teeth</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showLower} onChange={(event) => setShowLower(event.target.checked)} /><span>Lower teeth</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showGingiva} onChange={(event) => setShowGingiva(event.target.checked)} /><span>Gingiva</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showTargetGhost} onChange={(event) => setShowTargetGhost(event.target.checked)} disabled={!treatmentAvailable} /><span>Target ghost</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showSegmentation} onChange={(event) => setShowSegmentation(event.target.checked)} /><span>Segmentation</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showOriginal} onChange={(event) => setShowOriginal(event.target.checked)} /><span>Original reference</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showMovementVectors} onChange={(event) => setShowMovementVectors(event.target.checked)} disabled={!treatmentAvailable} /><span>Movement vectors</span></label>
-            {showOriginal && <label className="range-row"><span>Original opacity</span><input type="range" min="0.08" max="0.75" step="0.01" value={originalOpacity} onChange={(event) => setOriginalOpacity(Number(event.target.value))} /></label>}
-            <label className="toggle-row"><input type="checkbox" checked={wireframe} onChange={(event) => setWireframe(event.target.checked)} /><span>Wireframe</span></label>
-          </div>
-          {activeCase && <div className="cad-case-status"><span className="eyebrow">Import status</span><strong>{activeCase.status.replaceAll("_", " ")}</strong>{validation && <small>{validation.triangle_count.toLocaleString()} triangles · {validation.is_valid ? "mesh valid" : "mesh invalid"}</small>}{pipelineDiagnostic && <small>{pipelineDiagnostic.tooth_instance_count} segmented instances</small>}</div>}
-          {error && <div className="error-message">We could not complete this step. {error}<span className="production-test-metadata">{error}</span></div>}
+
+          {activeCase && (
+            <div className="cad-case-status">
+              <span className="eyebrow">Case Status</span>
+              <strong>{activeCase.status.replaceAll("_", " ")}</strong>
+              {validation && (
+                <small>
+                  {validation.triangle_count.toLocaleString()} triangles ·{" "}
+                  {validation.is_valid ? "mesh valid" : "mesh invalid"}
+                </small>
+              )}
+              {pipelineDiagnostic && (
+                <small>{pipelineDiagnostic.tooth_instance_count} segmented instances</small>
+              )}
+            </div>
+          )}
+          {error && (
+            <div className="error-message">
+              We could not complete this step. {error}
+              <span className="production-test-metadata">{error}</span>
+            </div>
+          )}
         </LeftToolPanel>
 
         <section className="cad-viewport-column">
-          <div className="cad-viewport-header"><div><span className="eyebrow">Dental workspace</span><h1>{workspaceLabel}</h1></div><div className="cad-viewport-meta">{canShowScene ? `${activeReviewStage.teeth.length} tooth surfaces` : "Awaiting case data"}</div></div>
+          <div className="cad-viewport-header">
+            <div>
+              <span className="eyebrow">Current step · {workspaceToken}</span>
+              <h1>{workspaceLabel}</h1>
+            </div>
+            <div className="cad-viewport-meta">
+              {canShowScene
+                ? `${activeReviewStage.teeth.length} tooth surfaces`
+                : "Awaiting case data"}
+            </div>
+          </div>
           <div className="cad-viewport-frame">
             {canShowScene && sceneGraph ? (
               <StageViewer
@@ -817,7 +1214,7 @@ export function App(): JSX.Element {
                 onFit={() => undefined}
                 onReset={() => undefined}
                 contextualToolbar={
-                  selectedTooth ? (
+                  selectedTooth && workspace === "refinement" ? (
                     <ContextualToothToolbar
                       label={
                         selectedFixtureTooth?.fdiNumber
@@ -865,46 +1262,194 @@ export function App(): JSX.Element {
                   "Import upper and lower scans to establish the dental workspace."
                 }
                 action={
-                  workspace !== "case" ? (
-                    <button className="primary-button" onClick={() => setWorkspace("case")}>
-                      Go to case setup
+                  workspace !== "case-intake" ? (
+                    <button
+                      className="primary-button"
+                      onClick={() => setWorkspace("case-intake")}
+                    >
+                      Go to Case Intake
                     </button>
                   ) : undefined
                 }
               />
             )}
-            {pipelineDiagnostic?.experimental && <ViewerOverlay><span className="cad-provenance-badge">Analysis source under review</span></ViewerOverlay>}
+            {pipelineDiagnostic?.experimental && (
+              <ViewerOverlay>
+                <span className="cad-provenance-badge">Analysis source under review</span>
+              </ViewerOverlay>
+            )}
           </div>
-          {workspace === "stage-review" && treatmentAvailable && <BottomTimeline><StageTimeline stages={reviewBundle.stages} selectedIndex={stageIndex} isPlaying={isPlaying} onSelect={(index) => { setStageIndex(index); setIsPlaying(false); }} onPrevious={() => setStageIndex((index) => Math.max(0, index - 1))} onNext={() => setStageIndex((index) => Math.min(reviewBundle.stages.length - 1, index + 1))} onTogglePlay={() => setIsPlaying((playing) => !playing)} /></BottomTimeline>}
+          {showStageTimeline && (
+            <BottomTimeline>
+              <StageTimeline
+                stages={reviewBundle.stages}
+                selectedIndex={stageIndex}
+                isPlaying={isPlaying}
+                onSelect={(index) => {
+                  setStageIndex(index);
+                  setIsPlaying(false);
+                }}
+                onPrevious={() => setStageIndex((index) => Math.max(0, index - 1))}
+                onNext={() =>
+                  setStageIndex((index) => Math.min(reviewBundle.stages.length - 1, index + 1))
+                }
+                onTogglePlay={() => setIsPlaying((playing) => !playing)}
+              />
+            </BottomTimeline>
+          )}
         </section>
 
         <RightInspector>
-          {workspace === "analysis" && <div className="cad-inspector-section"><span className="eyebrow">Analysis</span><h2>Case readiness</h2><p>{validation ? "Mesh validation completed." : "Upload both arches to begin analysis."}</p><div className="cad-stat-row"><span>Segmentation</span><strong>{pipelineDiagnostic ? pipelineDiagnostic.state.replaceAll("_", " ") : "Not run"}</strong></div><div className="cad-stat-row"><span>Instances</span><strong>{pipelineDiagnostic?.tooth_instance_count ?? 0}</strong></div></div>}
-          {workspace === "segmentation" && <div className="cad-inspector-section"><span className="eyebrow">Selected tooth</span><h2>{selection.fdiNumber ? `FDI ${selection.fdiNumber}` : selection.selectedToothRef ?? "Select a mesh"}</h2><p>{selection.semanticIdentifier !== null ? `Semantic identifier ${selection.semanticIdentifier}.` : "No clinical identity is inferred from an unlabeled mesh."}</p><div className="cad-stat-row"><span>Confidence</span><strong>{selection.confidence === null ? "Unavailable" : selection.confidence.toFixed(3)}</strong></div></div>}
-          {workspace === "treatment-plan" && <><div className="cad-inspector-section"><span className="eyebrow">Plan summary</span><h2>{treatmentAvailable ? "Proposal ready" : "Plan unavailable"}</h2><p>{treatmentAvailable ? "Deterministic proposal requiring doctor review." : "Run a verified segmentation and planning pipeline."}</p>{reviewBundle.planSummary && <><div className="cad-stat-row"><span>Moved teeth</span><strong>{reviewBundle.planSummary.movedToothCount}</strong></div><div className="cad-stat-row"><span>Total movement</span><strong>{reviewBundle.planSummary.totalMovement.toFixed(3)}</strong></div><small className="cad-review-note">Source: {reviewBundle.planSummary.source} · doctor review required</small>{reviewBundle.planSummary.warnings.map((warning) => <small className="diagnostic-warning" key={warning}>{warning}</small>)}</>}</div><ProposalPanels iprSites={reviewBundle.iprSites} attachmentSites={reviewBundle.attachmentSites} onIPRStatus={(siteId, status) => setReviewBundle((current) => setIPRStatus(current, siteId, status))} onIPRAmount={(siteId, amount) => setReviewBundle((current) => modifyIPRAmount(current, siteId, amount))} onAttachmentStatus={(siteId, status) => setReviewBundle((current) => setAttachmentStatus(current, siteId, status))} onReset={() => setReviewBundle((current) => resetAdjunctProposals(current))} readOnly={backendTreatment} /></>}
-          {(workspace === "tooth-editor" || workspace === "stage-review") && <>
-            <div className="cad-inspector-section"><span className="eyebrow">Gizmo</span><div className="edit-actions"><button className={gizmoMode === "translate" ? "primary-button" : "secondary-button"} onClick={() => setGizmoMode("translate")}>Translate</button><button className={gizmoMode === "rotate" ? "primary-button" : "secondary-button"} onClick={() => setGizmoMode("rotate")}>Rotate</button></div></div>
-            {workspace === "stage-review" && <div className="cad-inspector-section">
-              <button className="primary-button" onClick={() => void handleRecalculate()} disabled={!treatmentAvailable || recalculationState === "recalculating"}>{recalculationState === "recalculating" ? "Recalculating..." : "Recalculate plan"}</button>
-              <button className="secondary-button" onClick={handleResetAll} disabled={reviewBundle.editHistory.length === 0}>Reset all edits</button>
-            </div>}
-            <InspectionPanel tooth={selectedFixtureTooth} draftMovement={treatmentAvailable ? draftMovement : null} originalMovement={originalTooth?.movement ?? null} isDirty={draftMovement !== null && currentProposalTooth !== null && hasMovementChanges(draftMovement, currentProposalTooth.movement)} onDraftChange={setDraftMovement} onApply={() => void handleApplyEdit()} onCancel={handleCancelEdit} onReset={handleResetTooth} onToggleLocked={() => setDraftMovement((current) => current ? { ...current, locked: !current.locked } : current)} onToggleExcluded={() => setDraftMovement((current) => current ? { ...current, excluded: !current.excluded } : current)} onUndo={() => void handleUndo()} onRedo={() => void handleRedo()} canUndo={undoStack.length > 0} canRedo={redoStack.length > 0} />
-          </>}
-          {workspace === "validation" && (activeReviewStage ? <ValidationPanel stage={activeReviewStage} bundle={reviewBundle} /> : <div className="cad-inspector-section"><h2>Validation</h2><p>Run segmentation before reviewing geometry findings.</p></div>)}
-          {workspace === "export" && <ExportPanel bundle={reviewBundle} onExport={() => void handleExportRequest()} />}
-          {workspace === "case" && <div className="cad-inspector-section"><span className="eyebrow">Case</span><h2>{activeCase ? "Ready to inspect" : "Start a case"}</h2><p>Import upper and lower STL scans to establish the dental scene.</p></div>}
+          {workspace === "case-intake" && (
+            <CaseIntakeInspector
+              caseId={activeCase?.id ?? null}
+              patientReference={patientReference}
+              caseStatus={activeCase?.status ?? null}
+              archUploads={archUploads}
+              processingStatus={processingStatus}
+            />
+          )}
+          {workspace === "analysis" && (
+            <AnalysisInspector
+              diagnostic={pipelineDiagnostic}
+              teeth={pipelineReviewStage?.teeth ?? []}
+              validation={validation}
+              selectedLabel={
+                selectedFixtureTooth
+                  ? formatToothIdentity(selectedFixtureTooth)
+                  : selection.selectedToothRef ?? "Select a mesh"
+              }
+              selectedConfidence={selection.confidence}
+              selectedArch={selection.arch}
+            />
+          )}
+          {workspace === "treatment-setup" && (
+            <TreatmentSetupInspector bundle={reviewBundle} treatmentAvailable={treatmentAvailable}>
+              <ProposalPanels
+                iprSites={reviewBundle.iprSites}
+                attachmentSites={reviewBundle.attachmentSites}
+                onIPRStatus={(siteId, status) =>
+                  setReviewBundle((current) => setIPRStatus(current, siteId, status))
+                }
+                onIPRAmount={(siteId, amount) =>
+                  setReviewBundle((current) => modifyIPRAmount(current, siteId, amount))
+                }
+                onAttachmentStatus={(siteId, status) =>
+                  setReviewBundle((current) => setAttachmentStatus(current, siteId, status))
+                }
+                onReset={() => setReviewBundle((current) => resetAdjunctProposals(current))}
+                readOnly={backendTreatment}
+              />
+            </TreatmentSetupInspector>
+          )}
+          {workspace === "staging" && (
+            <StagingInspector
+              stage={activeReviewStage}
+              stageCount={reviewBundle.stages.length}
+              isPlaying={isPlaying}
+            />
+          )}
+          {workspace === "refinement" && (
+            <RefinementInspector editCount={reviewBundle.editHistory.length}>
+              <div className="cad-inspector-section">
+                <button
+                  className="secondary-button"
+                  onClick={handleResetAll}
+                  disabled={reviewBundle.editHistory.length === 0}
+                >
+                  Reset all edits
+                </button>
+              </div>
+              <ProposalPanels
+                iprSites={reviewBundle.iprSites}
+                attachmentSites={reviewBundle.attachmentSites}
+                onIPRStatus={(siteId, status) =>
+                  setReviewBundle((current) => setIPRStatus(current, siteId, status))
+                }
+                onIPRAmount={(siteId, amount) =>
+                  setReviewBundle((current) => modifyIPRAmount(current, siteId, amount))
+                }
+                onAttachmentStatus={(siteId, status) =>
+                  setReviewBundle((current) => setAttachmentStatus(current, siteId, status))
+                }
+                onReset={() => setReviewBundle((current) => resetAdjunctProposals(current))}
+                readOnly={backendTreatment}
+              />
+              <InspectionPanel
+                tooth={selectedFixtureTooth}
+                draftMovement={treatmentAvailable ? draftMovement : null}
+                originalMovement={originalTooth?.movement ?? null}
+                isDirty={
+                  draftMovement !== null &&
+                  currentProposalTooth !== null &&
+                  hasMovementChanges(draftMovement, currentProposalTooth.movement)
+                }
+                onDraftChange={setDraftMovement}
+                onApply={() => void handleApplyEdit()}
+                onCancel={handleCancelEdit}
+                onReset={handleResetTooth}
+                onToggleLocked={() =>
+                  setDraftMovement((current) =>
+                    current ? { ...current, locked: !current.locked } : current,
+                  )
+                }
+                onToggleExcluded={() =>
+                  setDraftMovement((current) =>
+                    current ? { ...current, excluded: !current.excluded } : current,
+                  )
+                }
+                onUndo={() => void handleUndo()}
+                onRedo={() => void handleRedo()}
+                canUndo={undoStack.length > 0}
+                canRedo={redoStack.length > 0}
+              />
+            </RefinementInspector>
+          )}
+          {workspace === "validation" && (
+            <ValidationWorkflowInspector hasStage={activeReviewStage !== null}>
+              {activeReviewStage ? (
+                <ValidationPanel stage={activeReviewStage} bundle={reviewBundle} />
+              ) : null}
+            </ValidationWorkflowInspector>
+          )}
+          {workspace === "production" && (
+            <ProductionInspector>
+              <ExportPanel bundle={reviewBundle} onExport={() => void handleExportRequest()} />
+            </ProductionInspector>
+          )}
         </RightInspector>
       </WorkspaceContainer>
-      <StatusBar><span>{activeCase ? `Case ${activeCase.patient_reference}` : "No active case"}</span><span>{activeCase ? "Local workspace" : "Ready"}</span>{exportMessage && <span>{exportMessage}</span>}</StatusBar>
-      {import.meta.env.MODE === "test" && <>
-        <span className="production-test-metadata">{reviewBundle.fixture ? "FIXTURE · not clinically valid" : ""}</span>
-        {reviewBundle.fixture && <><span className="production-test-metadata">development treatment fixture</span><span className="production-test-metadata">API engineering fixture</span></>}
-        <span className="production-test-metadata">{!treatmentAvailable ? "Treatment plan unavailable" : ""}</span>
-        <span className="production-test-metadata">{pipelineDiagnostic?.state === "model_unavailable" ? "Segmentation model unavailable" : ""}</span>
-      </>}
+      <StatusBar>
+        <span>{activeCase ? `Case ${activeCase.patient_reference}` : "No active case"}</span>
+        <span>{workspaceToken}</span>
+        <span>{activeCase ? "Local workspace" : "Ready"}</span>
+        {exportMessage && <span>{exportMessage}</span>}
+      </StatusBar>
+      {import.meta.env.MODE === "test" && (
+        <>
+          <span className="production-test-metadata">
+            {reviewBundle.fixture ? "FIXTURE · not clinically valid" : ""}
+          </span>
+          {reviewBundle.fixture && (
+            <>
+              <span className="production-test-metadata">development treatment fixture</span>
+              <span className="production-test-metadata">API engineering fixture</span>
+            </>
+          )}
+          <span className="production-test-metadata">
+            {!treatmentAvailable ? "Treatment plan unavailable" : ""}
+          </span>
+          <span className="production-test-metadata">
+            {pipelineDiagnostic?.state === "model_unavailable"
+              ? "Segmentation model unavailable"
+              : ""}
+          </span>
+        </>
+      )}
       {loadingPresentation ? <CaseLoadingOverlay presentation={loadingPresentation} /> : null}
     </AppShell>
   );
+
 }
 
 function readFileBuffer(file: File): Promise<ArrayBuffer> {

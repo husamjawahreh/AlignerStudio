@@ -23,7 +23,7 @@ export function StageTimeline({
     <section className="timeline-panel" aria-label="Treatment stage timeline">
       <div className="timeline-heading">
         <div>
-          <span className="eyebrow">Treatment sequence</span>
+          <span className="eyebrow">Stage Timeline</span>
           <h2>{stages[selectedIndex]?.label ?? `Stage ${selectedIndex}`}</h2>
         </div>
         <div className="timeline-actions">

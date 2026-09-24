@@ -65,6 +65,7 @@ class ArchAnalysisEngine:
             ArchCenterlinePoint(tooth.instance.instance_id, tooth.landmarks.centroid)
             for tooth, _ in ordered
         )
+        midline = tuple(float(value) for value in centroids.mean(axis=0))
         return ArchMeasurements(
             arch=identification.arch,
             centerline=centerline,
@@ -78,6 +79,10 @@ class ArchAnalysisEngine:
             anterior_to_posterior_order=anterior_order,
             provenance=identification.provenance,
             fixture=identification.fixture,
+            orientation_lateral_axis=axes[0],
+            orientation_anterior_axis=axes[1],
+            orientation_vertical_axis=axes[2],
+            geometric_midline_point=midline,
             notes="Descriptive geometry only; no diagnosis or clinical threshold is applied.",
         )
 

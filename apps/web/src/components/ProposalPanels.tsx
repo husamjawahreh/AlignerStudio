@@ -27,7 +27,7 @@ export function ProposalPanels({
           <div>
             <span className="eyebrow">Adjunct proposal</span>
             <h2>
-              IPR review <span className="count-badge">{iprSites.length}</span>
+              IPR <span className="count-badge">{iprSites.length}</span>
             </h2>
           </div>
           {readOnly ? (

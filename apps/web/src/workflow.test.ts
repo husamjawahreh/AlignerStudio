@@ -84,5 +84,15 @@ describe("P2 clinical-CAD workflow", () => {
     });
     expect(actions.some((action) => action.label === "Export Package")).toBe(true);
     expect(workflowPlanToken("treatment-setup")).toBe("TREATMENT SETUP");
+
+    const setupActions = buildWorkflowActions({
+      activeStep: "treatment-setup",
+      hasCase: true,
+      bothArchesValid: true,
+      hasSegmentation: true,
+      hasTreatment: false,
+      isBusy: false,
+    });
+    expect(setupActions.some((action) => action.label === "Review Treatment Setup")).toBe(true);
   });
 });

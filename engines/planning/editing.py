@@ -18,7 +18,7 @@ from domain.treatment_plan.setup import (
 from domain.treatment_plan.staging import StagingConfiguration, StagingResult
 from domain.treatment_plan.validation import TreatmentValidationReport
 from engines.planning.setup_engine import TreatmentPlanningEngine
-from engines.planning.staging_engine import TreatmentStagingEngine
+from engines.planning.staging_engine import TreatmentStagingEngine, resolve_dynamic_stage_count
 from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
     GeometricValidationEngine,
@@ -58,6 +58,15 @@ class TreatmentEditingApplication:
     ) -> TreatmentPlanProposal:
         self._validate_movement(new_movement)
         current = self._movement_for(proposal, tooth_number)
+        if (
+            reason != "doctor_reset"
+            and current.locked
+            and new_movement.locked
+            and not current.pose_equal(new_movement)
+        ):
+            raise TreatmentEditingError(
+                f"Tooth {tooth_number} is locked; unlock before changing movement"
+            )
         timestamp_value = timestamp or datetime.now(timezone.utc).isoformat()
         edit_seed = json.dumps(
             {
@@ -120,7 +129,13 @@ class TreatmentEditingApplication:
             raise TreatmentEditingError("Cannot reset a proposal without a setup")
         edited = proposal
         for state in proposal.setup.target_states:
-            edited = self.reset_tooth(edited, state.tooth_number, timestamp=timestamp)
+            if proposal.planning_mode == "semantic_only_experimental":
+                key = state.tooth_ref
+            else:
+                key = state.tooth_number if state.tooth_number is not None else state.tooth_ref
+            if key is None:
+                continue
+            edited = self.reset_tooth(edited, key, timestamp=timestamp)
         return edited
 
     def recalculate(
@@ -131,13 +146,24 @@ class TreatmentEditingApplication:
     ) -> RecalculatedTreatmentPlan:
         if edited_proposal.setup is None:
             raise TreatmentEditingError("Cannot recalculate a proposal without a setup")
+        dynamic_count = resolve_dynamic_stage_count(
+            edited_proposal,
+            base_count=staging_configuration.stage_count,
+            mode=staging_configuration.mode,
+        )
+        configuration = StagingConfiguration(
+            stage_count=dynamic_count,
+            mode=staging_configuration.mode,
+            movement_limits=staging_configuration.movement_limits,
+            engine_version=staging_configuration.engine_version,
+        )
         recalculated = self.planner.rebuild_proposal(
             edited_proposal,
             {},
             edited_proposal.edit_history,
             ProposalKind.RECALCULATED,
         )
-        staging = self.staging_engine.generate(recalculated, staging_configuration)
+        staging = self.staging_engine.generate(recalculated, configuration)
         if staging.limitations:
             raise TreatmentEditingError("Restaging unavailable: " + "; ".join(staging.limitations))
         validation = self.validation_engine.validate(staging, validation_configuration)
@@ -145,6 +171,23 @@ class TreatmentEditingApplication:
             f"{recalculated.plan_id}:{staging.staging_id}:{validation.report_id}".encode()
         ).hexdigest()
         return RecalculatedTreatmentPlan(recalculated, staging, validation, recalculation_id)
+
+    def apply_edit_and_recalculate(
+        self,
+        proposal: TreatmentPlanProposal,
+        tooth_number: int | str,
+        new_movement: ToothMovement,
+        staging_configuration: StagingConfiguration,
+        validation_configuration: GeometricValidationConfiguration,
+        *,
+        timestamp: str | None = None,
+        reason: str = "doctor_edit",
+    ) -> RecalculatedTreatmentPlan:
+        """P4 flow: Doctor Edit → Target Update → Staging Rebuild → Validation."""
+        edited = self.apply_edit(
+            proposal, tooth_number, new_movement, timestamp=timestamp, reason=reason
+        )
+        return self.recalculate(edited, staging_configuration, validation_configuration)
 
     @staticmethod
     def _movement_for(proposal: TreatmentPlanProposal, tooth_number: int | str) -> ToothMovement:
@@ -175,6 +218,7 @@ class TreatmentEditingApplication:
                 movement.rotation,
                 movement.tip,
                 movement.torque,
+                movement.angulation,
                 movement.intrusion,
                 movement.extrusion,
             )

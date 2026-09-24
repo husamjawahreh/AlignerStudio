@@ -204,6 +204,63 @@ button:disabled {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.analysis-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.treatment-setup-panel,
+.staging-panel,
+.refinement-panel,
+.validation-workflow-panel,
+.production-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.staging-sequence-item {
+  text-align: left;
+  width: 100%;
+}
+.staging-sequence-item.is-active {
+  color: var(--as-text);
+  font-weight: 600;
+}
+.analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--as-border-soft);
+}
+.analysis-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.analysis-section .primary-button,
+.analysis-section .secondary-button {
+  width: 100%;
+}
+.case-intake-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.case-intake-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--as-border-soft);
+}
+.case-intake-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.case-intake-section .primary-button,
+.case-intake-section .secondary-button {
+  width: 100%;
+}
 .case-form {
   display: flex;
   flex-direction: column;
@@ -1077,14 +1134,37 @@ body,
 
 .cad-workflow-step:hover,
 .cad-workflow-step:focus-visible,
-.cad-workflow-step.is-active {
-  border-bottom-color: var(--as-accent-cyan);
+.cad-workflow-step.is-active,
+.cad-workflow-step.is-current {
+  border-bottom-color: var(--as-accent-gold);
   color: var(--as-text-primary);
   outline: none;
 }
 
-.cad-workflow-step.is-active span {
-  color: var(--as-accent-cyan);
+.cad-workflow-step.is-active span,
+.cad-workflow-step.is-current span {
+  color: var(--as-accent-gold);
+}
+
+.cad-step-token {
+  margin: -4px 0 8px;
+  color: var(--as-accent-gold);
+  font-size: var(--as-font-size-xs);
+  font-weight: var(--as-font-weight-bold);
+  letter-spacing: var(--as-letter-wide);
+}
+
+.cad-contextual-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.cad-contextual-actions .secondary-button,
+.cad-contextual-actions .primary-button {
+  width: 100%;
+  justify-content: center;
 }
 
 .cad-environment {
@@ -1474,15 +1554,16 @@ body,
 }
 
 @media (max-width: 820px) {
+  /* Panels own scrolling; the page shell must not scroll (Master Plan §19.2). */
   html,
   body,
   #root {
-    overflow: auto;
+    overflow: hidden;
   }
   .cad-shell {
-    height: auto;
-    min-height: 100%;
-    overflow: visible;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
   .cad-header {
     min-height: var(--as-header-height);
@@ -1496,22 +1577,27 @@ body,
   .cad-workspace {
     display: flex;
     flex-direction: column;
-    overflow: visible;
+    overflow: hidden;
+    min-height: 0;
   }
   .cad-tools {
     order: 2;
     max-height: 280px;
+    overflow: auto;
   }
   .cad-viewport-column {
     order: 1;
-    min-height: 520px;
+    min-height: 0;
+    flex: 1 1 auto;
   }
   .cad-inspector {
     order: 3;
     max-height: 340px;
+    overflow: auto;
   }
   .cad-panel {
     max-height: 340px;
+    overflow: auto;
   }
 }
 @media (max-width: 1100px) {

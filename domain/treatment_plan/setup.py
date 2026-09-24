@@ -34,6 +34,7 @@ class ToothMovement:
     rotation: float = 0.0
     tip: float = 0.0
     torque: float = 0.0
+    angulation: float = 0.0
     intrusion: float = 0.0
     extrusion: float = 0.0
     locked: bool = False
@@ -47,6 +48,11 @@ class ToothMovement:
     def vertical_translation(self) -> float:
         return self.translation_z + self.extrusion - self.intrusion
 
+    @property
+    def lateral_rotation_degrees(self) -> float:
+        """Tip + angulation share the tooth lateral axis (mesiodistal tipping)."""
+        return self.tip + self.angulation
+
     def plus(self, other: ToothMovement) -> ToothMovement:
         return ToothMovement(
             translation_x=self.translation_x + other.translation_x,
@@ -55,10 +61,25 @@ class ToothMovement:
             rotation=self.rotation + other.rotation,
             tip=self.tip + other.tip,
             torque=self.torque + other.torque,
+            angulation=self.angulation + other.angulation,
             intrusion=self.intrusion + other.intrusion,
             extrusion=self.extrusion + other.extrusion,
             locked=self.locked or other.locked,
             excluded=self.excluded or other.excluded,
+        )
+
+    def pose_equal(self, other: ToothMovement) -> bool:
+        """Compare pose DOFs only (ignore lock/exclude flags)."""
+        return (
+            self.translation_x == other.translation_x
+            and self.translation_y == other.translation_y
+            and self.translation_z == other.translation_z
+            and self.rotation == other.rotation
+            and self.tip == other.tip
+            and self.torque == other.torque
+            and self.angulation == other.angulation
+            and self.intrusion == other.intrusion
+            and self.extrusion == other.extrusion
         )
 
 

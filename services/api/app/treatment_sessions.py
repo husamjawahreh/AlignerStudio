@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -90,11 +90,64 @@ class TreatmentSessionStore:
     def apply_edit(
         self, case_id: str, tooth_number: int | str, movement: dict[str, float]
     ) -> TreatmentSession:
+        """P4: Doctor Edit → Target Update → Staging Rebuild → Validation → Updated Review."""
         session = self.get(case_id)
-        proposal = self._editing.apply_edit(
-            session.proposal, tooth_number, ToothMovement(**movement)
+        result = self._editing.apply_edit_and_recalculate(
+            session.proposal,
+            tooth_number,
+            ToothMovement(**movement),
+            self._staging_configuration(),
+            GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
-        session = replace(session, proposal=proposal)
+        session = TreatmentSession(
+            proposal=result.proposal,
+            staging=result.staging,
+            validation=result.validation,
+            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+        )
+        self._sessions[case_id] = session
+        return session
+
+    def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
+        session = self.get(case_id)
+        proposal = self._editing.reset_tooth(session.proposal, tooth_number)
+        result = self._editing.recalculate(
+            proposal,
+            self._staging_configuration(),
+            GeometricValidationConfiguration(1.0, 0.001, 0.0),
+        )
+        session = TreatmentSession(
+            proposal=result.proposal,
+            staging=result.staging,
+            validation=result.validation,
+            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+        )
+        self._sessions[case_id] = session
+        return session
+
+    def reset_all(self, case_id: str) -> TreatmentSession:
+        session = self.get(case_id)
+        proposal = self._editing.reset_all(session.proposal)
+        result = self._editing.recalculate(
+            proposal,
+            self._staging_configuration(),
+            GeometricValidationConfiguration(1.0, 0.001, 0.0),
+        )
+        session = TreatmentSession(
+            proposal=result.proposal,
+            staging=result.staging,
+            validation=result.validation,
+            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+        )
         self._sessions[case_id] = session
         return session
 
@@ -218,6 +271,20 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                         "rate": _movement(state.movement.rate),
                         "accumulated": _movement(state.movement.accumulated),
                         "limitStatus": state.movement.limit_status,
+                        "coordinateSystem": {
+                            "origin": list(state.coordinate_system.origin),
+                            "lateral_axis": list(state.coordinate_system.lateral_axis),
+                            "anterior_axis": list(state.coordinate_system.anterior_axis),
+                            "vertical_axis": list(state.coordinate_system.vertical_axis),
+                            "semantics": list(state.coordinate_system.semantics),
+                        },
+                        "movementReferenceFrame": {
+                            "origin": list(state.coordinate_system.origin),
+                            "lateral_axis": list(state.coordinate_system.lateral_axis),
+                            "anterior_axis": list(state.coordinate_system.anterior_axis),
+                            "vertical_axis": list(state.coordinate_system.vertical_axis),
+                            "semantics": list(state.coordinate_system.semantics),
+                        },
                         "validationStatus": tooth_statuses.get(
                             _review_tooth_key(state), "pass"
                         ),
@@ -372,6 +439,7 @@ def _movement(movement: ToothMovement) -> dict[str, float | bool]:
         "rotation": movement.rotation,
         "tip": movement.tip,
         "torque": movement.torque,
+        "angulation": movement.angulation,
         "intrusion": movement.intrusion,
         "extrusion": movement.extrusion,
         "locked": movement.locked,

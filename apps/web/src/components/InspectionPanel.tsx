@@ -25,6 +25,7 @@ type NumericMovementKey =
   | "rotation"
   | "tip"
   | "torque"
+  | "angulation"
   | "intrusion"
   | "extrusion";
 
@@ -35,6 +36,7 @@ const movementRows: readonly [NumericMovementKey, string, string][] = [
   ["rotation", "Rotation", "°"],
   ["tip", "Tip", "°"],
   ["torque", "Torque", "°"],
+  ["angulation", "Angulation", "°"],
   ["intrusion", "Intrusion", "mm"],
   ["extrusion", "Extrusion", "mm"],
 ];
@@ -84,7 +86,7 @@ export function InspectionPanel({
       <div className="inspection-meta">
         <span>{tooth.arch} arch</span>
         {tooth.semanticLabel !== null && tooth.semanticLabel !== undefined && (
-          <span>Artifact semantic label {tooth.semanticLabel}</span>
+          <span>Semantic label {tooth.semanticLabel}</span>
         )}
         {!tooth.fdiNumber && <span>Experimental · no clinical FDI identity</span>}
         <span>Identification confidence {(tooth.confidence * 100).toFixed(0)}%</span>
@@ -105,7 +107,8 @@ export function InspectionPanel({
                   aria-label={label}
                   type="number"
                   step="0.01"
-                  value={draftMovement[key]}
+                  value={draftMovement[key] ?? 0}
+                  disabled={Boolean(draftMovement.locked)}
                   onChange={(event) =>
                     onDraftChange({ ...draftMovement, [key]: Number(event.target.value) })
                   }
@@ -114,7 +117,7 @@ export function InspectionPanel({
               </label>
             ) : (
               <strong>
-                {tooth.movement[key].toFixed(2)} {unit}
+                {(tooth.movement[key] ?? 0).toFixed(2)} {unit}
               </strong>
             )}
           </div>
@@ -181,6 +184,7 @@ function formatMovement(movement: MovementSummary): string {
     movement.rotation,
     movement.tip,
     movement.torque,
+    movement.angulation ?? 0,
     movement.intrusion,
     movement.extrusion,
   ].reduce((sum, value) => sum + Math.abs(value), 0);

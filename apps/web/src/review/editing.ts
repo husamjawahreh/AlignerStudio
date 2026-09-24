@@ -10,16 +10,31 @@ export const MOVEMENT_FIELDS: readonly MovementField[] = [
   "rotation",
   "tip",
   "torque",
+  "angulation",
   "intrusion",
   "extrusion",
 ];
 
 export function cloneMovement(movement: MovementSummary): MovementSummary {
-  return { ...movement };
+  return {
+    translationX: movement.translationX,
+    translationY: movement.translationY,
+    translationZ: movement.translationZ,
+    rotation: movement.rotation,
+    tip: movement.tip,
+    torque: movement.torque,
+    angulation: movement.angulation ?? 0,
+    intrusion: movement.intrusion,
+    extrusion: movement.extrusion,
+    locked: movement.locked,
+    excluded: movement.excluded,
+  };
 }
 
 export function hasMovementChanges(first: MovementSummary, second: MovementSummary): boolean {
-  return MOVEMENT_FIELDS.some((field) => first[field] !== second[field]);
+  if (Boolean(first.locked) !== Boolean(second.locked)) return true;
+  if (Boolean(first.excluded) !== Boolean(second.excluded)) return true;
+  return MOVEMENT_FIELDS.some((field) => (first[field] ?? 0) !== (second[field] ?? 0));
 }
 
 export function applyFixtureMovementEdit(
@@ -31,10 +46,19 @@ export function applyFixtureMovementEdit(
 ): ReviewBundle {
   const current = findTooth(bundle.stages.at(-1) ?? bundle.stages[0], toothNumber)?.movement;
   if (!current) throw new Error(`Tooth ${toothNumber} is not editable`);
+  if (
+    reason !== "doctor_reset" &&
+    current.locked &&
+    movement.locked &&
+    MOVEMENT_FIELDS.some((field) => (current[field] ?? 0) !== (movement[field] ?? 0))
+  ) {
+    throw new Error(`Tooth ${toothNumber} is locked; unlock before changing movement`);
+  }
+  const normalized = cloneMovement(movement);
   const editSeed = JSON.stringify({
     toothNumber,
     current,
-    movement,
+    movement: normalized,
     timestamp,
     reason,
     version: bundle.proposalKind,
@@ -44,13 +68,13 @@ export function applyFixtureMovementEdit(
     editId,
     toothNumber,
     previousMovement: cloneMovement(current),
-    newMovement: cloneMovement(movement),
+    newMovement: normalized,
     timestamp,
     versionId: stableHash(`${editSeed}:edit`),
     provenance: "generated",
     reason,
   };
-  return rebuildFixtureBundle(bundle, toothNumber, movement, [edit, ...bundle.editHistory]);
+  return rebuildFixtureBundle(bundle, toothNumber, normalized, [edit, ...bundle.editHistory]);
 }
 
 export function resetFixtureTooth(
@@ -140,8 +164,11 @@ function scaleMovement(movement: MovementSummary, progress: number): MovementSum
     rotation: movement.rotation * progress,
     tip: movement.tip * progress,
     torque: movement.torque * progress,
+    angulation: (movement.angulation ?? 0) * progress,
     intrusion: movement.intrusion * progress,
     extrusion: movement.extrusion * progress,
+    locked: movement.locked,
+    excluded: movement.excluded,
   };
 }
 
@@ -150,8 +177,12 @@ function transformFixtureVertices(
   movement: MovementSummary,
   progress: number,
 ): [number, number, number][] {
+  if (movement.excluded) {
+    return vertices.map((vertex) => [vertex[0], vertex[1], vertex[2]]);
+  }
   const scaled = scaleMovement(movement, progress);
-  const radians = (scaled.rotation * Math.PI) / 180;
+  const radians = ((scaled.rotation + (scaled.angulation ?? 0) * 0) * Math.PI) / 180;
+  const tipRadians = (((scaled.tip ?? 0) + (scaled.angulation ?? 0)) * Math.PI) / 180;
   const center = vertices
     .reduce(
       (sum, vertex) => [sum[0] + vertex[0], sum[1] + vertex[1], sum[2] + vertex[2]],
@@ -161,10 +192,14 @@ function transformFixtureVertices(
   return vertices.map(([x, y, z]) => {
     const localX = x - center[0];
     const localY = y - center[1];
+    const localZ = z - center[2];
+    // Approximate local-frame tip/angulation about X, rotation about Z for fixture path.
+    const tippedY = localY * Math.cos(tipRadians) - localZ * Math.sin(tipRadians);
+    const tippedZ = localY * Math.sin(tipRadians) + localZ * Math.cos(tipRadians);
     return [
-      center[0] + localX * Math.cos(radians) - localY * Math.sin(radians) + scaled.translationX,
-      center[1] + localX * Math.sin(radians) + localY * Math.cos(radians) + scaled.translationY,
-      z + scaled.translationZ + scaled.extrusion - scaled.intrusion,
+      center[0] + localX * Math.cos(radians) - tippedY * Math.sin(radians) + scaled.translationX,
+      center[1] + localX * Math.sin(radians) + tippedY * Math.cos(radians) + scaled.translationY,
+      center[2] + tippedZ + scaled.translationZ + scaled.extrusion - scaled.intrusion,
     ];
   });
 }

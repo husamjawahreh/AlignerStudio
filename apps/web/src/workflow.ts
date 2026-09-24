@@ -147,7 +147,7 @@ export function buildWorkflowActions(input: {
     case "treatment-setup":
       return [
         {
-          label: "Review treatment proposal",
+          label: "Review Treatment Setup",
           step: "treatment-setup",
           disabled: !input.bothArchesValid || input.isBusy,
         },
@@ -155,7 +155,7 @@ export function buildWorkflowActions(input: {
     case "staging":
       return [
         {
-          label: "Open staging",
+          label: "Open Staging",
           step: "staging",
           disabled: !input.hasTreatment,
         },
@@ -163,7 +163,7 @@ export function buildWorkflowActions(input: {
     case "refinement":
       return [
         {
-          label: "Open refinement",
+          label: "Open Refinement",
           step: "refinement",
           disabled: !input.hasTreatment,
         },
@@ -171,7 +171,7 @@ export function buildWorkflowActions(input: {
     case "validation":
       return [
         {
-          label: "Open validation",
+          label: "Open Validation",
           step: "validation",
           disabled: !input.hasTreatment,
         },

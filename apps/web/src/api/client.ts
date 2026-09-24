@@ -1,4 +1,12 @@
-import type { Case, MeshValidationResult, TreatmentPlan } from "@alignerstudio/contracts";
+import type {
+  AnatomicalIntelligencePayload,
+  ArchMeasurementsPayload,
+  Case,
+  MeshValidationResult,
+  ToothCoordinateSystemPayload,
+  ToothLandmarksPayload,
+  TreatmentPlan,
+} from "@alignerstudio/contracts";
 import type { MovementSummary, ReviewBundle } from "../review/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -86,6 +94,8 @@ export interface PipelineDiagnostic {
   missing_fdi_numbers?: number[];
   excluded_fragment_count?: number;
   tooth_instances?: PipelineToothInstance[];
+  arch_measurements?: ArchMeasurementsPayload | null;
+  anatomical_intelligence?: AnatomicalIntelligencePayload | null;
 }
 
 export interface PipelineToothInstance {
@@ -99,6 +109,12 @@ export interface PipelineToothInstance {
   faces: [number, number, number][];
   centroid: [number, number, number];
   confidence: number;
+  identification_status?: string;
+  identification_reasons?: string[];
+  landmarks?: ToothLandmarksPayload | null;
+  coordinate_system?: ToothCoordinateSystemPayload | null;
+  movement_reference_frame?: ToothCoordinateSystemPayload | null;
+  anatomy_extent?: "crown_only_stl" | "root_bone_cbct";
   provenance: "real" | "generated" | "experimental" | "fixture" | "clinically_reviewed";
   fixture: boolean;
   experimental: boolean;
@@ -178,11 +194,30 @@ export const api = {
         rotation: movement.rotation,
         tip: movement.tip,
         torque: movement.torque,
+        angulation: movement.angulation ?? 0,
         intrusion: movement.intrusion,
         extrusion: movement.extrusion,
         locked: movement.locked ?? false,
         excluded: movement.excluded ?? false,
       }),
+    });
+  },
+
+  resetTreatmentTooth(caseId: string, toothNumber: number | string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        typeof toothNumber === "string" && toothNumber.includes(":instance:")
+          ? { tooth_ref: toothNumber }
+          : { tooth_number: Number(toothNumber) },
+      ),
+    });
+  },
+
+  resetAllTreatmentEdits(caseId: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/reset-all`, {
+      method: "POST",
     });
   },
 

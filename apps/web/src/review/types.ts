@@ -1,4 +1,8 @@
-import type { DataProvenance } from "@alignerstudio/contracts";
+import type {
+  DataProvenance,
+  ToothCoordinateSystemPayload,
+  ToothLandmarksPayload,
+} from "@alignerstudio/contracts";
 
 export type ReviewArch = "upper" | "lower";
 export type ValidationStatus = "pass" | "warning" | "error" | "unavailable";
@@ -18,6 +22,7 @@ export interface MovementSummary {
   rotation: number;
   tip: number;
   torque: number;
+  angulation: number;
   intrusion: number;
   extrusion: number;
   locked?: boolean;
@@ -35,6 +40,11 @@ export interface ReviewToothMesh {
   vertices: readonly [number, number, number][];
   faces: readonly [number, number, number][];
   centroid?: readonly [number, number, number];
+  landmarks?: ToothLandmarksPayload | null;
+  coordinateSystem?: ToothCoordinateSystemPayload | null;
+  movementReferenceFrame?: ToothCoordinateSystemPayload | null;
+  anatomyExtent?: "crown_only_stl" | "root_bone_cbct";
+  identificationStatus?: string;
   movement: MovementSummary;
   rate?: MovementSummary;
   accumulated?: MovementSummary;

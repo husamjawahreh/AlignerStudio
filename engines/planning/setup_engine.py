@@ -103,9 +103,12 @@ class TreatmentPlanningEngine:
             source_vertices = tuple(
                 tuple(float(value) for value in vertex) for vertex in tooth.instance.mesh_vertices
             )
-            target_vertices = self._transform_vertices(
-                source_vertices, tooth.coordinate_system, movement
-            )
+            if movement.excluded:
+                target_vertices = source_vertices
+            else:
+                target_vertices = self._transform_vertices(
+                    source_vertices, tooth.coordinate_system, movement
+                )
             state = TargetToothState(
                 tooth_number=tooth.identity.number if tooth.identity else None,
                 source_instance_id=tooth.instance.instance_id,
@@ -192,9 +195,12 @@ class TreatmentPlanningEngine:
                 else source_state.tooth_number
             )
             movement = movement_overrides.get(state_key, previous_target.movement)
-            target_vertices = self._transform_vertices(
-                source_state.source_vertices, source_state.coordinate_system, movement
-            )
+            if movement.excluded:
+                target_vertices = source_state.source_vertices
+            else:
+                target_vertices = self._transform_vertices(
+                    source_state.source_vertices, source_state.coordinate_system, movement
+                )
             target_states.append(
                 replace(
                     previous_target,
@@ -311,7 +317,9 @@ class TreatmentPlanningEngine:
             dtype=np.float64,
         )
         translation = local_translation @ axes
-        angles = np.radians([movement.tip, movement.torque, movement.rotation])
+        angles = np.radians(
+            [movement.lateral_rotation_degrees, movement.torque, movement.rotation]
+        )
         rotation = np.eye(3)
         for axis, angle in zip(axes, angles, strict=True):
             skew = np.array(

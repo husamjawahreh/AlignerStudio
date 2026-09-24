@@ -76,10 +76,16 @@ class MovementEditRequest(BaseModel):
     rotation: float = 0.0
     tip: float = 0.0
     torque: float = 0.0
+    angulation: float = 0.0
     intrusion: float = 0.0
     extrusion: float = 0.0
     locked: bool = False
     excluded: bool = False
+
+
+class ToothResetRequest(BaseModel):
+    tooth_number: int | None = None
+    tooth_ref: str | None = None
 
 
 def _to_case_response(case: Case) -> CaseResponse:
@@ -339,6 +345,25 @@ def apply_treatment_edit(case_id: str, request: MovementEditRequest) -> dict:
                 request.model_dump(exclude={"tooth_number", "tooth_ref"}),
             )
         )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/reset")
+def reset_treatment_tooth(case_id: str, request: ToothResetRequest) -> dict:
+    try:
+        tooth_key = request.tooth_ref if request.tooth_ref is not None else request.tooth_number
+        if tooth_key is None:
+            raise ValueError("Either tooth_number or tooth_ref is required")
+        return review_bundle(treatment_sessions.reset_tooth(case_id, tooth_key))
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/reset-all")
+def reset_all_treatment_edits(case_id: str) -> dict:
+    try:
+        return review_bundle(treatment_sessions.reset_all(case_id))
     except (TreatmentSessionError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
