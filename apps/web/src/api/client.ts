@@ -227,6 +227,51 @@ export const api = {
     });
   },
 
+  setIPRStatus(caseId: string, siteId: string, status: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(
+      `/cases/${caseId}/treatment/proposals/ipr/${encodeURIComponent(siteId)}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      },
+    );
+  },
+
+  modifyIPRAmount(caseId: string, siteId: string, amount: number): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(
+      `/cases/${caseId}/treatment/proposals/ipr/${encodeURIComponent(siteId)}/amount`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      },
+    );
+  },
+
+  setAttachmentStatus(caseId: string, siteId: string, status: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(
+      `/cases/${caseId}/treatment/proposals/attachments/${encodeURIComponent(siteId)}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      },
+    );
+  },
+
+  resetTreatmentProposals(caseId: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/proposals/reset`, {
+      method: "POST",
+    });
+  },
+
+  verifyExport(caseId: string): Promise<Record<string, unknown>> {
+    return requestJson<Record<string, unknown>>(`/cases/${caseId}/export/verify`, {
+      method: "POST",
+    });
+  },
+
   async exportTreatment(caseId: string): Promise<ExportDownload> {
     const response = await fetch(`${API_BASE_URL}/cases/${caseId}/export`, { method: "POST" });
     if (!response.ok)

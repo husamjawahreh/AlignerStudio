@@ -37,6 +37,7 @@ describe("Workflow navigation presentation", () => {
       "Movement Constraints",
       "Stage Consistency",
       "Data Completeness",
+      "Provenance",
       "Review Status",
     ]);
     expect(unavailable.every((row) => row.value === "Unavailable")).toBe(true);
@@ -60,6 +61,7 @@ describe("Workflow navigation presentation", () => {
         movementConstraints: "unavailable",
         stageConsistency: "computed",
         dataCompleteness: "warning",
+        provenance: "computed",
         doctorReview: "required",
         findings: [],
       },
@@ -81,8 +83,10 @@ describe("Workflow navigation presentation", () => {
       "Export Package",
       "Production QA",
     ]);
-    expect(rows.find((row) => row.id === "auxiliary-features")?.value).toBe("Unavailable");
+    expect(rows.find((row) => row.id === "auxiliary-features")?.value).toBe("unavailable");
     expect(rows.find((row) => row.id === "export-package")?.value).toBe("Incomplete");
+    expect(rows.find((row) => row.id === "manufacturing-preparation")?.value).toBe("unavailable");
+    expect(rows.find((row) => row.id === "production-qa")?.value).toBe("unavailable");
     expect(rows.find((row) => row.id === "appliance-stages")?.value).toBe(
       String(engineeringFixtureBundle.stages.length),
     );

@@ -248,6 +248,11 @@ class TreatmentExportEngine:
         return artifacts
 
     def _context(self, plan, staging, validation, proposals, status, incomplete, issues):
+        from domain.treatment_plan.manufacturing import build_manufacturing_boundary_report
+
+        manufacturing = build_manufacturing_boundary_report(
+            has_stage_models=bool(staging.stages)
+        )
         return {
             "case_id": plan.case_id,
             "treatment_plan_id": plan.plan_id,
@@ -255,6 +260,14 @@ class TreatmentExportEngine:
             "staging_hash": staging.staging_id,
             "validation_hash": validation.report_id,
             "software_version": self.software_version,
+            "package_kind": manufacturing.package_kind,
+            "artifact_layers": {
+                "treatment_design": "included",
+                "geometric_validation": "included",
+                "manufacturing_preparation": manufacturing.appliance_shell_generation.value,
+                "manufacturing_validation": manufacturing.manufacturing_qc_report.value,
+            },
+            "manufacturing_boundary": manufacturing.payload(),
             "provenance": {
                 "plan": plan.provenance.value,
                 "staging": staging.provenance.value,
@@ -267,6 +280,49 @@ class TreatmentExportEngine:
             "warnings": list(issues),
             "clinical_approval": False,
         }
+
+    def verify_package(self, zip_path: Path) -> dict[str, Any]:
+        """Re-open an export ZIP and verify file hashes against the manifest.
+
+        Does not invent manufacturing geometry. Returns an auditable verification report.
+        """
+        zip_path = Path(zip_path)
+        if not zip_path.exists():
+            raise TreatmentExportError(f"Export package not found: {zip_path}")
+        with zipfile.ZipFile(zip_path, "r") as archive:
+            names = set(archive.namelist())
+            if "manifest.json" not in names:
+                raise TreatmentExportError("Export package is missing manifest.json")
+            manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+            expected_hash = manifest.get("manifest_hash")
+            files = manifest.get("files", [])
+            mismatches: list[str] = []
+            missing: list[str] = []
+            for entry in files:
+                path = entry["path"]
+                expected = entry["sha256"]
+                if path not in names:
+                    missing.append(path)
+                    continue
+                digest = self._sha256(archive.read(path))
+                if digest != expected:
+                    mismatches.append(path)
+            content_for_hash = {
+                key: value for key, value in manifest.items() if key != "manifest_hash"
+            }
+            recomputed = self._sha256(self._json_bytes(content_for_hash))
+            manifest_ok = recomputed == expected_hash
+            return {
+                "verified": manifest_ok and not mismatches and not missing,
+                "manifest_hash_matches": manifest_ok,
+                "missing_files": missing,
+                "hash_mismatches": mismatches,
+                "package_kind": manifest.get("package_kind"),
+                "treatment_plan_id": manifest.get("treatment_plan_id"),
+                "plan_version": manifest.get("plan_version"),
+                "manufacturing_boundary": manifest.get("manufacturing_boundary"),
+                "clinical_approval": manifest.get("clinical_approval", False),
+            }
 
     @staticmethod
     def _export_status(plan, staging, validation, proposals) -> str:

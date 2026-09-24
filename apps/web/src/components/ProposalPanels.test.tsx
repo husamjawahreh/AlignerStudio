@@ -19,5 +19,8 @@ describe("ProposalPanels", () => {
     expect(screen.getByText("Attachments")).toBeInTheDocument();
     expect(screen.getAllByText(/not a clinical/).length).toBeGreaterThan(0);
     expect(screen.getByText(/dimensions require doctor review/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Stage 2/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Generated no/)).toBeInTheDocument();
+    expect(screen.getByText(/Dimensions undetermined/)).toBeInTheDocument();
   });
 });

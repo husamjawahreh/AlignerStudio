@@ -8,13 +8,14 @@ interface ProductionPanelProps {
   onExport: () => void;
 }
 
-/** Production left navigation — Master Plan package areas from existing bundle only. */
+/** Production left navigation — honest manufacturing boundary from existing bundle only. */
 export function ProductionPanel({
   bundle,
   treatmentAvailable,
   onExport,
 }: ProductionPanelProps): JSX.Element {
   const rows = buildProductionNavigation(bundle);
+  const boundary = bundle.manufacturingBoundary;
 
   return (
     <div className="production-panel case-form" data-testid="production-panel">
@@ -23,7 +24,8 @@ export function ProductionPanel({
           Production
         </h3>
         <small className="cad-review-note">
-          Navigates existing export package fields. Manufacturing tooling is not implemented here.
+          Treatment design and geometric validation are separated from manufacturing preparation.
+          Appliance shells are not generated.
         </small>
       </section>
 
@@ -47,6 +49,35 @@ export function ProductionPanel({
           )}
         </section>
       ))}
+
+      {boundary && (
+        <section className="analysis-section" aria-labelledby="manufacturing-boundary">
+          <h3 id="manufacturing-boundary" className="eyebrow">
+            Manufacturing Boundary
+          </h3>
+          <div className="cad-stat-row">
+            <span>Package kind</span>
+            <strong>{boundary.packageKind.replaceAll("_", " ")}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Shell generation</span>
+            <strong>{boundary.applianceShellGeneration.replaceAll("_", " ")}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Trimline / cutline</span>
+            <strong>{boundary.trimlineCutline.replaceAll("_", " ")}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Separated layers</span>
+            <strong>{boundary.treatmentVsManufacturingSeparated ? "yes" : "no"}</strong>
+          </div>
+          {boundary.notes.slice(0, 2).map((note) => (
+            <small className="cad-review-note" key={note}>
+              {note}
+            </small>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
@@ -61,7 +92,10 @@ export function ProductionInspector({ children }: ProductionInspectorProps): JSX
       <div className="cad-inspector-section" data-testid="production-inspector">
         <span className="eyebrow">Production</span>
         <h2>Export Package</h2>
-        <p>Manufacturing Preparation and Production QA use the existing export package.</p>
+        <p>
+          Manufacturing Preparation remains Unavailable until appliance tooling exists. Stage
+          models are treatment geometry only.
+        </p>
       </div>
       {children}
     </>

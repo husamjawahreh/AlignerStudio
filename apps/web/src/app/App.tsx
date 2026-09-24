@@ -35,7 +35,13 @@ import {
   setAttachmentStatus,
   setIPRStatus,
 } from "../review/proposalEditing";
-import type { MovementSummary, ReviewBundle, ReviewStage, ReviewToothMesh } from "../review/types";
+import type {
+  MovementSummary,
+  ProposalStatus,
+  ReviewBundle,
+  ReviewStage,
+  ReviewToothMesh,
+} from "../review/types";
 import { StageViewer } from "../viewer/StageViewer";
 import { createDentalSceneGraph } from "../viewer/sceneGraph";
 import { findToothByKey } from "../viewer/toothKey";
@@ -639,6 +645,54 @@ export function App(): JSX.Element {
     } catch (err) {
       setExportMessage((err as Error).message);
     }
+  }
+
+  async function handleIPRStatus(siteId: string, status: ProposalStatus): Promise<void> {
+    if (backendTreatment && activeCase) {
+      try {
+        setReviewBundle(await api.setIPRStatus(activeCase.id, siteId, status));
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    setReviewBundle((current) => setIPRStatus(current, siteId, status));
+  }
+
+  async function handleIPRAmount(siteId: string, amount: number): Promise<void> {
+    if (backendTreatment && activeCase) {
+      try {
+        setReviewBundle(await api.modifyIPRAmount(activeCase.id, siteId, amount));
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    setReviewBundle((current) => modifyIPRAmount(current, siteId, amount));
+  }
+
+  async function handleAttachmentStatus(siteId: string, status: ProposalStatus): Promise<void> {
+    if (backendTreatment && activeCase) {
+      try {
+        setReviewBundle(await api.setAttachmentStatus(activeCase.id, siteId, status));
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    setReviewBundle((current) => setAttachmentStatus(current, siteId, status));
+  }
+
+  async function handleResetProposals(): Promise<void> {
+    if (backendTreatment && activeCase) {
+      try {
+        setReviewBundle(await api.resetTreatmentProposals(activeCase.id));
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    setReviewBundle((current) => resetAdjunctProposals(current));
   }
 
   async function handleCreateCase(): Promise<void> {
@@ -1328,17 +1382,12 @@ export function App(): JSX.Element {
               <ProposalPanels
                 iprSites={reviewBundle.iprSites}
                 attachmentSites={reviewBundle.attachmentSites}
-                onIPRStatus={(siteId, status) =>
-                  setReviewBundle((current) => setIPRStatus(current, siteId, status))
-                }
-                onIPRAmount={(siteId, amount) =>
-                  setReviewBundle((current) => modifyIPRAmount(current, siteId, amount))
-                }
+                onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
+                onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
                 onAttachmentStatus={(siteId, status) =>
-                  setReviewBundle((current) => setAttachmentStatus(current, siteId, status))
+                  void handleAttachmentStatus(siteId, status)
                 }
-                onReset={() => setReviewBundle((current) => resetAdjunctProposals(current))}
-                readOnly={backendTreatment}
+                onReset={() => void handleResetProposals()}
               />
             </TreatmentSetupInspector>
           )}
@@ -1363,17 +1412,12 @@ export function App(): JSX.Element {
               <ProposalPanels
                 iprSites={reviewBundle.iprSites}
                 attachmentSites={reviewBundle.attachmentSites}
-                onIPRStatus={(siteId, status) =>
-                  setReviewBundle((current) => setIPRStatus(current, siteId, status))
-                }
-                onIPRAmount={(siteId, amount) =>
-                  setReviewBundle((current) => modifyIPRAmount(current, siteId, amount))
-                }
+                onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
+                onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
                 onAttachmentStatus={(siteId, status) =>
-                  setReviewBundle((current) => setAttachmentStatus(current, siteId, status))
+                  void handleAttachmentStatus(siteId, status)
                 }
-                onReset={() => setReviewBundle((current) => resetAdjunctProposals(current))}
-                readOnly={backendTreatment}
+                onReset={() => void handleResetProposals()}
               />
               <InspectionPanel
                 tooth={selectedFixtureTooth}

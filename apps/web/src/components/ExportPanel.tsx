@@ -18,6 +18,7 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
     ...bundle.stages.flatMap((stage) => stage.warnings),
   ];
   const editCount = bundle.editHistory.length;
+  const boundary = bundle.manufacturingBoundary;
 
   return (
     <section className="export-panel" aria-label="Export Package">
@@ -50,9 +51,20 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
         <span>Package contents</span>
         <small>
           Case metadata · Target Position · Appliance Stages · Validation · IPR Report · Attachment
-          Plan · Edit History · provenance
+          Plan · Edit History · provenance · manufacturing boundary
         </small>
       </div>
+      {boundary && (
+        <div className="export-audit-summary">
+          <span>Manufacturing</span>
+          <small>
+            Shells {boundary.applianceShellGeneration.replaceAll("_", " ")} · Trimline{" "}
+            {boundary.trimlineCutline.replaceAll("_", " ")} · QC{" "}
+            {boundary.manufacturingQcReport.replaceAll("_", " ")} · Layers separated{" "}
+            {boundary.treatmentVsManufacturingSeparated ? "yes" : "no"}
+          </small>
+        </div>
+      )}
       {incomplete && (
         <p className="export-warning">
           Incomplete Export Package: a full treatment session export is not available in this
@@ -69,6 +81,7 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
       </button>
       <p className="muted-copy">
         Export Package is an auditable review artifact and never indicates clinical approval.
+        Stage models are treatment geometry, not appliance shells.
       </p>
     </section>
   );

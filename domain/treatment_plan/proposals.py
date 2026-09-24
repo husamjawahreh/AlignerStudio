@@ -47,6 +47,7 @@ class IPRSite:
     warnings: tuple[ProposalWarning, ...]
     provenance: DataProvenance
     fixture: bool
+    stage_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,8 @@ class AttachmentSite:
     warnings: tuple[ProposalWarning, ...]
     provenance: DataProvenance
     fixture: bool
+    stage_index: int | None = None
+    generated: bool = False
 
 
 @dataclass(frozen=True)

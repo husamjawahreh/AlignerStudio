@@ -385,6 +385,52 @@ def get_treatment_proposals(case_id: str) -> dict:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
+class IPRStatusRequest(BaseModel):
+    status: str
+
+
+class IPRAmountRequest(BaseModel):
+    amount: float
+
+
+class AttachmentStatusRequest(BaseModel):
+    status: str
+
+
+@router.patch("/{case_id}/treatment/proposals/ipr/{site_id}/status")
+def patch_ipr_status(case_id: str, site_id: str, body: IPRStatusRequest) -> dict:
+    try:
+        return review_bundle(treatment_sessions.set_ipr_status(case_id, site_id, body.status))
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.patch("/{case_id}/treatment/proposals/ipr/{site_id}/amount")
+def patch_ipr_amount(case_id: str, site_id: str, body: IPRAmountRequest) -> dict:
+    try:
+        return review_bundle(treatment_sessions.modify_ipr_amount(case_id, site_id, body.amount))
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.patch("/{case_id}/treatment/proposals/attachments/{site_id}/status")
+def patch_attachment_status(case_id: str, site_id: str, body: AttachmentStatusRequest) -> dict:
+    try:
+        return review_bundle(
+            treatment_sessions.set_attachment_status(case_id, site_id, body.status)
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/proposals/reset")
+def reset_treatment_proposals(case_id: str) -> dict:
+    try:
+        return review_bundle(treatment_sessions.reset_proposals(case_id))
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
 @router.post("/{case_id}/export")
 def export_treatment(case_id: str) -> FileResponse:
     try:
@@ -397,3 +443,14 @@ def export_treatment(case_id: str) -> FileResponse:
         filename=f"alignerstudio-{case_id}-export.zip",
         headers={"X-AlignerStudio-Manifest": manifest_header(package)},
     )
+
+
+@router.post("/{case_id}/export/verify")
+def verify_treatment_export(case_id: str) -> dict:
+    """Export then re-open the package and verify manifest/file hashes."""
+    try:
+        return treatment_sessions.verify_export(
+            case_id, Path(UPLOAD_DIR) / f"{case_id}-export-verify"
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error

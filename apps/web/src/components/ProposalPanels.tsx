@@ -11,6 +11,10 @@ interface ProposalPanelsProps {
   readOnly?: boolean;
 }
 
+function formatIdentity(value: number | string): string {
+  return typeof value === "number" ? `FDI ${value}` : String(value);
+}
+
 export function ProposalPanels({
   iprSites,
   attachmentSites,
@@ -45,7 +49,7 @@ export function ProposalPanels({
             <div className="proposal-row" key={site.siteId}>
               <div className="proposal-row-header">
                 <strong>
-                  FDI {site.toothA} · FDI {site.toothB}
+                  {formatIdentity(site.toothA)} · {formatIdentity(site.toothB)}
                 </strong>
                 <span className={`proposal-status ${site.status}`}>
                   {site.status.replaceAll("_", " ")}
@@ -69,6 +73,10 @@ export function ProposalPanels({
                     mm
                   </label>
                 )}
+                <span>
+                  Stage{" "}
+                  {site.stage === null || site.stage === undefined ? "unassigned" : site.stage}
+                </span>
               </div>
               <p className="proposal-warning">{site.warning}</p>
               <div className="proposal-actions">
@@ -110,7 +118,7 @@ export function ProposalPanels({
           attachmentSites.map((site) => (
             <div className="proposal-row" key={site.siteId}>
               <div className="proposal-row-header">
-                <strong>FDI {site.toothNumber}</strong>
+                <strong>{formatIdentity(site.toothNumber)}</strong>
                 <span className={`proposal-status ${site.status}`}>
                   {site.status.replaceAll("_", " ")}
                 </span>
@@ -118,6 +126,17 @@ export function ProposalPanels({
               <div className="proposal-values">
                 <span>Type {site.attachmentType}</span>
                 <span>Location {site.referencePoint ? "available" : "undetermined"}</span>
+                <span>
+                  Dimensions{" "}
+                  {site.dimensions
+                    ? site.dimensions.map((value) => value.toFixed(2)).join(" × ")
+                    : "undetermined"}
+                </span>
+                <span>
+                  Stage{" "}
+                  {site.stage === null || site.stage === undefined ? "unassigned" : site.stage}
+                </span>
+                <span>Generated {site.generated ? "yes" : "no"}</span>
               </div>
               <p className="proposal-warning">{site.warning}</p>
               <div className="proposal-actions">

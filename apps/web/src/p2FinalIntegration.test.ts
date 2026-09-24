@@ -65,6 +65,7 @@ describe("P2 Final Integration QA", () => {
       "Movement Constraints",
       "Stage Consistency",
       "Data Completeness",
+      "Provenance",
       "Review Status",
     ]);
     const production = buildProductionNavigation(engineeringFixtureBundle);
@@ -77,6 +78,6 @@ describe("P2 Final Integration QA", () => {
       "Export Package",
       "Production QA",
     ]);
-    expect(production.find((row) => row.id === "auxiliary-features")?.value).toBe("Unavailable");
+    expect(production.find((row) => row.id === "auxiliary-features")?.value).toBe("unavailable");
   });
 });

@@ -87,21 +87,21 @@ export interface ReviewEditRecord {
 
 export interface ReviewIPRSite {
   siteId: string;
-  toothA: number;
-  toothB: number;
+  toothA: number | string;
+  toothB: number | string;
   currentDistance: number | null;
   targetDistance: number | null;
   proposedAmount: number | null;
   status: ProposalStatus;
   warning: string;
   fixture: boolean;
-  stage?: number;
+  stage?: number | null;
   amountUnit?: string;
 }
 
 export interface ReviewAttachmentSite {
   siteId: string;
-  toothNumber: number;
+  toothNumber: number | string;
   attachmentType: string;
   referencePoint: [number, number, number] | null;
   reason: string;
@@ -109,8 +109,24 @@ export interface ReviewAttachmentSite {
   warning: string;
   fixture: boolean;
   dimensions?: [number, number, number] | null;
-  stage?: number;
+  stage?: number | null;
   generated?: boolean;
+}
+
+export type CapabilityStatus = "computed" | "unavailable" | "warning" | "boundary_only";
+
+export interface ManufacturingBoundary {
+  packageKind: string;
+  artifactLayers: readonly string[];
+  stageModelExport: CapabilityStatus;
+  applianceShellGeneration: CapabilityStatus;
+  trimlineCutline: CapabilityStatus;
+  shellThicknessMaterialProfile: CapabilityStatus;
+  undercutEngagementChecks: CapabilityStatus;
+  printableModelPreparation: CapabilityStatus;
+  manufacturingQcReport: CapabilityStatus;
+  treatmentVsManufacturingSeparated: boolean;
+  notes: readonly string[];
 }
 
 export interface ReviewBundle {
@@ -136,14 +152,16 @@ export interface ReviewBundle {
     doctorReviewRequired: boolean;
   };
   validationSummary?: {
-    geometry: "computed" | "unavailable";
-    contacts: "computed" | "unavailable";
-    proximity: "computed" | "unavailable";
-    collisions: "computed" | "unavailable";
-    movementConstraints: "computed" | "unavailable";
-    stageConsistency: "computed" | "unavailable";
-    dataCompleteness: "computed" | "warning" | "unavailable";
+    geometry: CapabilityStatus;
+    contacts: CapabilityStatus;
+    proximity: CapabilityStatus;
+    collisions: CapabilityStatus;
+    movementConstraints: CapabilityStatus;
+    stageConsistency: CapabilityStatus;
+    dataCompleteness: CapabilityStatus;
+    provenance: CapabilityStatus;
     doctorReview: "required" | "complete";
     findings: readonly string[];
   };
+  manufacturingBoundary?: ManufacturingBoundary;
 }

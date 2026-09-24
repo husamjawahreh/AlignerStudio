@@ -101,6 +101,8 @@ export const engineeringFixtureBundle: ReviewBundle = {
       status: "needs_review",
       warning: "Geometric space delta only; not a clinical IPR recommendation.",
       fixture: true,
+      stage: 2,
+      amountUnit: "mm",
     },
   ],
   attachmentSites: [
@@ -113,10 +115,34 @@ export const engineeringFixtureBundle: ReviewBundle = {
       status: "needs_review",
       warning: "Shape and dimensions require doctor review; no validated geometry is generated.",
       fixture: true,
+      dimensions: null,
+      stage: 2,
+      generated: false,
     },
   ],
   sourceKind: "development_treatment_fixture",
   experimental: true,
   unavailableReason:
     "Real staged mesh and validation payloads are not available from the current API.",
+  manufacturingBoundary: {
+    packageKind: "engineering_treatment_export",
+    artifactLayers: [
+      "treatment_design",
+      "geometric_validation",
+      "manufacturing_preparation",
+      "manufacturing_validation",
+    ],
+    stageModelExport: "unavailable",
+    applianceShellGeneration: "unavailable",
+    trimlineCutline: "unavailable",
+    shellThicknessMaterialProfile: "unavailable",
+    undercutEngagementChecks: "unavailable",
+    printableModelPreparation: "unavailable",
+    manufacturingQcReport: "unavailable",
+    treatmentVsManufacturingSeparated: true,
+    notes: [
+      "Stage model export contains treatment-stage meshes for review/audit only.",
+      "Appliance shell generation is unavailable; no fake shells are produced.",
+    ],
+  },
 };

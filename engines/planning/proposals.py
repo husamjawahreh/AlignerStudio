@@ -199,11 +199,15 @@ class TreatmentProposalEngine:
         required = (
             max(current - target, 0.0) if current is not None and target is not None else None
         )
-        site_key = f"{plan.version_id}:ipr:{source_a.tooth_number}:{source_b.tooth_number}"
+        site_key = (
+            f"{plan.version_id}:ipr:"
+            f"{source_a.tooth_ref or source_a.tooth_number}:"
+            f"{source_b.tooth_ref or source_b.tooth_number}"
+        )
         return IPRSite(
             site_id=self._hash(site_key),
-            tooth_a=source_a.tooth_number,
-            tooth_b=source_b.tooth_number,
+            tooth_a=source_a.tooth_number if source_a.tooth_number is not None else source_a.tooth_ref,
+            tooth_b=source_b.tooth_number if source_b.tooth_number is not None else source_b.tooth_ref,
             current_measurement=IPRMeasurement(current, "model units", "centroid distance", status),
             target_measurement=IPRMeasurement(target, "model units", "centroid distance", status),
             required_space=required,
@@ -219,6 +223,7 @@ class TreatmentProposalEngine:
             ),
             provenance=DataProvenance.GENERATED,
             fixture=plan.fixture,
+            stage_index=None,
         )
 
     def _attachment_site(self, plan, state):
@@ -227,9 +232,10 @@ class TreatmentProposalEngine:
             "Attachment shape and dimensions require explicit doctor review; no "
             "validated geometry is generated.",
         )
+        tooth_key = state.tooth_number if state.tooth_number is not None else state.tooth_ref
         return AttachmentSite(
-            site_id=self._hash(f"{plan.version_id}:attachment:{state.tooth_number}"),
-            tooth_number=state.tooth_number,
+            site_id=self._hash(f"{plan.version_id}:attachment:{tooth_key}"),
+            tooth_number=tooth_key,
             attachment_type=AttachmentType.UNDETERMINED,
             reference_point=tuple(
                 float(value) for value in np.asarray(state.target_vertices).mean(axis=0)
@@ -246,6 +252,8 @@ class TreatmentProposalEngine:
             warnings=(warning,),
             provenance=DataProvenance.GENERATED,
             fixture=plan.fixture,
+            stage_index=None,
+            generated=False,
         )
 
     def _empty_result(self, plan, warning, previous):
@@ -319,6 +327,9 @@ class TreatmentProposalEngine:
             "a": site.tooth_a,
             "b": site.tooth_b,
             "amount": site.proposed_amount,
+            "current": site.current_measurement.value,
+            "target": site.target_measurement.value,
+            "stage": site.stage_index,
             "status": site.status.value,
         }
 
@@ -328,6 +339,10 @@ class TreatmentProposalEngine:
             "id": site.site_id,
             "tooth": site.tooth_number,
             "type": site.attachment_type.value,
+            "reference": site.reference_point,
+            "dimensions": site.dimensions,
+            "stage": site.stage_index,
+            "generated": site.generated,
             "status": site.status.value,
         }
 

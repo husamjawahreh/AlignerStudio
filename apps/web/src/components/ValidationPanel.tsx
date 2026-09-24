@@ -49,6 +49,7 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
               ["movementConstraints", "Movement Constraints"],
               ["stageConsistency", "Stage Consistency"],
               ["dataCompleteness", "Data Completeness"],
+              ["provenance", "Provenance"],
               ["doctorReview", "Review Status"],
             ] as const
           ).map(([key, label]) => (
@@ -57,6 +58,12 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
               <strong>{summary[key].replaceAll("_", " ")}</strong>
             </div>
           ))}
+          {summary.findings.length > 0 && (
+            <div className="validation-check-row">
+              <span>Findings</span>
+              <strong>{summary.findings.length}</strong>
+            </div>
+          )}
         </div>
       )}
       <p className="muted-copy">

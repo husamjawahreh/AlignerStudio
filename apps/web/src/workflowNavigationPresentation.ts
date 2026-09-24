@@ -49,6 +49,7 @@ const VALIDATION_NAV: readonly {
   { id: "movementConstraints", label: "Movement Constraints", summaryKey: "movementConstraints" },
   { id: "stageConsistency", label: "Stage Consistency", summaryKey: "stageConsistency" },
   { id: "dataCompleteness", label: "Data Completeness", summaryKey: "dataCompleteness" },
+  { id: "provenance", label: "Provenance", summaryKey: "provenance" },
   { id: "reviewStatus", label: "Review Status", summaryKey: "doctorReview" },
 ];
 
@@ -91,10 +92,17 @@ export function buildValidationNavigation(
   });
 }
 
-/** Production navigation — existing package fields only (no manufacturing engine). */
+/** Production navigation — honest manufacturing boundary + existing package fields. */
 export function buildProductionNavigation(bundle: ReviewBundle): WorkflowNavRow[] {
+  const boundary = bundle.manufacturingBoundary;
   const finalStage = bundle.stages.at(-1);
   const packageReady = bundle.realDataAvailable && bundle.stages.length > 0;
+
+  const capability = (status: string | undefined, fallback: string): string => {
+    if (!status) return fallback;
+    return status.replaceAll("_", " ");
+  };
+
   return [
     {
       id: "appliance-stages",
@@ -104,7 +112,10 @@ export function buildProductionNavigation(bundle: ReviewBundle): WorkflowNavRow[
     {
       id: "manufacturing-preparation",
       label: "Manufacturing Preparation",
-      value: packageReady ? "Uses Export Package" : "Unavailable",
+      value: capability(
+        boundary?.printableModelPreparation ?? boundary?.applianceShellGeneration,
+        packageReady ? "Uses Export Package" : "Unavailable",
+      ),
     },
     {
       id: "ipr-report",
@@ -119,17 +130,22 @@ export function buildProductionNavigation(bundle: ReviewBundle): WorkflowNavRow[
     {
       id: "auxiliary-features",
       label: "Auxiliary Features",
-      value: "Unavailable",
+      value: capability(boundary?.trimlineCutline, "Unavailable"),
     },
     {
       id: "export-package",
       label: "Export Package",
-      value: packageReady ? "Ready" : "Incomplete",
+      value: packageReady
+        ? capability(boundary?.stageModelExport, "Ready")
+        : "Incomplete",
     },
     {
       id: "production-qa",
       label: "Production QA",
-      value: finalStage?.validationStatus.replaceAll("_", " ") ?? "Unavailable",
+      value: capability(
+        boundary?.manufacturingQcReport,
+        finalStage?.validationStatus.replaceAll("_", " ") ?? "Unavailable",
+      ),
     },
   ];
 }

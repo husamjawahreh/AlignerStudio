@@ -6,13 +6,15 @@ import json
 import logging
 import os
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dataclass_replace
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
 from domain.tooth.identification import ArchType
 from domain.treatment_plan.input import TreatmentPlanningInput
+from domain.treatment_plan.manufacturing import build_manufacturing_boundary_report
+from domain.treatment_plan.proposals import ProposalStatus
 from domain.treatment_plan.setup import ToothMovement, TreatmentPlanProposal
 from domain.treatment_plan.staging import StagingConfiguration, StagingResult
 from domain.treatment_plan.validation import TreatmentValidationReport, ValidationStatus
@@ -26,6 +28,7 @@ from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
     GeometricValidationEngine,
 )
+from engines.validation.review_summary import build_validation_review_summary
 
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
 
@@ -176,6 +179,44 @@ class TreatmentSessionStore:
             destination, session.proposal, session.staging, session.validation, session.adjuncts
         )
 
+    def set_ipr_status(self, case_id: str, site_id: str, status: str) -> TreatmentSession:
+        session = self.get(case_id)
+        adjuncts = self._proposals.set_ipr_status(
+            session.adjuncts, site_id, ProposalStatus(status)
+        )
+        session = dataclass_replace(session, adjuncts=adjuncts)
+        self._sessions[case_id] = session
+        return session
+
+    def modify_ipr_amount(self, case_id: str, site_id: str, amount: float) -> TreatmentSession:
+        session = self.get(case_id)
+        adjuncts = self._proposals.modify_ipr(session.adjuncts, site_id, amount)
+        session = dataclass_replace(session, adjuncts=adjuncts)
+        self._sessions[case_id] = session
+        return session
+
+    def set_attachment_status(self, case_id: str, site_id: str, status: str) -> TreatmentSession:
+        session = self.get(case_id)
+        adjuncts = self._proposals.set_attachment_status(
+            session.adjuncts, site_id, ProposalStatus(status)
+        )
+        session = dataclass_replace(session, adjuncts=adjuncts)
+        self._sessions[case_id] = session
+        return session
+
+    def reset_proposals(self, case_id: str) -> TreatmentSession:
+        """Regenerate adjunct proposals from the current plan version (no invented geometry)."""
+        session = self.get(case_id)
+        adjuncts = self._proposals.generate(session.proposal)
+        session = dataclass_replace(session, adjuncts=adjuncts)
+        self._sessions[case_id] = session
+        return session
+
+    def verify_export(self, case_id: str, destination: Path) -> dict[str, Any]:
+        """Export then verify package hashes; returns auditable verification report."""
+        package = self.export(case_id, destination)
+        return TreatmentExportEngine().verify_package(package.zip_path)
+
     def _compose(
         self,
         proposal: TreatmentPlanProposal,
@@ -318,10 +359,18 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         + abs(item.rotation)
         + abs(item.tip)
         + abs(item.torque)
+        + abs(item.angulation)
         + abs(item.intrusion)
         + abs(item.extrusion)
         for item in movements
     )
+    final_stage_index = len(session.staging.stages) - 1 if session.staging.stages else None
+    validation_summary = build_validation_review_summary(
+        session.proposal, session.staging, session.validation
+    ).payload()
+    manufacturing = build_manufacturing_boundary_report(
+        has_stage_models=bool(session.staging.stages)
+    ).payload()
     return {
         "stages": stages,
         "provenance": session.proposal.provenance.value,
@@ -342,17 +391,8 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             "source": "deterministic planner",
             "doctorReviewRequired": True,
         },
-        "validationSummary": {
-            "geometry": "computed",
-            "contacts": "computed",
-            "proximity": "computed",
-            "collisions": "computed",
-            "movementConstraints": "unavailable",
-            "stageConsistency": "computed",
-            "dataCompleteness": "warning" if session.proposal.limitations else "computed",
-            "doctorReview": "required",
-            "findings": list(session.validation.warnings) + list(session.validation.errors),
-        },
+        "validationSummary": validation_summary,
+        "manufacturingBoundary": manufacturing,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
         "editHistory": [
@@ -377,7 +417,9 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "currentDistance": item.current_measurement.value,
                 "targetDistance": item.target_measurement.value,
                 "proposedAmount": item.proposed_amount,
-                "stage": len(session.staging.stages) - 1 if session.staging.stages else None,
+                "stage": item.stage_index
+                if item.stage_index is not None
+                else final_stage_index,
                 "amountUnit": item.current_measurement.unit,
                 "status": item.status.value,
                 "warning": "; ".join(warning.message for warning in item.warnings),
@@ -393,8 +435,10 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "referencePoint": item.reference_point,
                 "reason": item.reason,
                 "dimensions": item.dimensions,
-                "stage": len(session.staging.stages) - 1 if session.staging.stages else None,
-                "generated": False,
+                "stage": item.stage_index
+                if item.stage_index is not None
+                else final_stage_index,
+                "generated": item.generated,
                 "status": item.status.value,
                 "warning": "; ".join(warning.message for warning in item.warnings),
                 "fixture": item.fixture,
