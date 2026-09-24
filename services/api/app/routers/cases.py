@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
 
@@ -16,7 +17,7 @@ from pydantic import BaseModel
 
 from app.config import UPLOAD_DIR
 from app.pipeline_diagnostics import process_uploaded_case
-from app.processing import start_processing
+from app.processing import live_processing_status, start_processing
 from app.schemas.cases import (
     CaseResponse,
     CreateCaseRequest,
@@ -153,6 +154,13 @@ def validate_case_mesh(case_id: str, arch: str) -> MeshValidationResponse:
 @router.post("/{case_id}/plan", response_model=TreatmentPlanResponse)
 def generate_plan(case_id: str) -> TreatmentPlanResponse:
     """Block planning until real segmentation and tooth identification exist."""
+    return generate_plan_with_progress(case_id)
+
+
+def generate_plan_with_progress(
+    case_id: str, progress_callback: Callable[[int, str], None] | None = None
+) -> TreatmentPlanResponse:
+    """Same behavior as generate_plan, plus optional real-milestone progress reporting."""
     case = case_store.get(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -197,7 +205,7 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
         )
         try:
             session = treatment_sessions.create_from_treatment_input(
-                case_id, treatment_input, objectives
+                case_id, treatment_input, objectives, progress_callback=progress_callback
             )
         except (TypeError, ValueError) as error:
             raise HTTPException(
@@ -259,7 +267,7 @@ def begin_processing(case_id: str) -> dict:
 def get_processing_status(case_id: str) -> dict:
     if case_store.get(case_id) is None:
         raise HTTPException(status_code=404, detail="Case not found")
-    status = case_store.get_processing(case_id)
+    status = live_processing_status(case_id)
     if status is None:
         raise HTTPException(status_code=404, detail="No processing job exists for this case")
     return status

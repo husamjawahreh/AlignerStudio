@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from domain.tooth.identification import ArchType
@@ -25,6 +28,8 @@ from engines.validation.geometric_engine import (
 )
 
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
+
+logger = logging.getLogger(__name__)
 
 
 class TreatmentSessionError(ValueError):
@@ -68,10 +73,11 @@ class TreatmentSessionStore:
         case_id: str,
         treatment_input: TreatmentPlanningInput,
         objectives,
+        progress_callback: Callable[[int, str], None] | None = None,
     ) -> TreatmentSession:
         """Compose existing treatment engines from reviewed domain input."""
         proposal = self._planner.generate_from_input(case_id, treatment_input, objectives)
-        session = self._compose(proposal)
+        session = self._compose(proposal, progress_callback=progress_callback)
         self._sessions[case_id] = session
         return session
 
@@ -117,11 +123,37 @@ class TreatmentSessionStore:
             destination, session.proposal, session.staging, session.validation, session.adjuncts
         )
 
-    def _compose(self, proposal: TreatmentPlanProposal) -> TreatmentSession:
+    def _compose(
+        self,
+        proposal: TreatmentPlanProposal,
+        progress_callback: Callable[[int, str], None] | None = None,
+    ) -> TreatmentSession:
+        def emit(progress: int, message: str) -> None:
+            if progress_callback is not None:
+                progress_callback(progress, message)
+
+        emit(72, "Preparing geometric validation")
+        staging_started = perf_counter()
         staging = self._stager.generate(proposal, self._staging_configuration())
+        logger.info(
+            "TREATMENT_STAGING_COMPLETED plan_id=%s duration_ms=%.1f stages=%d",
+            proposal.plan_id,
+            (perf_counter() - staging_started) * 1000,
+            len(staging.stages),
+        )
+        emit(82, "Evaluating collisions and proximity")
+        validation_started = perf_counter()
         validation = self._validator.validate(
             staging, GeometricValidationConfiguration(1.0, 0.001, 0.0)
         )
+        logger.info(
+            "GEOMETRIC_VALIDATION_COMPLETED plan_id=%s duration_ms=%.1f stages=%d status=%s",
+            proposal.plan_id,
+            (perf_counter() - validation_started) * 1000,
+            len(validation.stage_results),
+            validation.status.value,
+        )
+        emit(88, "Validating plan")
         return TreatmentSession(
             proposal,
             staging,

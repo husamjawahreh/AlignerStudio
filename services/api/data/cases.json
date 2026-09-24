@@ -65,7 +65,7 @@
       "case_id": "529a8d58-de54-4464-b235-d0693993395f",
       "overall_progress": 70,
       "current_stage": "BUILDING_PLAN",
-      "stage_status": "PROCESSING",
+      "stage_status": "FAILED",
       "stage_progress": null,
       "completed_stages": [
         "VALIDATING_SCANS",
@@ -77,13 +77,13 @@
         "VALIDATING_PLAN",
         "FINALIZING"
       ],
-      "error_state": false,
-      "error_code": null,
-      "user_message": "Preparing treatment setup",
-      "technical_diagnostic": null,
+      "error_state": true,
+      "error_code": "PROCESS_RESTARTED",
+      "user_message": "Case analysis was interrupted. Start analysis again.",
+      "technical_diagnostic": "Processing worker was interrupted during API restart.",
       "started_at": "2026-09-24T08:57:07.054022+00:00",
-      "updated_at": "2026-09-24T09:04:05.265678+00:00",
-      "completed_at": null
+      "updated_at": "2026-09-24T12:45:28.074901+03:00",
+      "completed_at": "2026-09-24T12:45:28.074901+03:00"
     }
   },
   {
@@ -110,7 +110,7 @@
       "case_id": "8fd393eb-2f48-4e07-8364-f09c8cb9fb9b",
       "overall_progress": 70,
       "current_stage": "BUILDING_PLAN",
-      "stage_status": "PROCESSING",
+      "stage_status": "FAILED",
       "stage_progress": null,
       "completed_stages": [
         "VALIDATING_SCANS",
@@ -122,13 +122,13 @@
         "VALIDATING_PLAN",
         "FINALIZING"
       ],
-      "error_state": false,
-      "error_code": null,
-      "user_message": "Preparing treatment setup",
-      "technical_diagnostic": null,
+      "error_state": true,
+      "error_code": "PROCESS_RESTARTED",
+      "user_message": "Case analysis was interrupted. Start analysis again.",
+      "technical_diagnostic": "Processing worker was interrupted during API restart.",
       "started_at": "2026-09-24T09:20:11.750098+00:00",
-      "updated_at": "2026-09-24T09:26:10.198492+00:00",
-      "completed_at": null
+      "updated_at": "2026-09-24T12:45:28.074901+03:00",
+      "completed_at": "2026-09-24T12:45:28.074901+03:00"
     }
   },
   {
@@ -155,7 +155,7 @@
       "case_id": "6d6277b0-e521-4db4-9eca-5ebbed78d54f",
       "overall_progress": 0,
       "current_stage": "PREPARING",
-      "stage_status": "PROCESSING",
+      "stage_status": "FAILED",
       "stage_progress": null,
       "completed_stages": [],
       "pending_stages": [
@@ -167,13 +167,107 @@
         "VALIDATING_PLAN",
         "FINALIZING"
       ],
-      "error_state": false,
-      "error_code": null,
-      "user_message": "Analyzing case",
-      "technical_diagnostic": null,
+      "error_state": true,
+      "error_code": "PROCESS_RESTARTED",
+      "user_message": "Case analysis was interrupted. Start analysis again.",
+      "technical_diagnostic": "Processing worker was interrupted during API restart.",
       "started_at": "2026-09-24T09:24:45.995774+00:00",
-      "updated_at": "2026-09-24T09:24:45.995785+00:00",
-      "completed_at": null
+      "updated_at": "2026-09-24T12:45:28.074901+03:00",
+      "completed_at": "2026-09-24T12:45:28.074901+03:00"
+    }
+  },
+  {
+    "id": "f3ca382d-53b1-4071-a7d9-c7fa347a27a6",
+    "patient_reference": "Test progress",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T09:36:34.046902+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/f3ca382d-53b1-4071-a7d9-c7fa347a27a6-upper-c3479b81779348afa72651216b140eb6.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T09:36:36.612545+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/f3ca382d-53b1-4071-a7d9-c7fa347a27a6-lower-895736ddca834949ac0692280b84876f.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T09:36:39.277530+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "4783ddd4-b120-464d-9f5b-411bf744c738",
+      "case_id": "f3ca382d-53b1-4071-a7d9-c7fa347a27a6",
+      "overall_progress": 0,
+      "current_stage": "PREPARING",
+      "stage_status": "FAILED",
+      "stage_progress": null,
+      "completed_stages": [],
+      "pending_stages": [
+        "PREPARING",
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": true,
+      "error_code": "PROCESS_RESTARTED",
+      "user_message": "Case analysis was interrupted. Start analysis again.",
+      "technical_diagnostic": "Processing worker was interrupted during API restart.",
+      "started_at": "2026-09-24T09:36:40.788231+00:00",
+      "updated_at": "2026-09-24T12:45:28.074901+03:00",
+      "completed_at": "2026-09-24T12:45:28.074901+03:00"
+    }
+  },
+  {
+    "id": "239bc555-4ba1-4752-8f7d-1eb183d975e9",
+    "patient_reference": "T1",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T10:09:07.508273+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/239bc555-4ba1-4752-8f7d-1eb183d975e9-upper-9d92248b566e46ef80d7c68ea32e411f.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T10:09:09.932336+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/239bc555-4ba1-4752-8f7d-1eb183d975e9-lower-a4cf163a29084ac58b1db23ec8f92c3c.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T10:09:12.545651+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "9e40f21a-79b7-45a4-a904-325b0864d499",
+      "case_id": "239bc555-4ba1-4752-8f7d-1eb183d975e9",
+      "overall_progress": 70,
+      "current_stage": "BUILDING_PLAN",
+      "stage_status": "FAILED",
+      "stage_progress": null,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER"
+      ],
+      "pending_stages": [
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": true,
+      "error_code": "PROCESS_RESTARTED",
+      "user_message": "Case analysis was interrupted. Start analysis again.",
+      "technical_diagnostic": "Processing worker was interrupted during API restart.",
+      "started_at": "2026-09-24T10:09:14.401708+00:00",
+      "updated_at": "2026-09-24T13:36:45.909488+03:00",
+      "elapsed_seconds": 129,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "PROCESSING",
+      "completed_at": "2026-09-24T13:36:45.909488+03:00"
     }
   }
 ]

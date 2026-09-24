@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from domain.case.models import Case, CaseStatus, MeshAsset
 from app.config import CASE_STORE_PATH
+
+logger = logging.getLogger(__name__)
 
 
 class InMemoryCaseStore:
@@ -79,6 +82,27 @@ class InMemoryCaseStore:
             except (KeyError, TypeError, ValueError):
                 continue
             self._cases[case.id] = case
+
+        recovered = False
+        now = datetime.now().astimezone()
+        for case in self._cases.values():
+            status = getattr(case, "processing_status", None)
+            if status and status.get("stage_status") == "PROCESSING":
+                status.update(
+                    {
+                        "stage_status": "FAILED",
+                        "error_state": True,
+                        "error_code": "PROCESS_RESTARTED",
+                        "user_message": "Case analysis was interrupted. Start analysis again.",
+                        "technical_diagnostic": "Processing worker was interrupted during API restart.",
+                        "updated_at": now.isoformat(),
+                        "completed_at": now.isoformat(),
+                    }
+                )
+                recovered = True
+                logger.warning("PROCESSING_RECOVERED case_id=%s job_id=%s", case.id, status.get("job_id"))
+        if recovered:
+            self._persist()
 
     def _persist(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

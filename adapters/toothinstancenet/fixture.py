@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import shutil
 import struct
 import tempfile
 import zipfile
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from adapters.toothinstancenet.contract import ToothInstanceNetDiagnostics
@@ -27,6 +29,8 @@ from domain.tooth.segmentation import (
     ToothSegmentationResult,
 )
 from engines.segmentation.toothinstancenet import ToothInstanceNetInferenceResult
+
+logger = logging.getLogger(__name__)
 
 
 class ToothInstanceNetFixtureError(ValueError):
@@ -250,6 +254,7 @@ def load_validated_fixture(
     source_mesh_path: str | Path | None = None,
 ) -> ToothInstanceNetInferenceResult:
     """Load only an explicitly selected validated artifact; never auto-fallback."""
+    started = perf_counter()
     root = _artifact_root(path)
     checksums = _verify_checksums(root)
     manifest = _validate_manifest(root)
@@ -272,10 +277,12 @@ def load_validated_fixture(
         vertex_indices = tuple(
             index for index, value in enumerate(instances_array) if value == source_instance_id
         )
+        # O(1)-average membership; vertex_indices stays a tuple so centroid sum order is unchanged.
+        vertex_index_lookup = frozenset(vertex_indices)
         triangle_indices = tuple(
             index
             for index, face in enumerate(faces)
-            if all(vertex in vertex_indices for vertex in face)
+            if all(vertex in vertex_index_lookup for vertex in face)
         )
         if not vertex_indices or not triangle_indices:
             raise ToothInstanceNetFixtureError(
@@ -361,6 +368,15 @@ def load_validated_fixture(
             notes=f"{artifact_note}; fixture path is never automatic.",
         ),
         source_mesh_path=str(root / f"{arch.value}.stl"),
+    )
+    logger.info(
+        "FIXTURE_RECONSTRUCTION_COMPLETED arch=%s duration_ms=%.1f vertices=%d faces=%d "
+        "instances=%d",
+        arch.value,
+        (perf_counter() - started) * 1000,
+        len(vertices),
+        len(faces),
+        len(instances),
     )
     diagnostics = ToothInstanceNetDiagnostics(
         state="identification_incomplete",

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+import logging
+from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import UTC, datetime
 from threading import Lock
+from time import perf_counter
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -24,10 +26,29 @@ STAGES = (
 )
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="alignerstudio-processing")
 _lock = Lock()
+logger = logging.getLogger(__name__)
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
+
+
+def _elapsed_seconds(started_at: str) -> int:
+    elapsed = datetime.now(UTC) - datetime.fromisoformat(started_at)
+    return max(0, int(elapsed.total_seconds()))
+
+
+def live_processing_status(case_id: str) -> dict | None:
+    """Return the persisted job status with elapsed_seconds recomputed live while PROCESSING.
+
+    Terminal jobs (COMPLETED/FAILED/CANCELLED) keep their final persisted elapsed value.
+    """
+    status = case_store.get_processing(case_id)
+    if status is None:
+        return None
+    if status.get("stage_status") == "PROCESSING" and status.get("started_at"):
+        status = {**status, "elapsed_seconds": _elapsed_seconds(status["started_at"])}
+    return status
 
 
 def _status(case_id: str, job_id: str, *, current_stage: str, stage_status: str,
@@ -36,10 +57,7 @@ def _status(case_id: str, job_id: str, *, current_stage: str, stage_status: str,
             message: str = "") -> dict:
     current = case_store.get_processing(case_id) or {}
     started_at = current.get("started_at", _now())
-    elapsed_seconds = max(
-        0,
-        int((datetime.fromisoformat(_now()) - datetime.fromisoformat(started_at)).total_seconds()),
-    )
+    elapsed_seconds = _elapsed_seconds(started_at)
     payload = {
         "job_id": job_id,
         "case_id": case_id,
@@ -62,6 +80,10 @@ def _status(case_id: str, job_id: str, *, current_stage: str, stage_status: str,
         "completed_at": _now() if stage_status in {"COMPLETED", "FAILED", "CANCELLED"} else None,
     }
     case_store.set_processing(case_id, payload)
+    logger.info(
+        "PROCESSING_TRANSITION case_id=%s job_id=%s stage=%s status=%s progress=%s message=%s",
+        case_id, job_id, current_stage, stage_status, payload["overall_progress"], message,
+    )
     return payload
 
 
@@ -69,23 +91,51 @@ def start_processing(case_id: str) -> dict:
     case = case_store.get(case_id)
     if case is None:
         raise KeyError("Case not found")
-    current = case_store.get_processing(case_id)
-    if current and current["stage_status"] == "PROCESSING":
-        return current
-    job_id = str(uuid4())
-    other_active = any(
-        item.get("stage_status") == "PROCESSING"
-        for case in case_store.list()
-        if case.id != case_id
-        for item in [case_store.get_processing(case.id) or {}]
+    with _lock:
+        current = case_store.get_processing(case_id)
+        if current and current["stage_status"] == "PROCESSING":
+            return current
+        job_id = str(uuid4())
+        other_active = any(
+            item.get("stage_status") == "PROCESSING"
+            for existing_case in case_store.list()
+            if existing_case.id != case_id
+            for item in [case_store.get_processing(existing_case.id) or {}]
+        )
+        initial = _status(
+            case_id, job_id, current_stage="PREPARING", stage_status="PROCESSING",
+            overall_progress=0, stage_progress=None, completed=[], pending=list(STAGES),
+            message="Queued behind another case analysis" if other_active else "Analyzing case",
+        )
+        logger.info("PROCESSING_CREATED case_id=%s job_id=%s", case_id, job_id)
+        future = _executor.submit(_run, case_id, job_id)
+        future.add_done_callback(lambda completed: _handle_worker_exit(case_id, job_id, completed))
+        return initial
+
+
+def _handle_worker_exit(case_id: str, job_id: str, future: Future[None]) -> None:
+    try:
+        error = future.exception()
+    except BaseException as worker_exit:
+        error = worker_exit
+    if error is None:
+        return
+    logger.error(
+        "PROCESSING_WORKER_EXITED case_id=%s job_id=%s error=%s",
+        case_id,
+        job_id,
+        error,
     )
-    initial = _status(
-        case_id, job_id, current_stage="PREPARING", stage_status="PROCESSING",
-        overall_progress=0, stage_progress=None, completed=[], pending=list(STAGES),
-        message="Queued behind another case analysis" if other_active else "Analyzing case",
+    current = case_store.get_processing(case_id) or {}
+    if current.get("job_id") != job_id or current.get("stage_status") != "PROCESSING":
+        return
+    _fail(
+        case_id,
+        job_id,
+        current.get("completed_stages", []),
+        "Processing could not be completed for this case",
+        f"{type(error).__name__}: {error}",
     )
-    _executor.submit(_run, case_id, job_id)
-    return initial
 
 
 def _run(case_id: str, job_id: str) -> None:
@@ -120,8 +170,22 @@ def _run(case_id: str, job_id: str) -> None:
         _status(case_id, job_id, current_stage="BUILDING_PLAN", stage_status="PROCESSING",
                 overall_progress=70, stage_progress=None, completed=completed, pending=list(STAGES[4:]),
                 message="Preparing treatment setup")
-        from app.routers.cases import generate_plan
-        generate_plan(case_id)
+        from app.routers.cases import generate_plan_with_progress
+
+        def _report_planning_progress(progress: int, message: str) -> None:
+            _status(case_id, job_id, current_stage="BUILDING_PLAN", stage_status="PROCESSING",
+                    overall_progress=progress, stage_progress=None, completed=completed,
+                    pending=list(STAGES[4:]), message=message)
+
+        planning_started = perf_counter()
+        logger.info("PLAN_BUILDING_STARTED case_id=%s job_id=%s", case_id, job_id)
+        generate_plan_with_progress(case_id, progress_callback=_report_planning_progress)
+        logger.info(
+            "PLAN_BUILDING_COMPLETED case_id=%s job_id=%s duration_ms=%.0f",
+            case_id,
+            job_id,
+            (perf_counter() - planning_started) * 1000,
+        )
         completed.append("BUILDING_PLAN")
         _status(case_id, job_id, current_stage="VALIDATING_PLAN", stage_status="PROCESSING",
                 overall_progress=88, stage_progress=None, completed=completed, pending=["FINALIZING"],

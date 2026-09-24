@@ -1,5 +1,8 @@
+from concurrent.futures import Future
+
 import pytest
 from app.main import app
+from app.processing import _handle_worker_exit
 from app.store import case_store
 from app.treatment_sessions import treatment_sessions
 from fastapi.testclient import TestClient
@@ -55,6 +58,35 @@ def test_processing_status_starts_and_is_retrievable_for_same_case() -> None:
     status = client.get(f"/cases/{case_id}/processing-status")
     assert status.status_code == 200
     assert status.json()["job_id"] == started.json()["job_id"]
+
+
+def test_worker_exit_persists_terminal_failure() -> None:
+    case_id = client.post("/cases", json={"patient_reference": "worker-exit"}).json()["id"]
+    job_id = "worker-exit-job"
+    case_store.set_processing(
+        case_id,
+        {
+            "job_id": job_id,
+            "case_id": case_id,
+            "stage_status": "PROCESSING",
+            "current_stage": "BUILDING_PLAN",
+            "overall_progress": 70,
+            "stage_progress": None,
+            "completed_stages": ["VALIDATING_SCANS", "SEGMENTING_UPPER", "SEGMENTING_LOWER"],
+            "pending_stages": ["BUILDING_PLAN", "VALIDATING_PLAN", "FINALIZING"],
+            "started_at": "2026-01-01T00:00:00+00:00",
+        },
+    )
+    future: Future[None] = Future()
+    future.set_exception(RuntimeError("planner worker exited"))
+
+    _handle_worker_exit(case_id, job_id, future)
+
+    status = case_store.get_processing(case_id)
+    assert status is not None
+    assert status["stage_status"] == "FAILED"
+    assert status["error_code"] == "PROCESSING_FAILED"
+    assert "planner worker exited" in status["technical_diagnostic"]
 
 
 def test_real_case_identity_survives_retrieval_and_downstream_requests() -> None:

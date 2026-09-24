@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from itertools import combinations
+from time import perf_counter
 
 import numpy as np
 import trimesh
@@ -21,6 +23,8 @@ from domain.treatment_plan.validation import (
     ValidationStatus,
 )
 from engines.validation.hooks import ValidationFinding
+
+logger = logging.getLogger(__name__)
 
 
 class GeometricValidationError(ValueError):
@@ -203,26 +207,205 @@ def _triangles_intersect(first: np.ndarray, second: np.ndarray, tolerance: float
     return _triangle_distance(first, second) <= tolerance
 
 
+def _dot_rows(first: np.ndarray, second: np.ndarray) -> np.ndarray:
+    return np.einsum("ij,ij->i", first, second)
+
+
+def _point_segment_distance_batch(
+    points: np.ndarray, starts: np.ndarray, ends: np.ndarray
+) -> np.ndarray:
+    """Batched equivalent of `_point_segment_distance`; identical formula, N pairs at once."""
+    direction = ends - starts
+    length_squared = _dot_rows(direction, direction)
+    eps = np.finfo(float).eps
+    degenerate = length_squared <= eps
+    safe_length_squared = np.where(degenerate, 1.0, length_squared)
+    amount = np.clip(_dot_rows(points - starts, direction) / safe_length_squared, 0.0, 1.0)
+    projected = starts + amount[:, None] * direction
+    return np.where(
+        degenerate,
+        np.linalg.norm(points - starts, axis=1),
+        np.linalg.norm(points - projected, axis=1),
+    )
+
+
+def _point_triangle_distance_batch(points: np.ndarray, triangles: np.ndarray) -> np.ndarray:
+    """Batched equivalent of `_point_triangle_distance`; identical formula, N pairs at once."""
+    edge_a = triangles[:, 1] - triangles[:, 0]
+    edge_b = triangles[:, 2] - triangles[:, 0]
+    offset = points - triangles[:, 0]
+    dot_aa = _dot_rows(edge_a, edge_a)
+    dot_ab = _dot_rows(edge_a, edge_b)
+    dot_ap = _dot_rows(edge_a, offset)
+    dot_bb = _dot_rows(edge_b, edge_b)
+    dot_bp = _dot_rows(edge_b, offset)
+    denominator = dot_aa * dot_bb - dot_ab * dot_ab
+    eps = np.finfo(float).eps
+    degenerate = denominator <= eps
+    safe_denominator = np.where(degenerate, 1.0, denominator)
+    u = (dot_bb * dot_ap - dot_ab * dot_bp) / safe_denominator
+    v = (dot_aa * dot_bp - dot_ab * dot_ap) / safe_denominator
+    inside = (u >= 0) & (v >= 0) & (u + v <= 1)
+    projection = triangles[:, 0] + u[:, None] * edge_a + v[:, None] * edge_b
+    projected_distance = np.linalg.norm(points - projection, axis=1)
+    edge_distance = np.minimum(
+        np.minimum(
+            _point_segment_distance_batch(points, triangles[:, 0], triangles[:, 1]),
+            _point_segment_distance_batch(points, triangles[:, 1], triangles[:, 2]),
+        ),
+        _point_segment_distance_batch(points, triangles[:, 2], triangles[:, 0]),
+    )
+    return np.where(degenerate, edge_distance, np.where(inside, projected_distance, edge_distance))
+
+
+def _segment_segment_distance_batch(
+    first_starts: np.ndarray,
+    first_ends: np.ndarray,
+    second_starts: np.ndarray,
+    second_ends: np.ndarray,
+) -> np.ndarray:
+    """Batched equivalent of `_segment_segment_distance`; identical formula, N pairs at once."""
+    first = first_ends - first_starts
+    second = second_ends - second_starts
+    between = first_starts - second_starts
+    a = _dot_rows(first, first)
+    b = _dot_rows(first, second)
+    c = _dot_rows(second, second)
+    d = _dot_rows(first, between)
+    e = _dot_rows(second, between)
+    denominator = a * c - b * b
+    eps = np.finfo(float).eps
+    degenerate = denominator <= eps
+    safe_denominator = np.where(degenerate, 1.0, denominator)
+    s = np.clip((b * e - c * d) / safe_denominator, 0.0, 1.0)
+    t = np.clip((a * e - b * d) / safe_denominator, 0.0, 1.0)
+    general = np.linalg.norm(
+        (first_starts + s[:, None] * first) - (second_starts + t[:, None] * second), axis=1
+    )
+    fallback = np.minimum(
+        _point_segment_distance_batch(first_starts, second_starts, second_ends),
+        _point_segment_distance_batch(first_ends, second_starts, second_ends),
+    )
+    return np.where(degenerate, fallback, general)
+
+
+_TRIANGLE_EDGES = ((0, 1), (1, 2), (2, 0))
+
+
+def _triangle_distance_batch(first: np.ndarray, second: np.ndarray) -> np.ndarray:
+    """Batched equivalent of `_triangle_distance`; identical 6+9 sub-distances, N pairs at once."""
+    distances = [_point_triangle_distance_batch(first[:, index], second) for index in range(3)]
+    distances += [_point_triangle_distance_batch(second[:, index], first) for index in range(3)]
+    for first_index, first_next in _TRIANGLE_EDGES:
+        for second_index, second_next in _TRIANGLE_EDGES:
+            distances.append(
+                _segment_segment_distance_batch(
+                    first[:, first_index],
+                    first[:, first_next],
+                    second[:, second_index],
+                    second[:, second_next],
+                )
+            )
+    return np.min(np.stack(distances, axis=1), axis=1)
+
+
+def _segment_triangle_intersects_batch(
+    starts: np.ndarray, ends: np.ndarray, triangles: np.ndarray, tolerance: float
+) -> np.ndarray:
+    """Batched equivalent of `_segment_triangle_intersects`; identical algebra, N pairs at once."""
+    direction = ends - starts
+    edge_a = triangles[:, 1] - triangles[:, 0]
+    edge_b = triangles[:, 2] - triangles[:, 0]
+    cross = np.cross(direction, edge_b)
+    determinant = _dot_rows(edge_a, cross)
+    near_parallel = np.abs(determinant) <= tolerance
+    safe_determinant = np.where(near_parallel, 1.0, determinant)
+    inverse = 1.0 / safe_determinant
+    offset = starts - triangles[:, 0]
+    u = inverse * _dot_rows(offset, cross)
+    direction_cross = np.cross(offset, edge_a)
+    v = inverse * _dot_rows(direction, direction_cross)
+    distance = inverse * _dot_rows(edge_b, direction_cross)
+    valid = (
+        (u >= -tolerance)
+        & (u <= 1.0 + tolerance)
+        & (v >= -tolerance)
+        & (u + v <= 1.0 + tolerance)
+        & (distance >= -tolerance)
+        & (distance <= 1.0 + tolerance)
+    )
+    parallel_hit = (
+        np.minimum(
+            _point_triangle_distance_batch(starts, triangles),
+            _point_triangle_distance_batch(ends, triangles),
+        )
+        <= tolerance
+    )
+    return np.where(near_parallel, parallel_hit, valid)
+
+
+def _triangles_intersect_batch(
+    first: np.ndarray, second: np.ndarray, tolerance: float
+) -> np.ndarray:
+    """Batched equivalent of `_triangles_intersect`; identical edge/fallback checks, N at once."""
+    intersects = np.zeros(len(first), dtype=bool)
+    for start_index, end_index in _TRIANGLE_EDGES:
+        intersects |= _segment_triangle_intersects_batch(
+            first[:, start_index], first[:, end_index], second, tolerance
+        )
+    for start_index, end_index in _TRIANGLE_EDGES:
+        intersects |= _segment_triangle_intersects_batch(
+            second[:, start_index], second[:, end_index], first, tolerance
+        )
+    intersects |= _triangle_distance_batch(first, second) <= tolerance
+    return intersects
+
+
 def _mesh_pair_metrics(
     first: trimesh.Trimesh,
     second: trimesh.Trimesh,
     broadphase_tolerance: float,
     intersection_tolerance: float,
 ) -> tuple[float, bool, float]:
+    """Exact narrow-phase distance/intersection, restricted to rtree-filtered candidate pairs.
+
+    Candidate generation uses a per-triangle rtree broad-phase (superset, then re-confirmed with
+    the same `_aabb_distance` gate the original full cross-product scan used) instead of a full
+    cross-product scan. Narrow-phase math is the same `_triangle_distance`/`_triangles_intersect`
+    algebra, evaluated in numpy-vectorized batches instead of one Python call per pair; the
+    scalar functions above remain the semantic reference and are covered by equivalence tests.
+    """
     first_triangles = np.asarray(first.triangles)
     second_triangles = np.asarray(second.triangles)
-    minimum = float("inf")
-    intersects = False
-    for first_triangle in first_triangles:
+    tolerance = max(broadphase_tolerance, 0.0)
+    second_tree = second.triangles_tree
+    first_indices: list[int] = []
+    second_indices: list[int] = []
+    for first_index, first_triangle in enumerate(first_triangles):
         first_bounds = np.stack((first_triangle.min(axis=0), first_triangle.max(axis=0)))
-        for second_triangle in second_triangles:
+        query_bounds = (
+            float(first_bounds[0, 0] - tolerance),
+            float(first_bounds[0, 1] - tolerance),
+            float(first_bounds[0, 2] - tolerance),
+            float(first_bounds[1, 0] + tolerance),
+            float(first_bounds[1, 1] + tolerance),
+            float(first_bounds[1, 2] + tolerance),
+        )
+        for second_index in second_tree.intersection(query_bounds):
+            second_triangle = second_triangles[second_index]
             second_bounds = np.stack((second_triangle.min(axis=0), second_triangle.max(axis=0)))
-            if _aabb_distance(first_bounds, second_bounds) > max(broadphase_tolerance, 0.0):
+            if _aabb_distance(first_bounds, second_bounds) > tolerance:
                 continue
-            distance = _triangle_distance(first_triangle, second_triangle)
-            minimum = min(minimum, distance)
-            if _triangles_intersect(first_triangle, second_triangle, intersection_tolerance):
-                intersects = True
+            first_indices.append(first_index)
+            second_indices.append(second_index)
+    if not first_indices:
+        return float("inf"), False, 0.0
+    first_batch = first_triangles[np.asarray(first_indices)]
+    second_batch = second_triangles[np.asarray(second_indices)]
+    distances = _triangle_distance_batch(first_batch, second_batch)
+    intersect_flags = _triangles_intersect_batch(first_batch, second_batch, intersection_tolerance)
+    minimum = float(np.min(distances))
+    intersects = bool(np.any(intersect_flags))
     depth = 0.0
     if intersects:
         overlap_lower = np.maximum(first.bounds[0], second.bounds[0])
@@ -241,11 +424,22 @@ class GeometricValidationEngine:
         staging: StagingResult,
         configuration: GeometricValidationConfiguration,
     ) -> TreatmentValidationReport:
+        started = perf_counter()
         stage_results = tuple(
             self._validate_stage(stage, staging.provenance, configuration)
             for stage in staging.stages
         )
         status = _overall_status(stage.status for stage in stage_results)
+        logger.info(
+            "GEOMETRIC_VALIDATION_STAGES_COMPLETED plan_id=%s duration_ms=%.1f stages=%d "
+            "proximity=%d collisions=%d contacts=%d",
+            staging.plan_id,
+            (perf_counter() - started) * 1000,
+            len(stage_results),
+            sum(len(stage.proximity_results) for stage in stage_results),
+            sum(len(stage.collision_results) for stage in stage_results),
+            sum(len(stage.contact_results) for stage in stage_results),
+        )
         payload = json.dumps(
             {
                 "plan_id": staging.plan_id,
@@ -289,6 +483,7 @@ class GeometricValidationEngine:
         return tuple(findings)
 
     def _validate_stage(self, stage, provenance, configuration):
+        started = perf_counter()
         ordered_states = tuple(sorted(stage.tooth_states, key=_state_sort_key))
         meshes = {state.tooth_number: _mesh_for_state(state) for state in ordered_states}
         errors = tuple(
@@ -402,6 +597,17 @@ class GeometricValidationEngine:
             ValidationStatus.INVALID
             if errors
             else _overall_status(item.status for item in (*proximity, *collisions, *contacts))
+        )
+        logger.info(
+            "GEOMETRIC_VALIDATION_STAGE_COMPLETED stage_index=%d duration_ms=%.1f "
+            "pairs_evaluated=%d proximity_warnings=%d collisions=%d contacts=%d status=%s",
+            stage.stage_index,
+            (perf_counter() - started) * 1000,
+            len(proximity),
+            sum(1 for item in proximity if item.status is ValidationStatus.WARNING),
+            sum(1 for item in collisions if item.intersects),
+            sum(1 for item in contacts if item.is_contact),
+            status.value,
         )
         return StageValidationResult(
             stage.stage_index,
