@@ -154,8 +154,13 @@ class AdvancedPlanningIntelligenceEngine:
         validation: TreatmentValidationReport,
         *,
         staging_configuration: StagingConfiguration | None = None,
+        generate_alternatives: bool = True,
     ) -> AdvancedPlanningIntelligenceResult:
-        """Propose alternatives; every candidate is staged and geometrically validated."""
+        """Propose alternatives; every candidate is staged and geometrically validated.
+
+        When ``generate_alternatives`` is False, only the active baseline is wrapped
+        (no extra restage/validate). Used on the hot compose path for large real cases.
+        """
         if proposal.setup is None or not staging.stages:
             report = PlanningIntelligenceReport(
                 landmark_assisted_target_setup=IntelligenceCapabilityStatus.UNAVAILABLE,
@@ -205,6 +210,95 @@ class AdvancedPlanningIntelligenceEngine:
             )
         )
 
+        if generate_alternatives:
+            candidates.extend(
+                self._build_assisted_candidates(
+                    proposal,
+                    base_config,
+                    landmarks_ok=landmarks_ok,
+                    arch_form_ok=arch_form_ok,
+                )
+            )
+
+        notes = [
+            "AI proposes. Deterministic geometry validates. Doctor decides.",
+            "Research models STTAlign/TADPM/3DTeethSAM remain Unavailable.",
+            "No fabricated confidence or clinical claims.",
+        ]
+        if not generate_alternatives:
+            notes.append(
+                "Assisted alternatives not expanded on this path; request planning "
+                "intelligence to generate validated candidates."
+            )
+        if not limits_configured:
+            notes.append(
+                "Constrained 6-DOF trajectories unavailable: no movement limits configured."
+            )
+        notes.append("Occlusion-aware planning unavailable: no bite/registration evidence.")
+
+        alternatives_status = (
+            IntelligenceCapabilityStatus.COMPUTED
+            if generate_alternatives and len(candidates) > 1
+            else (
+                IntelligenceCapabilityStatus.BOUNDARY_ONLY
+                if not generate_alternatives
+                else IntelligenceCapabilityStatus.COMPUTED
+            )
+        )
+
+        report = PlanningIntelligenceReport(
+            landmark_assisted_target_setup=(
+                IntelligenceCapabilityStatus.COMPUTED
+                if landmarks_ok and generate_alternatives
+                else (
+                    IntelligenceCapabilityStatus.BOUNDARY_ONLY
+                    if landmarks_ok
+                    else IntelligenceCapabilityStatus.UNAVAILABLE
+                )
+            ),
+            arch_form_aware_planning=(
+                IntelligenceCapabilityStatus.COMPUTED
+                if arch_form_ok and generate_alternatives
+                else (
+                    IntelligenceCapabilityStatus.BOUNDARY_ONLY
+                    if arch_form_ok
+                    else IntelligenceCapabilityStatus.UNAVAILABLE
+                )
+            ),
+            occlusion_aware_planning=IntelligenceCapabilityStatus.UNAVAILABLE,
+            collision_aware_candidate_generation=(
+                IntelligenceCapabilityStatus.COMPUTED
+                if generate_alternatives
+                else IntelligenceCapabilityStatus.BOUNDARY_ONLY
+            ),
+            constrained_six_dof_trajectories=(
+                IntelligenceCapabilityStatus.COMPUTED
+                if limits_configured
+                else IntelligenceCapabilityStatus.UNAVAILABLE
+            ),
+            staging_proposals=(
+                IntelligenceCapabilityStatus.COMPUTED
+                if generate_alternatives
+                else IntelligenceCapabilityStatus.BOUNDARY_ONLY
+            ),
+            alternative_setups=alternatives_status,
+            alternatives=tuple(item.summary for item in candidates),
+            research_adapters=research_adapter_evaluations(),
+            notes=tuple(notes),
+        )
+        return AdvancedPlanningIntelligenceResult(
+            report=report, candidates=tuple(candidates)
+        )
+
+    def _build_assisted_candidates(
+        self,
+        proposal: TreatmentPlanProposal,
+        base_config: StagingConfiguration,
+        *,
+        landmarks_ok: bool,
+        arch_form_ok: bool,
+    ) -> list[IntelligenceCandidate]:
+        candidates: list[IntelligenceCandidate] = []
         if landmarks_ok:
             landmark_proposal = self._rebuild_scaled(proposal, 1.0, tag="landmark")
             landmark_staging = self._stager.generate(landmark_proposal, base_config)
@@ -283,14 +377,14 @@ class AdvancedPlanningIntelligenceEngine:
                 strategy="staging_micro",
                 label="Micro staging proposal",
                 model_name=ENGINE_NAME,
-                limitations=(
-                    "Staging density heuristic only; not clinical timing.",
-                ),
+                limitations=("Staging density heuristic only; not clinical timing.",),
                 is_active=False,
             )
         )
 
-        macro_config = StagingConfiguration(stage_count=max(2, min(base_config.stage_count, 3)), mode="macro")
+        macro_config = StagingConfiguration(
+            stage_count=max(2, min(base_config.stage_count, 3)), mode="macro"
+        )
         macro_staging = self._stager.generate(proposal, macro_config)
         macro_validation = self._validator.validate(macro_staging, self._validation_config)
         candidates.append(
@@ -301,52 +395,11 @@ class AdvancedPlanningIntelligenceEngine:
                 strategy="staging_macro",
                 label="Macro staging proposal",
                 model_name=ENGINE_NAME,
-                limitations=(
-                    "Staging density heuristic only; not clinical timing.",
-                ),
+                limitations=("Staging density heuristic only; not clinical timing.",),
                 is_active=False,
             )
         )
-
-        # Occlusion-aware and constrained 6-DOF stay unavailable without evidence/config.
-        notes = [
-            "AI proposes. Deterministic geometry validates. Doctor decides.",
-            "Research models STTAlign/TADPM/3DTeethSAM remain Unavailable.",
-            "No fabricated confidence or clinical claims.",
-        ]
-        if not limits_configured:
-            notes.append(
-                "Constrained 6-DOF trajectories unavailable: no movement limits configured."
-            )
-        notes.append("Occlusion-aware planning unavailable: no bite/registration evidence.")
-
-        report = PlanningIntelligenceReport(
-            landmark_assisted_target_setup=(
-                IntelligenceCapabilityStatus.COMPUTED
-                if landmarks_ok
-                else IntelligenceCapabilityStatus.UNAVAILABLE
-            ),
-            arch_form_aware_planning=(
-                IntelligenceCapabilityStatus.COMPUTED
-                if arch_form_ok
-                else IntelligenceCapabilityStatus.UNAVAILABLE
-            ),
-            occlusion_aware_planning=IntelligenceCapabilityStatus.UNAVAILABLE,
-            collision_aware_candidate_generation=IntelligenceCapabilityStatus.COMPUTED,
-            constrained_six_dof_trajectories=(
-                IntelligenceCapabilityStatus.COMPUTED
-                if limits_configured
-                else IntelligenceCapabilityStatus.UNAVAILABLE
-            ),
-            staging_proposals=IntelligenceCapabilityStatus.COMPUTED,
-            alternative_setups=IntelligenceCapabilityStatus.COMPUTED,
-            alternatives=tuple(item.summary for item in candidates),
-            research_adapters=research_adapter_evaluations(),
-            notes=tuple(notes),
-        )
-        return AdvancedPlanningIntelligenceResult(
-            report=report, candidates=tuple(candidates)
-        )
+        return candidates
 
     def _rebuild_scaled(
         self,

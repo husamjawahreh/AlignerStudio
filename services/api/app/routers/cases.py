@@ -449,7 +449,8 @@ def select_setup_alternative(case_id: str, body: SetupAlternativeRequest) -> dic
 @router.get("/{case_id}/treatment/planning-intelligence")
 def get_planning_intelligence(case_id: str) -> dict:
     try:
-        bundle = review_bundle(treatment_sessions.get(case_id))
+        session = treatment_sessions.ensure_planning_intelligence(case_id)
+        bundle = review_bundle(session)
         payload = bundle.get("planningIntelligence")
         if payload is None:
             raise TreatmentSessionError("Planning intelligence unavailable for this case")

@@ -236,7 +236,7 @@ class TreatmentSessionStore:
         from domain.treatment_plan.intelligence import DecisionState, SetupAlternativeSummary
         from engines.planning.intelligence import IntelligenceCandidate
 
-        session = self.get(case_id)
+        session = self.ensure_planning_intelligence(case_id)
         if session.intelligence is None or not session.intelligence.candidates:
             raise TreatmentSessionError("No setup alternatives are available for this case")
         match = next(
@@ -299,12 +299,27 @@ class TreatmentSessionStore:
         self._sessions[case_id] = session
         return session
 
-    def _attach_intelligence(self, session: TreatmentSession) -> TreatmentSession:
+    def ensure_planning_intelligence(self, case_id: str) -> TreatmentSession:
+        """Expand assisted alternatives (validated) when only a baseline shell exists."""
+        session = self.get(case_id)
+        if session.intelligence is not None and len(session.intelligence.candidates) > 1:
+            return session
+        session = self._attach_intelligence(session, generate_alternatives=True)
+        self._sessions[case_id] = session
+        return session
+
+    def _attach_intelligence(
+        self, session: TreatmentSession, *, generate_alternatives: bool | None = None
+    ) -> TreatmentSession:
+        if generate_alternatives is None:
+            # Keep real-case compose fast: multi-candidate validation is on-demand.
+            generate_alternatives = session.source_kind != "validated_real_case"
         intelligence = self._intelligence.generate(
             session.proposal,
             session.staging,
             session.validation,
             staging_configuration=self._staging_configuration(),
+            generate_alternatives=generate_alternatives,
         )
         return dataclass_replace(session, intelligence=intelligence)
 
@@ -339,7 +354,6 @@ class TreatmentSessionStore:
             validation.status.value,
         )
         emit(88, "Validating plan")
-        emit(90, "Generating assisted planning candidates")
         session = TreatmentSession(
             proposal,
             staging,

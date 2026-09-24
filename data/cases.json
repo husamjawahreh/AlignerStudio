@@ -1,0 +1,239 @@
+[
+  {
+    "id": "fe21e642-b370-49d9-ae66-85d805a423dd",
+    "patient_reference": "p0-4-clean",
+    "status": "mesh_uploaded",
+    "created_at": "2026-09-24T16:38:18.574021+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/fe21e642-b370-49d9-ae66-85d805a423dd-upper-a90c6aa5a19c4ac6b5d89d6d056fbd9e.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T16:38:18.681901+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/fe21e642-b370-49d9-ae66-85d805a423dd-lower-6665a04e851545dca491f35116258b1a.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T16:38:18.777361+00:00"
+      }
+    ],
+    "processing_status": null
+  },
+  {
+    "id": "2b5b0ac3-be49-494a-9bad-989d5aeffb3b",
+    "patient_reference": "Test ",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T16:53:04.836758+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/2b5b0ac3-be49-494a-9bad-989d5aeffb3b-upper-010c7ee355f0493880cbfec647a99e82.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T16:53:09.128198+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/2b5b0ac3-be49-494a-9bad-989d5aeffb3b-lower-dbe5fb69456d46d89583f13d2bec4d21.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T16:53:11.821684+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "ceb9e90c-4909-4fc7-b552-629892db29ce",
+      "case_id": "2b5b0ac3-be49-494a-9bad-989d5aeffb3b",
+      "overall_progress": 100,
+      "current_stage": "FINALIZING",
+      "stage_status": "COMPLETED",
+      "stage_progress": 100,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "pending_stages": [],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Case ready",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T16:53:18.163009+00:00",
+      "updated_at": "2026-09-24T17:12:42.049350+00:00",
+      "elapsed_seconds": 1163,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "COMPLETED",
+      "completed_at": "2026-09-24T17:12:42.049353+00:00"
+    }
+  },
+  {
+    "id": "ab6d01d2-e045-4ae1-a2cb-d3a46d2452f4",
+    "patient_reference": "test P0",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T20:20:35.536178+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/ab6d01d2-e045-4ae1-a2cb-d3a46d2452f4-upper-273d0d27fa8346b4af7491c868d4687b.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T20:20:39.552922+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/ab6d01d2-e045-4ae1-a2cb-d3a46d2452f4-lower-ff55ddfaa27446b7bb6c20aecb995852.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T20:20:50.169075+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "7f794dcf-7049-4b83-8239-7bae2b49ad05",
+      "case_id": "ab6d01d2-e045-4ae1-a2cb-d3a46d2452f4",
+      "overall_progress": 100,
+      "current_stage": "FINALIZING",
+      "stage_status": "COMPLETED",
+      "stage_progress": 100,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "pending_stages": [],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Case ready",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T20:20:50.825282+00:00",
+      "updated_at": "2026-09-24T20:22:53.495946+00:00",
+      "elapsed_seconds": 122,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "COMPLETED",
+      "completed_at": "2026-09-24T20:22:53.495950+00:00"
+    }
+  },
+  {
+    "id": "ceae499d-07fb-49a9-9277-1477a1817c96",
+    "patient_reference": "Test P0",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T21:02:24.825990+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/ceae499d-07fb-49a9-9277-1477a1817c96-upper-b276b67d7b9841228e0f5fe7eae846ea.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T21:02:28.312439+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/ceae499d-07fb-49a9-9277-1477a1817c96-lower-af8cdf578dff4097be57a98da77f1c13.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T21:02:31.396786+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "cc802cda-6881-40d2-836c-705712254e81",
+      "case_id": "ceae499d-07fb-49a9-9277-1477a1817c96",
+      "overall_progress": 100,
+      "current_stage": "FINALIZING",
+      "stage_status": "COMPLETED",
+      "stage_progress": 100,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "pending_stages": [],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Case ready",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T21:02:35.466507+00:00",
+      "updated_at": "2026-09-24T21:04:36.097736+00:00",
+      "elapsed_seconds": 120,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "COMPLETED",
+      "completed_at": "2026-09-24T21:04:36.097739+00:00"
+    }
+  },
+  {
+    "id": "a6ceb055-e5ea-4234-b1c5-b3d01ecec3fd",
+    "patient_reference": "",
+    "status": "created",
+    "created_at": "2026-09-24T23:13:06.747389+00:00",
+    "meshes": [],
+    "processing_status": null
+  },
+  {
+    "id": "3f92e3e9-0399-4777-953a-dc6f6eac9da2",
+    "patient_reference": "",
+    "status": "created",
+    "created_at": "2026-09-24T23:13:11.010860+00:00",
+    "meshes": [],
+    "processing_status": null
+  },
+  {
+    "id": "e61b3ed1-ca25-4cf2-8221-a1efcd7d1a31",
+    "patient_reference": "",
+    "status": "created",
+    "created_at": "2026-09-24T23:13:18.642830+00:00",
+    "meshes": [],
+    "processing_status": null
+  },
+  {
+    "id": "e9b0701f-01bd-42c4-b864-fd7342da7c7e",
+    "patient_reference": "",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T23:13:20.187037+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/e9b0701f-01bd-42c4-b864-fd7342da7c7e-upper-e5c7ee8d2e2c46d09d285e793d20eb1d.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T23:13:34.730055+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/e9b0701f-01bd-42c4-b864-fd7342da7c7e-lower-9ab3fe489ec24d5ba8e2a49ff6f12985.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T23:13:37.503720+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "714a7fed-bb27-4c46-bd04-a6a104e36138",
+      "case_id": "e9b0701f-01bd-42c4-b864-fd7342da7c7e",
+      "overall_progress": 100,
+      "current_stage": "FINALIZING",
+      "stage_status": "COMPLETED",
+      "stage_progress": 100,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "pending_stages": [],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Case ready",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T23:13:42.777794+00:00",
+      "updated_at": "2026-09-24T23:15:59.937170+00:00",
+      "elapsed_seconds": 137,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "COMPLETED",
+      "completed_at": "2026-09-24T23:15:59.937174+00:00"
+    }
+  }
+]

@@ -126,11 +126,12 @@ def test_api_planning_intelligence_and_doctor_accept_alternative() -> None:
     assert demo.status_code == 200
     case_id = demo.json()["case"]["id"]
     bundle = demo.json()["review_bundle"]
+    # Demo expands assisted candidates on compose (not a validated_real_case path).
     intelligence = bundle["planningIntelligence"]
     assert intelligence["rule"].startswith("AI proposes")
     assert intelligence["occlusionAwarePlanning"] == "unavailable"
     assert intelligence["collisionAwareCandidateGeneration"] == "computed"
-    assert intelligence["alternatives"]
+    assert len(intelligence["alternatives"]) > 1
     assert all(alt["contract"]["confidence"] is None for alt in intelligence["alternatives"])
     assert all(
         adapter["status"] == "unavailable" for adapter in intelligence["researchAdapters"]
@@ -155,7 +156,6 @@ def test_api_planning_intelligence_and_doctor_accept_alternative() -> None:
     assert active["alternativeId"] == candidate["alternativeId"]
     assert active["contract"]["decisionState"] == "accepted_by_doctor"
     assert body["planSummary"]["activeAlternativeStrategy"] == candidate["strategy"]
-    # Reproducible: selecting again with same id keeps identity.
     again = client.post(
         f"/cases/{case_id}/treatment/setup-alternatives/select",
         json={"alternative_id": candidate["alternativeId"]},
