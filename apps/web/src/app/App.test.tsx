@@ -10,10 +10,10 @@ vi.mock("../api/client", async (importOriginal) => {
 });
 
 vi.mock("../viewer/StageViewer", () => ({
-  StageViewer: ({ stage }: { stage: { teeth: { fdiNumber: number }[] } }) => (
+  StageViewer: ({ stage }: { stage: { teeth: { fdiNumber: number | null; toothRef?: string | null }[] } }) => (
     <div aria-label="Stage viewer">
       {stage.teeth.map((tooth) => (
-        <button key={tooth.fdiNumber} aria-label={`FDI ${tooth.fdiNumber}`}>
+        <button key={tooth.toothRef ?? tooth.fdiNumber} aria-label={`FDI ${tooth.fdiNumber}`}>
           FDI {tooth.fdiNumber}
         </button>
       ))}
@@ -250,5 +250,93 @@ describe("App engineering demo", () => {
     expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Duplicate FDI: 11");
     expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Missing FDI: 12");
     expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Validated real-case fixture");
+  });
+
+  it("generates a visibly fixture-labeled semantic-only plan from the validated artifact", async () => {
+    const createdCase = {
+      id: "semantic-only-case",
+      patient_reference: "semantic-only",
+      status: "created" as const,
+      meshes: [],
+      created_at: "2026-09-20T00:00:00Z",
+    };
+    vi.spyOn(api, "createCase").mockResolvedValue(createdCase);
+    vi.spyOn(api, "uploadMesh").mockImplementation(async (_caseId, arch) => ({
+      ...createdCase,
+      status: "mesh_validated" as const,
+      meshes: [{
+        arch,
+        file_path: `/tmp/${arch}.stl`,
+        original_filename: `${arch}.stl`,
+        uploaded_at: "2026-09-20T00:00:00Z",
+      }],
+    }));
+    vi.spyOn(api, "validateMesh").mockResolvedValue({
+      is_valid: true,
+      triangle_count: 1000,
+      is_watertight: true,
+      errors: [],
+    });
+    vi.spyOn(api, "processPipeline").mockImplementation(async (_caseId, arch) => ({
+      state: "identification_incomplete",
+      source_kind: "validated_real_case",
+      segmentation_runtime_ms: 12,
+      total_runtime_ms: 20,
+      tooth_instance_count: 1,
+      identification_confidence: null,
+      identified_teeth: 0,
+      uncertain_teeth: 1,
+      unidentified_teeth: 1,
+      validation_findings: [],
+      failures: [],
+      arch_analysis_available: false,
+      notes: ["semantic-only validated artifact"],
+      provenance: "experimental",
+      fixture: true,
+      experimental: true,
+      tooth_instances: [{
+        instance_id: arch === "upper" ? 0 : 1,
+        fdi_number: null,
+        tooth_ref: `${arch}:instance:0`,
+        arch,
+        vertices: [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+        faces: [[0, 1, 2]],
+        centroid: [0, 0, 0],
+        confidence: 0,
+        provenance: "experimental",
+        fixture: true,
+        experimental: true,
+      }],
+    }));
+    vi.spyOn(api, "generatePlan").mockResolvedValue({
+      id: "semantic-only-plan",
+      case_id: createdCase.id,
+      stages: [],
+      provenance: "generated",
+      fixture: true,
+      notes: "Semantic-only experimental treatment proposal created.",
+      created_at: createdCase.created_at,
+    });
+    vi.spyOn(api, "getTreatment").mockResolvedValue({
+      ...engineeringFixtureBundle,
+      fixture: true,
+      realDataAvailable: true,
+    });
+
+    render(<App />);
+    await act(async () => screen.getByRole("button", { name: "Create case" }).click());
+    fireEvent.change(screen.getByLabelText("Upper arch STL"), {
+      target: { files: [new File(["upper"], "upper.stl", { type: "model/stl" })] },
+    });
+    fireEvent.change(screen.getByLabelText("Lower arch STL"), {
+      target: { files: [new File(["lower"], "lower.stl", { type: "model/stl" })] },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate plan" })).toBeEnabled());
+
+    await act(async () => screen.getByRole("button", { name: "Generate plan" }).click());
+
+    await waitFor(() => expect(api.generatePlan).toHaveBeenCalledWith(createdCase.id));
+    expect(api.getTreatment).toHaveBeenCalledWith(createdCase.id);
+    expect(screen.getByLabelText("Stage viewer")).toBeInTheDocument();
   });
 });

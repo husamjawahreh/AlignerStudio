@@ -10,9 +10,25 @@ interface InspectionPanelProps {
   onApply?: () => void;
   onCancel?: () => void;
   onReset?: () => void;
+  onToggleLocked?: () => void;
+  onToggleExcluded?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-const movementRows: readonly [keyof ReviewToothMesh["movement"], string, string][] = [
+type NumericMovementKey =
+  | "translationX"
+  | "translationY"
+  | "translationZ"
+  | "rotation"
+  | "tip"
+  | "torque"
+  | "intrusion"
+  | "extrusion";
+
+const movementRows: readonly [NumericMovementKey, string, string][] = [
   ["translationX", "Translation X", "mm"],
   ["translationY", "Translation Y", "mm"],
   ["translationZ", "Translation Z", "mm"],
@@ -32,6 +48,12 @@ export function InspectionPanel({
   onApply,
   onCancel,
   onReset,
+  onToggleLocked,
+  onToggleExcluded,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }: InspectionPanelProps): JSX.Element {
   if (!tooth) {
     return (
@@ -98,6 +120,14 @@ export function InspectionPanel({
           </div>
         ))}
       </div>
+      <div className="inspection-status">
+        <span>Stage rate</span>
+        <strong>{tooth.rate ? formatMovement(tooth.rate) : "Unavailable"}</strong>
+        <span>Accumulated</span>
+        <strong>{tooth.accumulated ? formatMovement(tooth.accumulated) : formatMovement(tooth.movement)}</strong>
+        <span>Constraints</span>
+        <strong>{tooth.limitStatus?.replaceAll("_", " ") ?? "not configured"}</strong>
+      </div>
       {draftMovement && onApply && onCancel && onReset ? (
         <>
           <div className={`edit-state ${isDirty ? "is-dirty" : ""}`}>
@@ -113,6 +143,16 @@ export function InspectionPanel({
             <button className="primary-button" onClick={onApply} disabled={!isDirty}>
               Apply
             </button>
+          </div>
+          <div className="edit-actions">
+            <button className="secondary-button" onClick={onToggleLocked}>
+              {draftMovement.locked ? "Unlock" : "Lock"}
+            </button>
+            <button className="secondary-button" onClick={onToggleExcluded}>
+              {draftMovement.excluded ? "Include" : "Exclude"}
+            </button>
+            <button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label="Undo doctor edit">Undo</button>
+            <button className="icon-button" onClick={onRedo} disabled={!canRedo} aria-label="Redo doctor edit">Redo</button>
           </div>
           <div className="readonly-note">
             Doctor editing is explicit and read-only until Apply. No clinical correction is
@@ -131,4 +171,18 @@ export function InspectionPanel({
       )}
     </aside>
   );
+}
+
+function formatMovement(movement: MovementSummary): string {
+  const total = [
+    movement.translationX,
+    movement.translationY,
+    movement.translationZ,
+    movement.rotation,
+    movement.tip,
+    movement.torque,
+    movement.intrusion,
+    movement.extrusion,
+  ].reduce((sum, value) => sum + Math.abs(value), 0);
+  return total.toFixed(2);
 }

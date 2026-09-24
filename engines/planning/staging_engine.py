@@ -120,6 +120,9 @@ class TreatmentStagingEngine:
                     for vertex_index in range(len(source.source_vertices))
                 )
             movement = self._scale_movement(target.movement, progress)
+            previous_progress = max(0.0, (stage_index - 1) / denominator)
+            previous_movement = self._scale_movement(target.movement, previous_progress)
+            rate = self._difference(movement, previous_movement)
             states.append(
                 StageToothState(
                     tooth_number=target.tooth_number,
@@ -138,6 +141,9 @@ class TreatmentStagingEngine:
                         target.tooth_number or target.tooth_ref or tooth_key,
                         movement,
                         progress,
+                        rate=rate,
+                        accumulated=movement,
+                        limit_status=self._limit_status(rate, configuration.movement_limits),
                     ),
                     provenance=target.provenance,
                     fixture=target.fixture,
@@ -160,6 +166,18 @@ class TreatmentStagingEngine:
             fixture=proposal.fixture,
             stage_hash=stage_hash,
             notes="Deterministic geometric stage; no clinical approval implied.",
+            label=(
+                "Stage 0 · Original"
+                if stage_index == 0
+                else "Final · Target"
+                if stage_index == denominator
+                else f"Stage {stage_index} · {configuration.mode.title()}"
+            ),
+            stage_type=("initial" if stage_index == 0 else "final" if stage_index == denominator else configuration.mode),
+            metadata=(
+                ("mode", configuration.mode),
+                ("stage_count", str(configuration.stage_count)),
+            ),
         )
 
     @staticmethod
@@ -177,7 +195,39 @@ class TreatmentStagingEngine:
                 "extrusion",
             )
         }
+        values["locked"] = movement.locked
+        values["excluded"] = movement.excluded
         return ToothMovement(**values)
+
+    @staticmethod
+    def _difference(current: ToothMovement, previous: ToothMovement) -> ToothMovement:
+        return ToothMovement(
+            translation_x=current.translation_x - previous.translation_x,
+            translation_y=current.translation_y - previous.translation_y,
+            translation_z=current.translation_z - previous.translation_z,
+            rotation=current.rotation - previous.rotation,
+            tip=current.tip - previous.tip,
+            torque=current.torque - previous.torque,
+            intrusion=current.intrusion - previous.intrusion,
+            extrusion=current.extrusion - previous.extrusion,
+            locked=current.locked,
+            excluded=current.excluded,
+        )
+
+    @staticmethod
+    def _limit_status(movement: ToothMovement, limits: ToothMovement | None) -> str:
+        if limits is None:
+            return "not_configured"
+        fields = (
+            "translation_x", "translation_y", "translation_z", "rotation",
+            "tip", "torque", "intrusion", "extrusion",
+        )
+        exceeded = any(
+            abs(getattr(movement, field)) > abs(getattr(limits, field))
+            for field in fields
+            if getattr(limits, field) != 0
+        )
+        return "exceeded" if exceeded else "within_configured_limit"
 
     @staticmethod
     def _state_key(state):

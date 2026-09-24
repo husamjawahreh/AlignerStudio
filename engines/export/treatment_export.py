@@ -302,6 +302,8 @@ class TreatmentExportEngine:
             "torque",
             "intrusion",
             "extrusion",
+            "locked",
+            "excluded",
         ]
         writer = csv.DictWriter(output, fieldnames=fields, lineterminator="\n")
         writer.writeheader()

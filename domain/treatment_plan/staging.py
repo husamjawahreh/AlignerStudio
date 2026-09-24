@@ -16,6 +16,9 @@ class StageMovement:
     tooth_number: int | str
     movement: ToothMovement
     progress: float
+    rate: ToothMovement = ToothMovement()
+    accumulated: ToothMovement = ToothMovement()
+    limit_status: str = "not_configured"
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,10 @@ class TreatmentStage:
     fixture: bool
     stage_hash: str
     notes: str = ""
+    label: str = ""
+    stage_type: str = "intermediate"
+    validation_findings: tuple[str, ...] = ()
+    metadata: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -58,6 +65,8 @@ class StagingConfiguration:
     """Explicit staging controls; values are engineering interpolation settings."""
 
     stage_count: int = 2
+    mode: str = "macro"
+    movement_limits: ToothMovement | None = None
     engine_version: str = "phase6-staging-1"
 
     def __post_init__(self) -> None:
@@ -65,6 +74,8 @@ class StagingConfiguration:
             raise ValueError("stage_count must include Stage 0 and a distinct final stage")
         if not self.engine_version.strip():
             raise ValueError("engine_version must not be empty")
+        if self.mode not in {"macro", "micro"}:
+            raise ValueError("mode must be 'macro' or 'micro'")
 
 
 @dataclass(frozen=True)

@@ -17,6 +17,7 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
     ...(bundle.unavailableReason ? [bundle.unavailableReason] : []),
     ...bundle.stages.flatMap((stage) => stage.warnings),
   ];
+  const editCount = bundle.editHistory.length;
 
   return (
     <section className="export-panel" aria-label="Engineering export">
@@ -40,6 +41,14 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
           <span>Proposals</span>
           <strong>{proposalStatuses.length === 0 ? "none" : "review"}</strong>
         </div>
+        <div>
+          <span>Doctor edits</span>
+          <strong>{editCount}</strong>
+        </div>
+      </div>
+      <div className="export-audit-summary">
+        <span>Package contents</span>
+        <small>Original metadata · target setup · stages · validation · IPR · attachments · edit history · provenance</small>
       </div>
       {incomplete && (
         <p className="export-warning">
@@ -56,7 +65,7 @@ export function ExportPanel({ bundle, onExport }: ExportPanelProps): JSX.Element
         Export ZIP package
       </button>
       <p className="muted-copy">
-        Export is an auditable engineering artifact and never indicates clinical approval.
+        Export is an auditable review artifact and never indicates clinical approval.
       </p>
     </section>
   );

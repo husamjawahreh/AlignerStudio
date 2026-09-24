@@ -93,13 +93,13 @@ class TreatmentPlanningEngine:
                 for tooth in identification.teeth
                 if tooth.tooth_ref is not None
             }
-        for tooth_key in sorted(movement_by_tooth, key=str):
-            tooth = identified_by_key.get(tooth_key)
+        for tooth_key in sorted(identified_by_key, key=str):
+            tooth = identified_by_key[tooth_key]
             if tooth is None:
                 raise TreatmentPlanningError(f"Unknown tooth reference: {tooth_key}")
             if tooth.coordinate_system is None:
                 raise TreatmentPlanningError(f"Tooth {tooth_key} has no coordinate system")
-            movement = movement_by_tooth[tooth_key]
+            movement = movement_by_tooth.get(tooth_key, ToothMovement())
             source_vertices = tuple(
                 tuple(float(value) for value in vertex) for vertex in tooth.instance.mesh_vertices
             )

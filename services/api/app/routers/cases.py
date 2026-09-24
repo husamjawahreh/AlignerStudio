@@ -51,6 +51,8 @@ class MovementEditRequest(BaseModel):
     torque: float = 0.0
     intrusion: float = 0.0
     extrusion: float = 0.0
+    locked: bool = False
+    excluded: bool = False
 
 
 def _to_case_response(case: Case) -> CaseResponse:

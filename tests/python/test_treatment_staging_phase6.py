@@ -47,10 +47,8 @@ def test_stage_count_and_deterministic_ordering() -> None:
     assert result.limitations == ()
     assert result.stage_count == 4
     assert [stage.stage_index for stage in result.stages] == [0, 1, 2, 3]
-    assert all(
-        [state.tooth_number for state in stage.tooth_states] == [11, 12, 13]
-        for stage in result.stages
-    )
+    expected_numbers = [state.tooth_number for state in build_proposal().setup.target_states]
+    assert all([state.tooth_number for state in stage.tooth_states] == expected_numbers for stage in result.stages)
 
 
 def test_stage_zero_is_original_and_immutable() -> None:

@@ -33,7 +33,17 @@ def test_deterministic_plan_generation_and_stable_hash() -> None:
     assert first.plan_id == second.plan_id
     assert first.version_id == second.version_id
     assert first.setup is not None
-    assert [state.tooth_number for state in first.setup.target_states] == [11, 12, 13]
+    assert [state.tooth_number for state in first.setup.target_states] == [
+        tooth.identity.number for tooth in sorted(
+            identification.identified, key=lambda item: item.identity.number
+        )
+    ]
+    assert first.setup.target_states[0].movement != ToothMovement()
+    assert all(
+        state.movement == ToothMovement()
+        for state in first.setup.target_states
+        if state.tooth_number not in {11, 12, 13}
+    )
 
 
 def test_movement_transforms_in_tooth_coordinate_frame() -> None:

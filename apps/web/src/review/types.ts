@@ -20,6 +20,8 @@ export interface MovementSummary {
   torque: number;
   intrusion: number;
   extrusion: number;
+  locked?: boolean;
+  excluded?: boolean;
 }
 
 export interface ReviewToothMesh {
@@ -34,6 +36,9 @@ export interface ReviewToothMesh {
   faces: readonly [number, number, number][];
   centroid?: readonly [number, number, number];
   movement: MovementSummary;
+  rate?: MovementSummary;
+  accumulated?: MovementSummary;
+  limitStatus?: "not_configured" | "within_configured_limit" | "exceeded";
   validationStatus: ValidationStatus;
   validationMessage: string;
   provenance: DataProvenance;
@@ -52,6 +57,10 @@ export interface ReviewStage {
   warnings: readonly string[];
   provenance: DataProvenance;
   fixture: boolean;
+  label?: string;
+  type?: "initial" | "intermediate" | "macro" | "micro" | "final";
+  validationFindings?: readonly string[];
+  metadata?: Readonly<Record<string, string>>;
 }
 
 export interface ReviewEditRecord {
@@ -63,6 +72,7 @@ export interface ReviewEditRecord {
   versionId: string;
   provenance: DataProvenance;
   reason: "doctor_edit" | "doctor_reset";
+  source?: "doctor";
 }
 
 export interface ReviewIPRSite {
@@ -75,6 +85,8 @@ export interface ReviewIPRSite {
   status: ProposalStatus;
   warning: string;
   fixture: boolean;
+  stage?: number;
+  amountUnit?: string;
 }
 
 export interface ReviewAttachmentSite {
@@ -86,6 +98,9 @@ export interface ReviewAttachmentSite {
   status: ProposalStatus;
   warning: string;
   fixture: boolean;
+  dimensions?: [number, number, number] | null;
+  stage?: number;
+  generated?: boolean;
 }
 
 export interface ReviewBundle {
@@ -101,4 +116,24 @@ export interface ReviewBundle {
   sourceKind?: string;
   experimental?: boolean;
   planningMode?: "clinical_fdi" | "semantic_only_experimental";
+  planSummary?: {
+    movedToothCount: number;
+    totalMovement: number;
+    notableConflicts: readonly string[];
+    dataGaps: readonly string[];
+    warnings: readonly string[];
+    source: "deterministic planner" | "experimental model" | "doctor edit";
+    doctorReviewRequired: boolean;
+  };
+  validationSummary?: {
+    geometry: "computed" | "unavailable";
+    contacts: "computed" | "unavailable";
+    proximity: "computed" | "unavailable";
+    collisions: "computed" | "unavailable";
+    movementConstraints: "computed" | "unavailable";
+    stageConsistency: "computed" | "unavailable";
+    dataCompleteness: "computed" | "warning" | "unavailable";
+    doctorReview: "required" | "complete";
+    findings: readonly string[];
+  };
 }

@@ -132,6 +132,8 @@ export const api = {
         torque: movement.torque,
         intrusion: movement.intrusion,
         extrusion: movement.extrusion,
+        locked: movement.locked ?? false,
+        excluded: movement.excluded ?? false,
       }),
     });
   },

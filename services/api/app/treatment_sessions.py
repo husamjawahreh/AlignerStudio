@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -95,7 +96,7 @@ class TreatmentSessionStore:
         session = self.get(case_id)
         result = self._editing.recalculate(
             session.proposal,
-            StagingConfiguration(stage_count=3),
+            self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
         session = TreatmentSession(
@@ -117,7 +118,7 @@ class TreatmentSessionStore:
         )
 
     def _compose(self, proposal: TreatmentPlanProposal) -> TreatmentSession:
-        staging = self._stager.generate(proposal, StagingConfiguration(stage_count=3))
+        staging = self._stager.generate(proposal, self._staging_configuration())
         validation = self._validator.validate(
             staging, GeometricValidationConfiguration(1.0, 0.001, 0.0)
         )
@@ -134,6 +135,12 @@ class TreatmentSessionStore:
             experimental=True,
             planning_mode=proposal.planning_mode,
         )
+
+    @staticmethod
+    def _staging_configuration() -> StagingConfiguration:
+        configured_count = int(os.environ.get("ALIGNERSTUDIO_STAGE_COUNT", "3"))
+        mode = os.environ.get("ALIGNERSTUDIO_STAGING_MODE", "macro")
+        return StagingConfiguration(stage_count=max(2, configured_count), mode=mode)
 
 
 def review_bundle(session: TreatmentSession) -> dict[str, Any]:
@@ -153,6 +160,10 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             {
                 "index": stage.stage_index,
                 "stageId": stage.stage_id,
+                "label": stage.label,
+                "type": stage.stage_type,
+                "metadata": dict(stage.metadata),
+                "validationFindings": list(stage.validation_findings),
                 "teeth": [
                     {
                         "fdiNumber": state.tooth_number,
@@ -163,6 +174,9 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                         "vertices": state.vertices,
                         "faces": state.final_target_faces,
                         "movement": _movement(state.movement.movement),
+                        "rate": _movement(state.movement.rate),
+                        "accumulated": _movement(state.movement.accumulated),
+                        "limitStatus": state.movement.limit_status,
                         "validationStatus": tooth_statuses.get(state.tooth_number, "pass"),
                         "validationMessage": tooth_messages.get(
                             state.tooth_number, "No geometric findings."
@@ -177,10 +191,27 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "proximityCount": len(stage_validation.proximity_results),
                 "contactCount": len(stage_validation.contact_results),
                 "warnings": [*stage_validation.warnings, *stage_validation.errors],
+                "validationFindings": [*stage_validation.warnings, *stage_validation.errors],
                 "provenance": stage.provenance.value,
                 "fixture": stage.fixture,
             }
         )
+    movements = [
+        state.movement
+        for state in (session.proposal.setup.target_states if session.proposal.setup else ())
+        if state.movement != ToothMovement()
+    ]
+    total_movement = sum(
+        abs(item.translation_x)
+        + abs(item.translation_y)
+        + abs(item.translation_z)
+        + abs(item.rotation)
+        + abs(item.tip)
+        + abs(item.torque)
+        + abs(item.intrusion)
+        + abs(item.extrusion)
+        for item in movements
+    )
     return {
         "stages": stages,
         "provenance": session.proposal.provenance.value,
@@ -188,6 +219,30 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         "sourceKind": session.source_kind,
         "experimental": session.experimental,
         "planningMode": session.planning_mode,
+        "planSummary": {
+            "movedToothCount": len(movements),
+            "totalMovement": total_movement,
+            "notableConflicts": [
+                warning
+                for warning in session.proposal.warnings
+                if "collision" in warning.lower() or "conflict" in warning.lower()
+            ],
+            "dataGaps": list(session.proposal.limitations),
+            "warnings": list(session.proposal.warnings),
+            "source": "deterministic planner",
+            "doctorReviewRequired": True,
+        },
+        "validationSummary": {
+            "geometry": "computed",
+            "contacts": "computed",
+            "proximity": "computed",
+            "collisions": "computed",
+            "movementConstraints": "unavailable",
+            "stageConsistency": "computed",
+            "dataCompleteness": "warning" if session.proposal.limitations else "computed",
+            "doctorReview": "required",
+            "findings": list(session.validation.warnings) + list(session.validation.errors),
+        },
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
         "editHistory": [
@@ -200,6 +255,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "versionId": item.version_id,
                 "provenance": item.provenance.value,
                 "reason": item.reason,
+                "source": "doctor",
             }
             for item in session.proposal.edit_history
         ],
@@ -211,6 +267,8 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "currentDistance": item.current_measurement.value,
                 "targetDistance": item.target_measurement.value,
                 "proposedAmount": item.proposed_amount,
+                "stage": len(session.staging.stages) - 1 if session.staging.stages else None,
+                "amountUnit": item.current_measurement.unit,
                 "status": item.status.value,
                 "warning": "; ".join(warning.message for warning in item.warnings),
                 "fixture": item.fixture,
@@ -224,6 +282,9 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "attachmentType": item.attachment_type.value,
                 "referencePoint": item.reference_point,
                 "reason": item.reason,
+                "dimensions": item.dimensions,
+                "stage": len(session.staging.stages) - 1 if session.staging.stages else None,
+                "generated": False,
                 "status": item.status.value,
                 "warning": "; ".join(warning.message for warning in item.warnings),
                 "fixture": item.fixture,
@@ -237,7 +298,7 @@ def manifest_header(package: TreatmentExportPackage) -> str:
     return json.dumps(json.loads(package.manifest_path.read_text()), separators=(",", ":"))
 
 
-def _movement(movement: ToothMovement) -> dict[str, float]:
+def _movement(movement: ToothMovement) -> dict[str, float | bool]:
     return {
         "translationX": movement.translation_x,
         "translationY": movement.translation_y,
@@ -247,6 +308,8 @@ def _movement(movement: ToothMovement) -> dict[str, float]:
         "torque": movement.torque,
         "intrusion": movement.intrusion,
         "extrusion": movement.extrusion,
+        "locked": movement.locked,
+        "excluded": movement.excluded,
     }
 
 

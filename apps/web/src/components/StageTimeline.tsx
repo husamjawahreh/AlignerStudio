@@ -24,7 +24,7 @@ export function StageTimeline({
       <div className="timeline-heading">
         <div>
           <span className="eyebrow">Treatment sequence</span>
-          <h2>Stage {selectedIndex}</h2>
+          <h2>{stages[selectedIndex]?.label ?? `Stage ${selectedIndex}`}</h2>
         </div>
         <div className="timeline-actions">
           <button
@@ -70,11 +70,7 @@ export function StageTimeline({
           >
             <span>Stage {stage.index}</span>
             <small>
-              {stage.index === 0
-                ? "Original"
-                : stage.index === stages.length - 1
-                  ? "Target"
-                  : "Review"}
+              {stage.label ?? (stage.index === 0 ? "Original" : stage.index === stages.length - 1 ? "Target" : "Review")}
             </small>
           </button>
         ))}

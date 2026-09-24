@@ -36,6 +36,8 @@ class ToothMovement:
     torque: float = 0.0
     intrusion: float = 0.0
     extrusion: float = 0.0
+    locked: bool = False
+    excluded: bool = False
 
     @property
     def translation(self) -> Vector3:
@@ -55,6 +57,8 @@ class ToothMovement:
             torque=self.torque + other.torque,
             intrusion=self.intrusion + other.intrusion,
             extrusion=self.extrusion + other.extrusion,
+            locked=self.locked or other.locked,
+            excluded=self.excluded or other.excluded,
         )
 
 
