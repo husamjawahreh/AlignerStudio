@@ -1,18 +1,26 @@
+/**
+ * P2 — Professional Clinical-CAD Workflow
+ * Master labels (v2.1): CASE INTAKE → ANALYSIS → TREATMENT SETUP →
+ * STAGING → REFINEMENT → VALIDATION → PRODUCTION
+ */
+
 export type WorkflowStepId =
-  | "case"
+  | "case-intake"
   | "analysis"
-  | "segmentation"
-  | "treatment-plan"
-  | "stage-review"
-  | "tooth-editor"
+  | "treatment-setup"
+  | "staging"
+  | "refinement"
   | "validation"
-  | "export";
+  | "production";
 
 export type WorkflowStepStatus = "current" | "complete" | "blocked" | "ready" | "pending";
 
 export interface WorkflowStep {
   id: WorkflowStepId;
+  /** Display label matching Master Plan terminology. */
   label: string;
+  /** Uppercase plan token for status chrome (e.g. CASE INTAKE). */
+  planToken: string;
   status: WorkflowStepStatus;
   attentionCount?: number;
 }
@@ -23,10 +31,31 @@ export interface WorkflowAction {
   disabled?: boolean;
 }
 
-export interface WorkflowSuggestion {
-  title: string;
-  detail: string;
-  action?: WorkflowAction;
+/** Canonical P2 workflow definitions — labels must match Master Plan v2.1. */
+export const WORKFLOW_DEFINITIONS: readonly {
+  id: WorkflowStepId;
+  label: string;
+  planToken: string;
+}[] = [
+  { id: "case-intake", label: "Case Intake", planToken: "CASE INTAKE" },
+  { id: "analysis", label: "Analysis", planToken: "ANALYSIS" },
+  { id: "treatment-setup", label: "Treatment Setup", planToken: "TREATMENT SETUP" },
+  { id: "staging", label: "Staging", planToken: "STAGING" },
+  { id: "refinement", label: "Refinement", planToken: "REFINEMENT" },
+  { id: "validation", label: "Validation", planToken: "VALIDATION" },
+  { id: "production", label: "Production", planToken: "PRODUCTION" },
+] as const;
+
+export function workflowStepIndex(id: WorkflowStepId): number {
+  return WORKFLOW_DEFINITIONS.findIndex((step) => step.id === id);
+}
+
+export function workflowLabel(id: WorkflowStepId): string {
+  return WORKFLOW_DEFINITIONS.find((step) => step.id === id)?.label ?? id;
+}
+
+export function workflowPlanToken(id: WorkflowStepId): string {
+  return WORKFLOW_DEFINITIONS.find((step) => step.id === id)?.planToken ?? id.toUpperCase();
 }
 
 export function buildWorkflowSteps(input: {
@@ -38,32 +67,124 @@ export function buildWorkflowSteps(input: {
   editCount: number;
   hasValidation: boolean;
 }): WorkflowStep[] {
-  const definitions: Array<[WorkflowStepId, string]> = [
-    ["case", "Case"],
-    ["analysis", "Understand"],
-    ["segmentation", "Segmentation"],
-    ["treatment-plan", "Plan"],
-    ["stage-review", "Review"],
-    ["tooth-editor", "Refine"],
-    ["validation", "Validate"],
-    ["export", "Export"],
-  ];
-  return definitions.map(([id, label]) => ({
+  return WORKFLOW_DEFINITIONS.map(({ id, label, planToken }) => ({
     id,
     label,
-    status: id === input.activeStep
-      ? "current"
-      : id === "case"
-        ? (input.hasCase ? "complete" : "ready")
-        : id === "analysis" || id === "segmentation"
-          ? (input.hasSegmentation ? "complete" : input.bothArchesValid ? "ready" : "blocked")
-          : id === "treatment-plan" || id === "stage-review"
-            ? (input.hasTreatment ? "complete" : input.hasSegmentation ? "ready" : "blocked")
-            : id === "tooth-editor"
-              ? (input.editCount > 0 ? "complete" : input.hasTreatment ? "ready" : "blocked")
-              : id === "validation"
-                ? (input.hasValidation ? "complete" : input.hasTreatment ? "ready" : "blocked")
-                : input.hasValidation ? "ready" : "blocked",
+    planToken,
+    status:
+      id === input.activeStep
+        ? "current"
+        : id === "case-intake"
+          ? input.hasCase
+            ? "complete"
+            : "ready"
+          : id === "analysis"
+            ? input.hasSegmentation
+              ? "complete"
+              : input.bothArchesValid
+                ? "ready"
+                : "blocked"
+            : id === "treatment-setup"
+              ? input.hasTreatment
+                ? "complete"
+                : input.hasSegmentation || input.bothArchesValid
+                  ? "ready"
+                  : "blocked"
+              : id === "staging"
+                ? input.hasTreatment
+                  ? "complete"
+                  : input.hasSegmentation
+                    ? "ready"
+                    : "blocked"
+                : id === "refinement"
+                  ? input.editCount > 0
+                    ? "complete"
+                    : input.hasTreatment
+                      ? "ready"
+                      : "blocked"
+                  : id === "validation"
+                    ? input.hasValidation
+                      ? "complete"
+                      : input.hasTreatment
+                        ? "ready"
+                        : "blocked"
+                    : input.hasTreatment
+                      ? input.hasValidation
+                        ? "complete"
+                        : "ready"
+                      : "blocked",
     attentionCount: id === "validation" && input.hasValidation ? 0 : undefined,
   }));
+}
+
+/** Contextual primary actions shown for the active step (existing capabilities only). */
+export function buildWorkflowActions(input: {
+  activeStep: WorkflowStepId;
+  hasCase: boolean;
+  bothArchesValid: boolean;
+  hasSegmentation: boolean;
+  hasTreatment: boolean;
+  isBusy: boolean;
+}): WorkflowAction[] {
+  switch (input.activeStep) {
+    case "case-intake":
+      return [
+        { label: "New Case", step: "case-intake", disabled: input.isBusy },
+        {
+          label: "Scan Import",
+          step: "case-intake",
+          disabled: !input.hasCase || input.isBusy,
+        },
+      ];
+    case "analysis":
+      return [
+        {
+          label: "Analyze case",
+          step: "analysis",
+          disabled: !input.bothArchesValid || input.isBusy,
+        },
+      ];
+    case "treatment-setup":
+      return [
+        {
+          label: "Review treatment proposal",
+          step: "treatment-setup",
+          disabled: !input.bothArchesValid || input.isBusy,
+        },
+      ];
+    case "staging":
+      return [
+        {
+          label: "Open staging",
+          step: "staging",
+          disabled: !input.hasTreatment,
+        },
+      ];
+    case "refinement":
+      return [
+        {
+          label: "Open refinement",
+          step: "refinement",
+          disabled: !input.hasTreatment,
+        },
+      ];
+    case "validation":
+      return [
+        {
+          label: "Open validation",
+          step: "validation",
+          disabled: !input.hasTreatment,
+        },
+      ];
+    case "production":
+      return [
+        {
+          label: "Export Package",
+          step: "production",
+          disabled: !input.hasTreatment,
+        },
+      ];
+    default:
+      return [];
+  }
 }

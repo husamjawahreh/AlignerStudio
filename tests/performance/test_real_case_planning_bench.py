@@ -144,14 +144,22 @@ def test_real_artifact_full_three_stage_generate_plan_is_practical(monkeypatch) 
     elapsed = time.perf_counter() - started
     print(f"[bench] full 3-stage generate_plan: {elapsed:.2f}s", flush=True)
     for stage in session.validation.stage_results:
+        close_pairs = len(stage.proximity_results)
+        intersecting = sum(1 for item in stage.collision_results if item.intersects)
+        contacts = sum(1 for item in stage.contact_results if item.is_contact)
+        proximity_warnings = sum(
+            1 for item in stage.proximity_results if item.status.value == "warning"
+        )
         print(
-            f"[bench] stage {stage.stage_index}: close_pairs={len(stage.proximity_results)} "
-            f"status={stage.status.value}",
+            f"[bench] stage {stage.stage_index}: close_pairs={close_pairs} "
+            f"intersections={intersecting} proximity_warnings={proximity_warnings} "
+            f"contacts={contacts} status={stage.status.value}",
             flush=True,
         )
         # Real anatomy: ~13 anatomically-adjacent pairs, never 0 and never all 91 (which would
         # mean the tooth_number-keying bug regressed and every tooth is being compared to itself).
-        assert 0 < len(stage.proximity_results) < 91
+        assert 0 < close_pairs < 91
+        assert intersecting == 0
     assert elapsed < 180.0, f"full 3-stage generate_plan regressed to {elapsed:.2f}s"
 
 

@@ -3,6 +3,7 @@ import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
+import { ContextualToothToolbar } from "../components/ContextualToothToolbar";
 import { InspectionPanel } from "../components/InspectionPanel";
 import { ProposalPanels } from "../components/ProposalPanels";
 import { StageTimeline } from "../components/StageTimeline";
@@ -26,6 +27,7 @@ import {
 import type { MovementSummary, ReviewBundle, ReviewStage, ReviewToothMesh } from "../review/types";
 import { StageViewer } from "../viewer/StageViewer";
 import { createDentalSceneGraph } from "../viewer/sceneGraph";
+import { findToothByKey } from "../viewer/toothKey";
 import { useToothSelection } from "../viewer/useToothSelection";
 import {
   AppShell,
@@ -39,6 +41,7 @@ import {
 } from "../components/workspace/WorkspacePrimitives";
 import { buildWorkflowSteps, type WorkflowStepId } from "../workflow";
 import { CaseLoadingOverlay, ProductionEmptyState, StatusPill } from "../components/production/ProductionPrimitives";
+import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
 
 const WORKFLOW = [
   ["case", "Case"],
@@ -175,13 +178,16 @@ export function App(): JSX.Element {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [busyActivity, setBusyActivity] = useState<string | null>(null);
   const [stageIndex, setStageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showUpper, setShowUpper] = useState(true);
   const [showLower, setShowLower] = useState(true);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [showGingiva, setShowGingiva] = useState(true);
+  const [showTargetGhost, setShowTargetGhost] = useState(true);
   const [showSegmentation, setShowSegmentation] = useState(true);
-  const [showMovementVectors, setShowMovementVectors] = useState(false);
+  const [showMovementVectors, setShowMovementVectors] = useState(true);
   const [originalScanBuffers, setOriginalScanBuffers] = useState<
     Partial<Record<Arch, ArrayBuffer>>
   >({});
@@ -216,17 +222,40 @@ export function App(): JSX.Element {
       createSceneLayerRegistry({
         "upper-teeth": { visible: showUpper, available: activeReviewStage !== null },
         "lower-teeth": { visible: showLower, available: activeReviewStage !== null },
+        "gingiva-base": {
+          visible: showGingiva,
+          available: activeReviewStage !== null,
+          reason: activeReviewStage
+            ? "Presentation gingiva (real when available, otherwise synthetic envelope)."
+            : "Awaiting tooth surfaces.",
+        },
         "original-scan": {
           visible: showOriginal,
           available: Boolean(originalScanBuffers.upper || originalScanBuffers.lower),
         },
         segmentation: { visible: showSegmentation, available: pipelineReviewStage !== null },
         "current-stage": { visible: treatmentAvailable, available: treatmentAvailable },
-        "proposed-setup": { available: treatmentAvailable },
+        "proposed-setup": {
+          visible: showTargetGhost && treatmentAvailable,
+          available: treatmentAvailable,
+          reason: treatmentAvailable
+            ? "Target / proposed setup ghost overlay."
+            : "Requires a treatment proposal.",
+        },
         "tooth-labels": { visible: true, available: activeReviewStage !== null },
-        "movement-vectors": { visible: showMovementVectors, available: activeReviewStage !== null },
+        "movement-vectors": {
+          visible: showMovementVectors,
+          available: treatmentAvailable,
+          reason: treatmentAvailable
+            ? "Remaining movement from current stage to target."
+            : "Requires a treatment proposal.",
+        },
       }),
-    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showLower, showMovementVectors, showOriginal, showSegmentation, showUpper, treatmentAvailable],
+    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showGingiva, showLower, showMovementVectors, showOriginal, showSegmentation, showTargetGhost, showUpper, treatmentAvailable],
+  );
+  const targetStage = useMemo(
+    () => (treatmentAvailable ? reviewBundle.stages.at(-1) ?? null : null),
+    [reviewBundle.stages, treatmentAvailable],
   );
   const sceneGraph = useMemo(
     () => activeReviewStage
@@ -235,20 +264,17 @@ export function App(): JSX.Element {
     [activeReviewStage, originalScanBuffers, sceneLayers],
   );
   const selectedFixtureTooth = useMemo(
-    () => activeReviewStage?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ?? null,
+    () => findToothByKey(activeReviewStage?.teeth, selectedTooth),
     [activeReviewStage, selectedTooth],
   );
   const originalTooth =
     selectedTooth === null
       ? null
-      : (engineeringFixtureBundle.stages
-          .at(-1)
-          ?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ?? null);
+      : findToothByKey(engineeringFixtureBundle.stages.at(-1)?.teeth, selectedTooth);
   const currentProposalTooth =
     selectedTooth === null
       ? null
-      : (reviewBundle.stages.at(-1)?.teeth.find((tooth) => (tooth.toothRef ?? String(tooth.fdiNumber)) === selectedTooth) ??
-        null);
+      : findToothByKey(reviewBundle.stages.at(-1)?.teeth, selectedTooth);
   const bothArchesValid =
     archUploads.upper.state === "valid" && archUploads.lower.state === "valid";
   const workflowSteps = useMemo(() => buildWorkflowSteps({
@@ -270,7 +296,30 @@ export function App(): JSX.Element {
     setRecalculationState("idle");
     setExportMessage(null);
     setProcessingStatus(null);
+    setBusyActivity(null);
+    setIsBusy(false);
   }
+
+  function startBusy(activity: string): void {
+    setIsBusy(true);
+    setBusyActivity(activity);
+  }
+
+  function stopBusy(): void {
+    setIsBusy(false);
+    setBusyActivity(null);
+  }
+
+  const loadingPresentation = useMemo(
+    () =>
+      resolveLoadingPresentation({
+        processingStatus,
+        isBusy,
+        busyActivity,
+        recalculationState,
+      }),
+    [busyActivity, isBusy, processingStatus, recalculationState],
+  );
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -287,34 +336,55 @@ export function App(): JSX.Element {
   }, [isPlaying, reviewBundle.stages.length]);
 
   useEffect(() => {
-    if (!activeCase || !processingStatus || processingStatus.stage_status !== "PROCESSING") return;
+    const isProcessing = processingStatus?.stage_status === "PROCESSING";
+    if (!activeCase || !isProcessing) return;
+    const caseId = activeCase.id;
+    let cancelled = false;
     const timer = window.setInterval(() => {
-      void api.getProcessingStatus(activeCase.id).then((status) => {
+      void api.getProcessingStatus(caseId).then((status) => {
+        if (cancelled) return;
         setProcessingStatus(status);
         if (status.stage_status === "COMPLETED") {
-          void api.getTreatment(activeCase.id).then((bundle) => {
+          setBusyActivity("Loading treatment proposal");
+          void api.getTreatment(caseId).then((bundle) => {
+            if (cancelled) return;
             setReviewBundle(bundle);
             setBackendTreatment(true);
             setStageIndex(0);
             setWorkspace("stage-review");
-            setIsBusy(false);
+            stopBusy();
+          }).catch((error: Error) => {
+            if (cancelled) return;
+            setError(error.message);
+            stopBusy();
           });
         } else if (status.stage_status === "FAILED" || status.stage_status === "CANCELLED") {
           setError(status.user_message);
-          setIsBusy(false);
+          stopBusy();
         }
       }).catch((error: Error) => {
+        if (cancelled) return;
         setError(error.message);
-        setIsBusy(false);
+        stopBusy();
       });
     }, 1000);
-    return () => window.clearInterval(timer);
-  }, [activeCase, processingStatus]);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeCase, processingStatus?.stage_status]);
 
   function handleSelectTooth(toothNumber: string): void {
     selectTooth(toothNumber);
-    const tooth = reviewBundle.stages.at(-1)?.teeth.find((item) => (item.toothRef ?? String(item.fdiNumber)) === toothNumber);
+    const tooth =
+      findToothByKey(reviewBundle.stages.at(-1)?.teeth, toothNumber) ??
+      findToothByKey(activeReviewStage?.teeth, toothNumber);
     setDraftMovement(tooth ? cloneMovement(tooth.movement) : null);
+  }
+
+  function handleClearSelection(): void {
+    clearSelection();
+    setDraftMovement(null);
   }
 
   function handleGizmoMovement(movement: MovementSummary): void {
@@ -332,7 +402,7 @@ export function App(): JSX.Element {
       afterMovement: cloneMovement(draftMovement),
     };
     if (backendTreatment && activeCase) {
-      setIsBusy(true);
+      startBusy("Applying tooth edit");
       try {
         setReviewBundle(await api.applyTreatmentEdit(activeCase.id, selectedTooth, draftMovement));
         setUndoStack((current) => [...current, snapshot]);
@@ -341,7 +411,7 @@ export function App(): JSX.Element {
       } catch (err) {
         setError((err as Error).message);
       } finally {
-        setIsBusy(false);
+        stopBusy();
       }
       return;
     }
@@ -443,7 +513,7 @@ export function App(): JSX.Element {
 
   async function handleCreateCase(): Promise<void> {
     setError(null);
-    setIsBusy(true);
+    startBusy("Creating case");
     try {
       const created = await api.createCase(patientReference);
       setActiveCase(created);
@@ -458,13 +528,13 @@ export function App(): JSX.Element {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
   async function handleLoadEngineeringDemo(): Promise<void> {
     setError(null);
-    setIsBusy(true);
+    startBusy("Loading engineering demo");
     try {
       const demo = await api.createEngineeringDemo();
       setActiveCase(demo.case);
@@ -476,14 +546,14 @@ export function App(): JSX.Element {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
   async function handleUploadAndValidate(arch: Arch, file: File): Promise<void> {
     if (!activeCase) return;
     setError(null);
-    setIsBusy(true);
+    startBusy(`Uploading ${arch} scan`);
     setBackendTreatment(false);
     clearRealCaseReview("Case preparation in progress. Import both arches to begin.");
     setArchUploads((current) => ({
@@ -516,14 +586,14 @@ export function App(): JSX.Element {
         [arch]: { ...current[arch], state: "error" },
       }));
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
   async function handleRemoveMesh(arch: Arch): Promise<void> {
     if (!activeCase) return;
     setError(null);
-    setIsBusy(true);
+    startBusy(`Removing ${arch} scan`);
     try {
       setActiveCase(await api.removeMesh(activeCase.id, arch));
       setOriginalScanBuffers((current) => {
@@ -540,7 +610,7 @@ export function App(): JSX.Element {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
@@ -548,18 +618,18 @@ export function App(): JSX.Element {
     if (!activeCase) return;
     if (import.meta.env.MODE !== "test") {
       setError(null);
-      setIsBusy(true);
+      startBusy("Starting case analysis");
       try {
         const status = await api.startProcessing(activeCase.id);
         setProcessingStatus(status);
       } catch (err) {
         setError((err as Error).message);
-        setIsBusy(false);
+        stopBusy();
       }
       return;
     }
     setError(null);
-    setIsBusy(true);
+    startBusy("Running analysis pipeline");
     try {
       const [upperDiagnostic, lowerDiagnostic] = await Promise.all([
         api.processPipeline(activeCase.id, "upper"),
@@ -620,14 +690,14 @@ export function App(): JSX.Element {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
   async function handleReviewSegmentation(): Promise<void> {
     if (!activeCase || !bothArchesValid) return;
     setError(null);
-    setIsBusy(true);
+    startBusy("Reviewing segmentation");
     try {
       const [upperDiagnostic, lowerDiagnostic] = await Promise.all([
         api.processPipeline(activeCase.id, "upper"),
@@ -638,7 +708,7 @@ export function App(): JSX.Element {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setIsBusy(false);
+      stopBusy();
     }
   }
 
@@ -714,9 +784,11 @@ export function App(): JSX.Element {
           <div className="cad-layer-controls"><span className="eyebrow">Layers</span>
             <label className="toggle-row"><input type="checkbox" checked={showUpper} onChange={(event) => setShowUpper(event.target.checked)} /><span>Upper teeth</span></label>
             <label className="toggle-row"><input type="checkbox" checked={showLower} onChange={(event) => setShowLower(event.target.checked)} /><span>Lower teeth</span></label>
+            <label className="toggle-row"><input type="checkbox" checked={showGingiva} onChange={(event) => setShowGingiva(event.target.checked)} /><span>Gingiva</span></label>
+            <label className="toggle-row"><input type="checkbox" checked={showTargetGhost} onChange={(event) => setShowTargetGhost(event.target.checked)} disabled={!treatmentAvailable} /><span>Target ghost</span></label>
             <label className="toggle-row"><input type="checkbox" checked={showSegmentation} onChange={(event) => setShowSegmentation(event.target.checked)} /><span>Segmentation</span></label>
             <label className="toggle-row"><input type="checkbox" checked={showOriginal} onChange={(event) => setShowOriginal(event.target.checked)} /><span>Original reference</span></label>
-            <label className="toggle-row"><input type="checkbox" checked={showMovementVectors} onChange={(event) => setShowMovementVectors(event.target.checked)} /><span>Movement vectors</span></label>
+            <label className="toggle-row"><input type="checkbox" checked={showMovementVectors} onChange={(event) => setShowMovementVectors(event.target.checked)} disabled={!treatmentAvailable} /><span>Movement vectors</span></label>
             {showOriginal && <label className="range-row"><span>Original opacity</span><input type="range" min="0.08" max="0.75" step="0.01" value={originalOpacity} onChange={(event) => setOriginalOpacity(Number(event.target.value))} /></label>}
             <label className="toggle-row"><input type="checkbox" checked={wireframe} onChange={(event) => setWireframe(event.target.checked)} /><span>Wireframe</span></label>
           </div>
@@ -727,7 +799,80 @@ export function App(): JSX.Element {
         <section className="cad-viewport-column">
           <div className="cad-viewport-header"><div><span className="eyebrow">Dental workspace</span><h1>{workspaceLabel}</h1></div><div className="cad-viewport-meta">{canShowScene ? `${activeReviewStage.teeth.length} tooth surfaces` : "Awaiting case data"}</div></div>
           <div className="cad-viewport-frame">
-            {canShowScene && sceneGraph ? <StageViewer stage={activeReviewStage} sceneGraph={sceneGraph} selectedTooth={selectedTooth} showUpper={showUpper} showLower={showLower} showOriginal={showOriginal} originalOpacity={originalOpacity} wireframe={wireframe} hiddenToothIds={hiddenToothIds} gizmoMode={gizmoMode} onGizmoMovement={handleGizmoMovement} onSelectTooth={handleSelectTooth} onFit={() => undefined} onReset={() => undefined} /> : <ProductionEmptyState title="Prepare a case to begin" detail={reviewBundle.unavailableReason ?? "Import upper and lower scans to establish the dental workspace."} action={workspace !== "case" ? <button className="primary-button" onClick={() => setWorkspace("case")}>Go to case setup</button> : undefined} />}
+            {canShowScene && sceneGraph ? (
+              <StageViewer
+                stage={activeReviewStage}
+                sceneGraph={sceneGraph}
+                targetStage={targetStage}
+                selectedTooth={selectedTooth}
+                showUpper={showUpper}
+                showLower={showLower}
+                showOriginal={showOriginal}
+                originalOpacity={originalOpacity}
+                wireframe={wireframe}
+                hiddenToothIds={hiddenToothIds}
+                gizmoMode={gizmoMode}
+                onGizmoMovement={handleGizmoMovement}
+                onSelectTooth={handleSelectTooth}
+                onFit={() => undefined}
+                onReset={() => undefined}
+                contextualToolbar={
+                  selectedTooth ? (
+                    <ContextualToothToolbar
+                      label={
+                        selectedFixtureTooth?.fdiNumber
+                          ? `FDI ${selectedFixtureTooth.fdiNumber}`
+                          : selectedTooth
+                      }
+                      arch={selection.arch}
+                      gizmoMode={gizmoMode}
+                      onGizmoMode={setGizmoMode}
+                      canEdit={treatmentAvailable && draftMovement !== null}
+                      isDirty={
+                        draftMovement !== null &&
+                        currentProposalTooth !== null &&
+                        hasMovementChanges(draftMovement, currentProposalTooth.movement)
+                      }
+                      locked={Boolean(draftMovement?.locked)}
+                      excluded={Boolean(draftMovement?.excluded)}
+                      showTargetGhost={showTargetGhost}
+                      targetGhostAvailable={treatmentAvailable}
+                      showMovementVectors={showMovementVectors}
+                      onToggleTargetGhost={() => setShowTargetGhost((value) => !value)}
+                      onToggleMovementVectors={() => setShowMovementVectors((value) => !value)}
+                      onToggleLocked={() =>
+                        setDraftMovement((current) =>
+                          current ? { ...current, locked: !current.locked } : current,
+                        )
+                      }
+                      onToggleExcluded={() =>
+                        setDraftMovement((current) =>
+                          current ? { ...current, excluded: !current.excluded } : current,
+                        )
+                      }
+                      onApply={() => void handleApplyEdit()}
+                      onCancel={handleCancelEdit}
+                      onClearSelection={handleClearSelection}
+                    />
+                  ) : null
+                }
+              />
+            ) : (
+              <ProductionEmptyState
+                title="Prepare a case to begin"
+                detail={
+                  reviewBundle.unavailableReason ??
+                  "Import upper and lower scans to establish the dental workspace."
+                }
+                action={
+                  workspace !== "case" ? (
+                    <button className="primary-button" onClick={() => setWorkspace("case")}>
+                      Go to case setup
+                    </button>
+                  ) : undefined
+                }
+              />
+            )}
             {pipelineDiagnostic?.experimental && <ViewerOverlay><span className="cad-provenance-badge">Analysis source under review</span></ViewerOverlay>}
           </div>
           {workspace === "stage-review" && treatmentAvailable && <BottomTimeline><StageTimeline stages={reviewBundle.stages} selectedIndex={stageIndex} isPlaying={isPlaying} onSelect={(index) => { setStageIndex(index); setIsPlaying(false); }} onPrevious={() => setStageIndex((index) => Math.max(0, index - 1))} onNext={() => setStageIndex((index) => Math.min(reviewBundle.stages.length - 1, index + 1))} onTogglePlay={() => setIsPlaying((playing) => !playing)} /></BottomTimeline>}
@@ -757,7 +902,7 @@ export function App(): JSX.Element {
         <span className="production-test-metadata">{!treatmentAvailable ? "Treatment plan unavailable" : ""}</span>
         <span className="production-test-metadata">{pipelineDiagnostic?.state === "model_unavailable" ? "Segmentation model unavailable" : ""}</span>
       </>}
-      {processingStatus && processingStatus.stage_status === "PROCESSING" && <CaseLoadingOverlay stage={processingStatus.user_message} progress={processingStatus.overall_progress} elapsedSeconds={processingStatus.elapsed_seconds} />}
+      {loadingPresentation ? <CaseLoadingOverlay presentation={loadingPresentation} /> : null}
     </AppShell>
   );
 }

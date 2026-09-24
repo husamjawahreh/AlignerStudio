@@ -109,7 +109,7 @@ export interface GeometryEngineBoundary {
 
 export const DENTAL_SCENE_LAYER_LABELS: Readonly<Record<SceneLayerId, string>> = {
   "original-scan": "Original Scan",
-  "gingiva-base": "Gingiva/Base",
+  "gingiva-base": "Gingiva",
   "upper-teeth": "Upper Teeth",
   "lower-teeth": "Lower Teeth",
   segmentation: "Segmentation",

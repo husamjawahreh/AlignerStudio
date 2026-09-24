@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
 from domain.case.models import Case, MeshAsset
-from domain.tooth.identification import ArchType
+from domain.tooth.identification import ArchType, ToothIdentificationResult
 from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
 from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
 from engines.geometry.mesh_validation import validate_mesh_file
@@ -40,6 +41,30 @@ from app.treatment_sessions import (
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 ALLOWED_ARCHES = {"upper", "lower"}
+
+
+def _combined_fixture_identification() -> tuple[ToothIdentificationResult, tuple[str, ...]]:
+    """Load upper and lower validated fixtures into one semantic-only identification.
+
+    Per-tooth arch/tooth_ref remain authoritative. The container arch field is upper for
+    dataclass compatibility only; planning uses tooth.instance.arch / tooth_ref.
+    """
+    upper = load_validated_fixture_result(ArchType.UPPER)
+    lower = load_validated_fixture_result(ArchType.LOWER)
+    diagnostics: list[str] = []
+    if upper.status != "planning_ready":
+        diagnostics.extend(upper.diagnostics.notes)
+    if lower.status != "planning_ready":
+        diagnostics.extend(lower.diagnostics.notes)
+    combined = replace(
+        upper.identification,
+        teeth=upper.identification.teeth + lower.identification.teeth,
+        notes=(
+            f"{upper.identification.notes} | {lower.identification.notes} | "
+            "presentation_arches=upper+lower"
+        ),
+    )
+    return combined, tuple(diagnostics)
 
 
 class MovementEditRequest(BaseModel):
@@ -176,20 +201,28 @@ def generate_plan_with_progress(
         )
     if selected_backend() == "toothinstancenet_fixture":
         try:
-            reviewed = load_validated_fixture_result(ArchType.UPPER)
+            identification, fixture_diagnostics = _combined_fixture_identification()
         except Exception as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
         treatment_input = TreatmentPlanningInput.from_identification(
-            reviewed.identification,
-            diagnostics=tuple(reviewed.diagnostics.notes)
-            if reviewed.status != "planning_ready"
-            else (),
+            identification,
+            diagnostics=fixture_diagnostics,
             planning_mode=TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL,
         )
-        refs = [tooth.tooth_ref for tooth in reviewed.identification.teeth]
+        refs = [tooth.tooth_ref for tooth in identification.teeth]
         if not refs or any(ref is None for ref in refs):
             raise HTTPException(
                 status_code=409, detail="Semantic-only artifact is missing tooth_ref"
+            )
+        upper_count = sum(1 for tooth in identification.teeth if tooth.instance.arch == "upper")
+        lower_count = sum(1 for tooth in identification.teeth if tooth.instance.arch == "lower")
+        if upper_count != 14 or lower_count != 14:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Validated real-case fixture must provide 14 upper and 14 lower "
+                    f"semantic tooth instances; got upper={upper_count}, lower={lower_count}."
+                ),
             )
         objectives = (
             TreatmentObjective(

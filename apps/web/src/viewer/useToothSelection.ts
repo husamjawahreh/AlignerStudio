@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ToothSelectionState } from "@alignerstudio/types";
 import type { ReviewToothMesh } from "../review/types";
+import { findToothByKey, reviewToothKey } from "./toothKey";
 
 const EMPTY_SELECTION: ToothSelectionState = {
   selectedToothRef: null,
@@ -14,13 +15,11 @@ export function useToothSelection(teeth: readonly ReviewToothMesh[]) {
   const [selection, setSelection] = useState<ToothSelectionState>(EMPTY_SELECTION);
 
   function selectTooth(toothRef: string): void {
-    const tooth = teeth.find(
-      (item) => (item.toothRef ?? `instance:${item.instanceId}`) === toothRef,
-    );
+    const tooth = findToothByKey(teeth, toothRef);
     setSelection(
       tooth
         ? {
-            selectedToothRef: toothRef,
+            selectedToothRef: reviewToothKey(tooth),
             semanticIdentifier: tooth.semanticLabel ?? null,
             fdiNumber: tooth.fdiNumber,
             arch: tooth.arch,

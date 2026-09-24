@@ -60,7 +60,34 @@ class _ValidatedMesh:
 
 def _state_sort_key(state: StageToothState) -> str:
     """Order clinical FDI and semantic-only states deterministically."""
-    return str(state.tooth_number if state.tooth_number is not None else state.tooth_ref)
+    return str(_tooth_identity_key(state))
+
+
+def _tooth_identity_key(state: StageToothState) -> int | str:
+    """Stable pair/report identity: FDI when present, otherwise semantic tooth_ref."""
+    if state.tooth_number is not None:
+        return state.tooth_number
+    if state.tooth_ref:
+        return state.tooth_ref
+    raise GeometricValidationError("Tooth state is missing both tooth_number and tooth_ref")
+
+
+def _state_arch(state: StageToothState) -> str | None:
+    """Resolve upper/lower for pair scoping. Never invents FDI."""
+    if state.arch in ("upper", "lower"):
+        return state.arch
+    tooth_ref = state.tooth_ref or ""
+    if tooth_ref.startswith("upper:"):
+        return "upper"
+    if tooth_ref.startswith("lower:"):
+        return "lower"
+    if state.tooth_number is not None:
+        decade = state.tooth_number // 10
+        if decade in (1, 2):
+            return "upper"
+        if decade in (3, 4):
+            return "lower"
+    return None
 
 
 def _faces_for_state(state: StageToothState) -> tuple[tuple[int, int, int], ...] | None:
@@ -489,6 +516,10 @@ class GeometricValidationEngine:
         """Hook-compatible collision report using an explicit zero tolerance."""
         findings: list[ValidationFinding] = []
         for first, second in combinations(sorted(states, key=_state_sort_key), 2):
+            first_arch = _state_arch(first)
+            second_arch = _state_arch(second)
+            if first_arch and second_arch and first_arch != second_arch:
+                continue
             first_mesh = _mesh_for_state(first)
             second_mesh = _mesh_for_state(second)
             if first_mesh.error or second_mesh.error:
@@ -498,7 +529,10 @@ class GeometricValidationEngine:
                 findings.append(
                     ValidationFinding(
                         "mesh_intersection",
-                        f"Teeth {first.tooth_number} and {second.tooth_number} intersect.",
+                        (
+                            f"Teeth {_tooth_identity_key(first)} and "
+                            f"{_tooth_identity_key(second)} intersect."
+                        ),
                         blocking=True,
                     )
                 )
@@ -519,6 +553,14 @@ class GeometricValidationEngine:
         collisions: list[CollisionResult] = []
         contacts: list[ContactResult] = []
         for first, second in combinations(ordered_states, 2):
+            # Staging collision/proximity/contact is intra-arch. Cross-arch AABB overlap is
+            # expected occlusion and belongs to a separate occlusion analysis — comparing it
+            # here both mislabels occlusal contacts as treatment collisions and makes dual-arch
+            # validation impractically slow (dozens of dense narrow-phase pairs).
+            first_arch = _state_arch(first)
+            second_arch = _state_arch(second)
+            if first_arch and second_arch and first_arch != second_arch:
+                continue
             first_mesh = meshes[_state_sort_key(first)]
             second_mesh = meshes[_state_sort_key(second)]
             if first_mesh.error or second_mesh.error:
@@ -539,13 +581,15 @@ class GeometricValidationEngine:
                 ),
                 configuration.collision_tolerance,
             )
-            pair_key = f"{stage.stage_index}:{first.tooth_number}:{second.tooth_number}"
+            first_key = _tooth_identity_key(first)
+            second_key = _tooth_identity_key(second)
+            pair_key = f"{stage.stage_index}:{first_key}:{second_key}"
             pair_id = hashlib.sha256(pair_key.encode()).hexdigest()
             proximity.append(
                 ProximityResult(
                     stage.stage_index,
-                    first.tooth_number,
-                    second.tooth_number,
+                    first_key,
+                    second_key,
                     distance,
                     configuration.proximity_threshold,
                     ValidationStatus.WARNING
@@ -558,8 +602,8 @@ class GeometricValidationEngine:
             collisions.append(
                 CollisionResult(
                     stage.stage_index,
-                    first.tooth_number,
-                    second.tooth_number,
+                    first_key,
+                    second_key,
                     intersects,
                     depth if intersects else None,
                     configuration.collision_tolerance,
@@ -571,8 +615,8 @@ class GeometricValidationEngine:
             contacts.append(
                 ContactResult(
                     stage.stage_index,
-                    first.tooth_number,
-                    second.tooth_number,
+                    first_key,
+                    second_key,
                     distance <= configuration.contact_tolerance,
                     distance,
                     configuration.contact_tolerance,
@@ -586,17 +630,21 @@ class GeometricValidationEngine:
         tooth_results = tuple(
             ToothValidationResult(
                 stage.stage_index,
-                state.tooth_number,
+                _tooth_identity_key(state),
                 tuple(
-                    item for item in proximity if state.tooth_number in (item.tooth_a, item.tooth_b)
+                    item
+                    for item in proximity
+                    if _tooth_identity_key(state) in (item.tooth_a, item.tooth_b)
                 ),
                 tuple(
                     item
                     for item in collisions
-                    if state.tooth_number in (item.tooth_a, item.tooth_b)
+                    if _tooth_identity_key(state) in (item.tooth_a, item.tooth_b)
                 ),
                 tuple(
-                    item for item in contacts if state.tooth_number in (item.tooth_a, item.tooth_b)
+                    item
+                    for item in contacts
+                    if _tooth_identity_key(state) in (item.tooth_a, item.tooth_b)
                 ),
                 _overall_status(
                     item.status
@@ -604,12 +652,12 @@ class GeometricValidationEngine:
                         *[
                             result
                             for result in collisions
-                            if state.tooth_number in (result.tooth_a, result.tooth_b)
+                            if _tooth_identity_key(state) in (result.tooth_a, result.tooth_b)
                         ],
                         *[
                             result
                             for result in proximity
-                            if state.tooth_number in (result.tooth_a, result.tooth_b)
+                            if _tooth_identity_key(state) in (result.tooth_a, result.tooth_b)
                         ],
                     )
                 ),

@@ -26,6 +26,17 @@ class TreatmentExportError(ValueError):
     """Raised when an export bundle is incomplete or internally inconsistent."""
 
 
+def _tooth_identity_key(state: Any) -> int | str:
+    """FDI when genuinely present; otherwise authoritative semantic tooth_ref. Never invent FDI."""
+    tooth_number = getattr(state, "tooth_number", None)
+    if tooth_number is not None:
+        return tooth_number
+    tooth_ref = getattr(state, "tooth_ref", None)
+    if tooth_ref:
+        return tooth_ref
+    raise TreatmentExportError("Tooth state is missing both tooth_number and tooth_ref")
+
+
 @dataclass(frozen=True)
 class TreatmentExportPackage:
     """Locations and immutable identifiers for a completed engineering export."""
@@ -153,22 +164,21 @@ class TreatmentExportEngine:
             if plan.setup is not None:
                 first = staging.stages[0]
                 final = staging.stages[-1]
-                source = {item.tooth_number: item for item in plan.setup.source_states}
-                target = {item.tooth_number: item for item in plan.setup.target_states}
-                if {item.tooth_number for item in first.tooth_states} != set(source):
+                source = {_tooth_identity_key(item): item for item in plan.setup.source_states}
+                target = {_tooth_identity_key(item): item for item in plan.setup.target_states}
+                if {_tooth_identity_key(item) for item in first.tooth_states} != set(source):
                     issues.append("Stage 0 tooth references do not match source setup")
-                if {item.tooth_number for item in final.tooth_states} != set(target):
+                if {_tooth_identity_key(item) for item in final.tooth_states} != set(target):
                     issues.append("final stage tooth references do not match target setup")
                 for state in first.tooth_states:
-                    if state.vertices != source[state.tooth_number].source_vertices:
-                        issues.append(
-                            f"Stage 0 differs from source geometry for tooth {state.tooth_number}"
-                        )
+                    key = _tooth_identity_key(state)
+                    if state.vertices != source[key].source_vertices:
+                        issues.append(f"Stage 0 differs from source geometry for tooth {key}")
                 for state in final.tooth_states:
-                    if state.vertices != target[state.tooth_number].target_vertices:
+                    key = _tooth_identity_key(state)
+                    if state.vertices != target[key].target_vertices:
                         issues.append(
-                            "final stage differs from target geometry for tooth "
-                            f"{state.tooth_number}"
+                            f"final stage differs from target geometry for tooth {key}"
                         )
         return tuple(sorted(set(issues)))
 
@@ -176,21 +186,20 @@ class TreatmentExportEngine:
     def _mesh_issues(stage: TreatmentStage) -> list[str]:
         issues: list[str] = []
         for state in stage.tooth_states:
+            tooth_key = _tooth_identity_key(state)
             if not state.vertices or not state.final_target_faces:
-                issues.append(
-                    f"stage {stage.stage_index} tooth {state.tooth_number} has empty mesh"
-                )
+                issues.append(f"stage {stage.stage_index} tooth {tooth_key} has empty mesh")
                 continue
             if not all(math.isfinite(value) for vertex in state.vertices for value in vertex):
                 issues.append(
-                    f"stage {stage.stage_index} tooth {state.tooth_number} has non-finite vertices"
+                    f"stage {stage.stage_index} tooth {tooth_key} has non-finite vertices"
                 )
             if any(
                 min(face) < 0 or max(face) >= len(state.vertices)
                 for face in state.final_target_faces
             ):
                 issues.append(
-                    f"stage {stage.stage_index} tooth {state.tooth_number} has invalid face indexes"
+                    f"stage {stage.stage_index} tooth {tooth_key} has invalid face indexes"
                 )
         return issues
 
@@ -279,6 +288,8 @@ class TreatmentExportEngine:
                 "stage_index": stage.stage_index,
                 "stage_id": stage.stage_id,
                 "tooth_number": state.tooth_number,
+                "tooth_ref": state.tooth_ref,
+                "tooth_key": _tooth_identity_key(state),
                 **TreatmentExportEngine._plain(state.movement.movement),
                 "progress": state.movement.progress,
             }
@@ -293,6 +304,8 @@ class TreatmentExportEngine:
             "stage_index",
             "stage_id",
             "tooth_number",
+            "tooth_ref",
+            "tooth_key",
             "progress",
             "translation_x",
             "translation_y",
@@ -313,7 +326,7 @@ class TreatmentExportEngine:
     @staticmethod
     def _stage_stl(stage: TreatmentStage) -> bytes:
         lines = [f"solid stage-{stage.stage_index:03d}-{stage.stage_id}"]
-        for state in sorted(stage.tooth_states, key=lambda item: item.tooth_number):
+        for state in sorted(stage.tooth_states, key=lambda item: str(_tooth_identity_key(item))):
             for face in state.final_target_faces:
                 first, second, third = (state.vertices[index] for index in face)
                 normal = TreatmentExportEngine._normal(first, second, third)

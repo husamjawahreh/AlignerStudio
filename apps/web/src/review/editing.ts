@@ -1,4 +1,5 @@
 import type { MovementSummary, ReviewBundle, ReviewEditRecord, ReviewStage } from "./types";
+import { toothMatchesKey } from "../viewer/toothKey";
 
 export type MovementField = keyof MovementSummary;
 
@@ -107,11 +108,8 @@ function rebuildFixtureBundle(
     return {
       ...stage,
       teeth: stage.teeth.map((tooth) => {
-        const key = tooth.toothRef ?? tooth.fdiNumber;
-        if (String(key) !== String(toothNumber)) return tooth;
-        const source = bundle.stages[0].teeth.find(
-          (item) => String(item.toothRef ?? item.fdiNumber) === String(toothNumber),
-        );
+        if (!toothMatchesKey(tooth, String(toothNumber))) return tooth;
+        const source = bundle.stages[0].teeth.find((item) => toothMatchesKey(item, String(toothNumber)));
         if (!source) return tooth;
         return {
           ...tooth,
@@ -129,10 +127,9 @@ function rebuildFixtureBundle(
   };
 }
 
-function findTooth(stage: ReviewStage, toothNumber: number | string) {
-  return stage.teeth.find(
-    (tooth) => String(tooth.toothRef ?? tooth.fdiNumber) === String(toothNumber),
-  );
+function findTooth(stage: ReviewStage | undefined, toothNumber: number | string) {
+  if (!stage) return undefined;
+  return stage.teeth.find((tooth) => toothMatchesKey(tooth, String(toothNumber)));
 }
 
 function scaleMovement(movement: MovementSummary, progress: number): MovementSummary {

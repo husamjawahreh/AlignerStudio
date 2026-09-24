@@ -1,0 +1,93 @@
+/**
+ * Aligner Studio — P1 Visual Foundation design tokens.
+ * Presentation only. Do not encode clinical meaning here.
+ */
+
+:root {
+  /* ——— Color: dark premium CAD surfaces ——— */
+  --as-bg-base: #070a0e;
+  --as-workspace: #0b0f14;
+  --as-surface-elevated: #151a21;
+  --as-bg-panel: #0f151c;
+  --as-bg-panel-raised: #182029;
+  --as-bg-panel-soft: #0c1218;
+  --as-bg-viewport: #06090d;
+  --as-bg-header: #0a0f15;
+  --as-bg-shell: #080c11;
+
+  --as-border: #2a3844;
+  --as-border-soft: #1c2832;
+  --as-border-strong: #3a4d5c;
+  --as-border-focus: rgba(181, 154, 103, 0.65);
+
+  --as-text-primary: #f2f5f8;
+  --as-text-secondary: #9aabba;
+  --as-text-muted: #677888;
+  --as-text-inverse: #0a0e12;
+
+  --as-accent-cyan: #c4a86e;
+  --as-accent-blue: #5b8ff7;
+  --as-accent-gold: #d4ae5c;
+  --as-accent-soft: rgba(196, 168, 110, 0.14);
+
+  --as-danger: #ec7667;
+  --as-success: #5bc28c;
+  --as-warning: #d9ab50;
+
+  --as-fixture-bg: #2c2312;
+  --as-fixture-border: #876724;
+
+  /* Clinical presentation colors (UI chrome; 3D profiles stay in materialProfiles) */
+  --as-color-selected-tooth: #f2d082;
+  --as-color-target-tooth: #f5eee0;
+  --as-color-current-tooth: #ebe0c8;
+  --as-color-upper-arch: #ebe0c8;
+  --as-color-lower-arch: #ddd0b6;
+  --as-color-gingiva: #b87578;
+  --as-color-collision: #e05d55;
+  --as-color-contact: #d7a94f;
+
+  /* ——— Typography ——— */
+  --as-font: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --as-font-display: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --as-font-mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+  --as-font-size-xs: 10px;
+  --as-font-size-sm: 11px;
+  --as-font-size-md: 13px;
+  --as-font-size-lg: 16px;
+  --as-font-size-xl: 18px;
+  --as-font-weight-regular: 400;
+  --as-font-weight-medium: 500;
+  --as-font-weight-bold: 700;
+  --as-letter-tight: 0.01em;
+  --as-letter-wide: 0.06em;
+  --as-line-tight: 1.25;
+  --as-line-body: 1.5;
+
+  /* ——— Spacing ——— */
+  --as-space-1: 4px;
+  --as-space-2: 8px;
+  --as-space-3: 12px;
+  --as-space-4: 16px;
+  --as-space-5: 20px;
+  --as-space-6: 24px;
+
+  /* ——— Borders / radius ——— */
+  --as-radius-sm: 4px;
+  --as-radius: 6px;
+  --as-radius-lg: 8px;
+  --as-radius-pill: 999px;
+
+  /* ——— Elevation / panels ——— */
+  --as-shadow-panel: 0 10px 28px rgba(0, 0, 0, 0.28);
+  --as-shadow-viewport: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 14px 40px rgba(0, 0, 0, 0.32);
+  --as-panel-width-tools: 252px;
+  --as-panel-width-inspector: 292px;
+  --as-header-height: 62px;
+  --as-statusbar-height: 26px;
+
+  /* ——— Buttons ——— */
+  --as-button-height: 34px;
+  --as-button-padding-x: 12px;
+  --as-button-radius: var(--as-radius-sm);
+}

@@ -15,7 +15,7 @@ from domain.tooth.identification import ArchType
 from domain.treatment_plan.input import TreatmentPlanningInput
 from domain.treatment_plan.setup import ToothMovement, TreatmentPlanProposal
 from domain.treatment_plan.staging import StagingConfiguration, StagingResult
-from domain.treatment_plan.validation import TreatmentValidationReport
+from domain.treatment_plan.validation import TreatmentValidationReport, ValidationStatus
 from engines.arrangement.identification import ToothIdentificationEngine
 from engines.export import TreatmentExportEngine, TreatmentExportPackage
 from engines.planning.editing import TreatmentEditingApplication
@@ -188,6 +188,14 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         tooth_statuses = {
             item.tooth_number: item.status.value for item in stage_validation.tooth_results
         }
+        # Count true findings only — never the number of evaluated AABB pair slots.
+        collision_count = sum(
+            1 for item in stage_validation.collision_results if item.intersects
+        )
+        proximity_count = sum(
+            1 for item in stage_validation.proximity_results if item.status is ValidationStatus.WARNING
+        )
+        contact_count = sum(1 for item in stage_validation.contact_results if item.is_contact)
         stages.append(
             {
                 "index": stage.stage_index,
@@ -198,10 +206,11 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                 "validationFindings": list(stage.validation_findings),
                 "teeth": [
                     {
+                        "instanceId": index,
                         "fdiNumber": state.tooth_number,
                         "toothRef": state.tooth_ref,
                         "semanticLabel": state.semantic_label,
-                        "arch": state.arch or ("upper" if state.tooth_number < 30 else "lower"),
+                        "arch": _review_arch(state),
                         "confidence": 1.0,
                         "vertices": state.vertices,
                         "faces": state.final_target_faces,
@@ -209,19 +218,21 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
                         "rate": _movement(state.movement.rate),
                         "accumulated": _movement(state.movement.accumulated),
                         "limitStatus": state.movement.limit_status,
-                        "validationStatus": tooth_statuses.get(state.tooth_number, "pass"),
+                        "validationStatus": tooth_statuses.get(
+                            _review_tooth_key(state), "pass"
+                        ),
                         "validationMessage": tooth_messages.get(
-                            state.tooth_number, "No geometric findings."
+                            _review_tooth_key(state), "No geometric findings."
                         ),
                         "provenance": state.provenance.value,
                         "fixture": state.fixture,
                     }
-                    for state in stage.tooth_states
+                    for index, state in enumerate(stage.tooth_states)
                 ],
                 "validationStatus": stage_validation.status.value,
-                "collisionCount": len(stage_validation.collision_results),
-                "proximityCount": len(stage_validation.proximity_results),
-                "contactCount": len(stage_validation.contact_results),
+                "collisionCount": collision_count,
+                "proximityCount": proximity_count,
+                "contactCount": contact_count,
                 "warnings": [*stage_validation.warnings, *stage_validation.errors],
                 "validationFindings": [*stage_validation.warnings, *stage_validation.errors],
                 "provenance": stage.provenance.value,
@@ -328,6 +339,29 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
 
 def manifest_header(package: TreatmentExportPackage) -> str:
     return json.dumps(json.loads(package.manifest_path.read_text()), separators=(",", ":"))
+
+
+def _review_arch(state: Any) -> str:
+    """Prefer explicit arch / tooth_ref; never invent FDI to classify arches."""
+    if state.arch in ("upper", "lower"):
+        return state.arch
+    tooth_ref = state.tooth_ref or ""
+    if tooth_ref.startswith("upper:"):
+        return "upper"
+    if tooth_ref.startswith("lower:"):
+        return "lower"
+    if state.tooth_number is not None:
+        return "upper" if state.tooth_number < 30 else "lower"
+    raise ValueError("Tooth state is missing arch classification")
+
+
+def _review_tooth_key(state: Any) -> int | str:
+    """Match GeometricValidationEngine tooth identity for per-tooth review lookup."""
+    if state.tooth_number is not None:
+        return state.tooth_number
+    if state.tooth_ref:
+        return state.tooth_ref
+    raise ValueError("Tooth state is missing both tooth_number and tooth_ref")
 
 
 def _movement(movement: ToothMovement) -> dict[str, float | bool]:
