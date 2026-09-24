@@ -45,11 +45,12 @@ describe("Treatment workflow presentation", () => {
         warnings: ["doctor review required"],
         source: "deterministic planner",
         doctorReviewRequired: true,
+        alternativeCount: 3,
       },
     };
     const summary = buildTreatmentSetupSummary(bundle);
     expect(summary.available).toBe(true);
-    expect(summary.setupAlternativesLabel).toBe("Single setup available");
+    expect(summary.setupAlternativesLabel).toBe("3 setups available");
     expect(summary.stageCount).toBe(bundle.stages.length);
     expect(summary.movedToothCount).toBe(4);
     expect(summary.totalMovement).toBe(1.25);

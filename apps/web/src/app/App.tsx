@@ -695,6 +695,19 @@ export function App(): JSX.Element {
     setReviewBundle((current) => resetAdjunctProposals(current));
   }
 
+  async function handleSelectSetupAlternative(alternativeId: string): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Setup alternatives require an active treatment session.");
+      return;
+    }
+    try {
+      setReviewBundle(await api.selectSetupAlternative(activeCase.id, alternativeId));
+      setStageIndex(0);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function handleCreateCase(): Promise<void> {
     setError(null);
     startBusy("Creating case");
@@ -1075,6 +1088,9 @@ export function App(): JSX.Element {
               onToggleInitialPosition={setShowOriginal}
               onToggleTargetPosition={setShowTargetGhost}
               onOriginalOpacityChange={setOriginalOpacity}
+              onSelectAlternative={(alternativeId) =>
+                void handleSelectSetupAlternative(alternativeId)
+              }
             />
           )}
 

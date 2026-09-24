@@ -20,6 +20,16 @@ function movementMagnitude(movement: MovementSummary | undefined): number {
   );
 }
 
+function alternativeLabel(bundle: ReviewBundle): string {
+  const count =
+    bundle.planSummary?.alternativeCount ??
+    bundle.planningIntelligence?.alternatives.length ??
+    0;
+  if (count <= 0) return "Unavailable";
+  if (count === 1) return "Single setup available";
+  return `${count} setups available`;
+}
+
 /** Presentation summary for Treatment Setup — no replanning math. */
 export function buildTreatmentSetupSummary(bundle: ReviewBundle): {
   available: boolean;
@@ -47,7 +57,7 @@ export function buildTreatmentSetupSummary(bundle: ReviewBundle): {
       ? `${bundle.proposalKind.replaceAll("_", " ")} · ${stages.length} stages`
       : "Unavailable",
     setupAlternativesLabel: available
-      ? "Single setup available"
+      ? alternativeLabel(bundle)
       : "Unavailable",
     movedToothCount: bundle.planSummary?.movedToothCount ?? null,
     totalMovement: bundle.planSummary?.totalMovement ?? null,

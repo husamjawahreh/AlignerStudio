@@ -150,6 +150,8 @@ export interface ReviewBundle {
     warnings: readonly string[];
     source: "deterministic planner" | "experimental model" | "doctor edit";
     doctorReviewRequired: boolean;
+    alternativeCount?: number;
+    activeAlternativeStrategy?: string | null;
   };
   validationSummary?: {
     geometry: CapabilityStatus;
@@ -164,4 +166,57 @@ export interface ReviewBundle {
     findings: readonly string[];
   };
   manufacturingBoundary?: ManufacturingBoundary;
+  planningIntelligence?: PlanningIntelligence;
+}
+
+export interface ModelOutputContract {
+  modelName: string;
+  modelVersion: string;
+  inputProvenance: string;
+  confidence: number | null;
+  uncertainty: number | null;
+  limitations: readonly string[];
+  deterministicValidationStatus: string;
+  deterministicValidationFindings: readonly string[];
+  decisionState: string;
+}
+
+export interface SetupAlternative {
+  alternativeId: string;
+  strategy: string;
+  label: string;
+  contract: ModelOutputContract;
+  collisionCount: number;
+  proximityCount: number;
+  contactCount: number;
+  stageCount: number;
+  isActive: boolean;
+}
+
+export interface ResearchAdapterEvaluation {
+  adapterId: string;
+  modelName: string;
+  productProblem: string;
+  decision: string;
+  status: string;
+  modelVersion: string | null;
+  provenanceNotes: string;
+  benchmarkStatus: string;
+  limitations: readonly string[];
+  comparedToDeterministicValidation: string;
+}
+
+export interface PlanningIntelligence {
+  landmarkAssistedTargetSetup: CapabilityStatus;
+  archFormAwarePlanning: CapabilityStatus;
+  occlusionAwarePlanning: CapabilityStatus;
+  collisionAwareCandidateGeneration: CapabilityStatus;
+  constrainedSixDofTrajectories: CapabilityStatus;
+  stagingProposals: CapabilityStatus;
+  alternativeSetups: CapabilityStatus;
+  alternatives: readonly SetupAlternative[];
+  researchAdapters: readonly ResearchAdapterEvaluation[];
+  notes: readonly string[];
+  doctorDecisionRequired: boolean;
+  rule: string;
 }

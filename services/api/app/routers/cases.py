@@ -431,6 +431,33 @@ def reset_treatment_proposals(case_id: str) -> dict:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
+class SetupAlternativeRequest(BaseModel):
+    alternative_id: str
+
+
+@router.post("/{case_id}/treatment/setup-alternatives/select")
+def select_setup_alternative(case_id: str, body: SetupAlternativeRequest) -> dict:
+    """Doctor accepts a validated assisted setup alternative."""
+    try:
+        return review_bundle(
+            treatment_sessions.select_setup_alternative(case_id, body.alternative_id)
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.get("/{case_id}/treatment/planning-intelligence")
+def get_planning_intelligence(case_id: str) -> dict:
+    try:
+        bundle = review_bundle(treatment_sessions.get(case_id))
+        payload = bundle.get("planningIntelligence")
+        if payload is None:
+            raise TreatmentSessionError("Planning intelligence unavailable for this case")
+        return payload
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
 @router.post("/{case_id}/export")
 def export_treatment(case_id: str) -> FileResponse:
     try:

@@ -1,0 +1,19 @@
+{
+  "adapter_id": "3dteethsam",
+  "model_name": "3DTeethSAM",
+  "product_problem": "Tooth instance segmentation (not treatment planning).",
+  "decision": "BENCHMARK CANDIDATE for segmentation — must not replace ToothInstanceNet without measured evidence; not a planning engine",
+  "status": "unavailable",
+  "model_version": null,
+  "checkpoint": null,
+  "benchmark_status": "blocked",
+  "aligner_studio_real_case_benchmark": "blocked_or_not_cleared",
+  "compared_to_deterministic_validation": "not_applicable — segmentation model, not planning",
+  "limitations": [
+    "Not a planning/arrangement model",
+    "Heavy SAM2/PyTorch3D stack",
+    "Irrelevant for generating treatment targets"
+  ],
+  "production_untouched": true,
+  "rule": "AI proposes. Deterministic geometry validates. Doctor decides."
+}

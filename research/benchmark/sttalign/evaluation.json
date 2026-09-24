@@ -1,0 +1,19 @@
+{
+  "adapter_id": "sttalign",
+  "model_name": "STTAlign",
+  "product_problem": "Occlusion-aware and collision-aware tooth alignment proposals.",
+  "decision": "REFERENCE ONLY — adapter boundary only; not integrated for inference",
+  "status": "unavailable",
+  "model_version": null,
+  "checkpoint": null,
+  "benchmark_status": "not_run",
+  "aligner_studio_real_case_benchmark": "not_run",
+  "compared_to_deterministic_validation": "not_compared — model unavailable",
+  "limitations": [
+    "Older CUDA/PyTorch/PyTorch3D dependency stack",
+    "No verified checkpoint or license gate in this repository",
+    "No measured evidence to replace deterministic TreatmentPlanningEngine"
+  ],
+  "production_untouched": true,
+  "rule": "AI proposes. Deterministic geometry validates. Doctor decides."
+}

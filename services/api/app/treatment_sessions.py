@@ -21,6 +21,10 @@ from domain.treatment_plan.validation import TreatmentValidationReport, Validati
 from engines.arrangement.identification import ToothIdentificationEngine
 from engines.export import TreatmentExportEngine, TreatmentExportPackage
 from engines.planning.editing import TreatmentEditingApplication
+from engines.planning.intelligence import (
+    AdvancedPlanningIntelligenceEngine,
+    AdvancedPlanningIntelligenceResult,
+)
 from engines.planning.proposals import TreatmentProposalEngine
 from engines.planning.setup_engine import TreatmentPlanningEngine
 from engines.planning.staging_engine import TreatmentStagingEngine
@@ -48,6 +52,7 @@ class TreatmentSession:
     source_kind: str = "development_treatment_fixture"
     experimental: bool = True
     planning_mode: str = "clinical_fdi"
+    intelligence: AdvancedPlanningIntelligenceResult | None = None
 
 
 class TreatmentSessionStore:
@@ -60,7 +65,12 @@ class TreatmentSessionStore:
         self._validator = GeometricValidationEngine()
         self._proposals = TreatmentProposalEngine()
         self._editing = TreatmentEditingApplication()
-
+        self._intelligence = AdvancedPlanningIntelligenceEngine(
+            planner=self._planner,
+            stager=self._stager,
+            validator=self._validator,
+            validation_config=GeometricValidationConfiguration(1.0, 0.001, 0.0),
+        )
     def create_engineering_fixture(self, case_id: str) -> TreatmentSession:
         """Create an explicit engineering fixture, never a substitute for segmentation."""
         identification = ToothIdentificationEngine().identify(
@@ -111,6 +121,7 @@ class TreatmentSessionStore:
             experimental=session.experimental,
             planning_mode=session.planning_mode,
         )
+        session = self._attach_intelligence(session)
         self._sessions[case_id] = session
         return session
 
@@ -131,6 +142,7 @@ class TreatmentSessionStore:
             experimental=session.experimental,
             planning_mode=session.planning_mode,
         )
+        session = self._attach_intelligence(session)
         self._sessions[case_id] = session
         return session
 
@@ -151,6 +163,7 @@ class TreatmentSessionStore:
             experimental=session.experimental,
             planning_mode=session.planning_mode,
         )
+        session = self._attach_intelligence(session)
         self._sessions[case_id] = session
         return session
 
@@ -170,6 +183,7 @@ class TreatmentSessionStore:
             experimental=session.experimental,
             planning_mode=session.planning_mode,
         )
+        session = self._attach_intelligence(session)
         self._sessions[case_id] = session
         return session
 
@@ -217,6 +231,83 @@ class TreatmentSessionStore:
         package = self.export(case_id, destination)
         return TreatmentExportEngine().verify_package(package.zip_path)
 
+    def select_setup_alternative(self, case_id: str, alternative_id: str) -> TreatmentSession:
+        """Doctor decision: accept a validated intelligence candidate as the active setup."""
+        from domain.treatment_plan.intelligence import DecisionState, SetupAlternativeSummary
+        from engines.planning.intelligence import IntelligenceCandidate
+
+        session = self.get(case_id)
+        if session.intelligence is None or not session.intelligence.candidates:
+            raise TreatmentSessionError("No setup alternatives are available for this case")
+        match = next(
+            (
+                item
+                for item in session.intelligence.candidates
+                if item.summary.alternative_id == alternative_id
+            ),
+            None,
+        )
+        if match is None:
+            raise TreatmentSessionError(f"Unknown setup alternative: {alternative_id}")
+        if match.summary.contract.decision_state.value == "rejected_by_validation":
+            raise TreatmentSessionError(
+                "Alternative was rejected by deterministic geometric validation and "
+                "cannot be activated."
+            )
+        accepted_contract = dataclass_replace(
+            match.summary.contract, decision_state=DecisionState.ACCEPTED_BY_DOCTOR
+        )
+        updated_candidates: list[IntelligenceCandidate] = []
+        for item in session.intelligence.candidates:
+            is_active = item.summary.alternative_id == alternative_id
+            summary = SetupAlternativeSummary(
+                alternative_id=item.summary.alternative_id,
+                strategy=item.summary.strategy,
+                label=item.summary.label,
+                contract=accepted_contract if is_active else item.summary.contract,
+                collision_count=item.summary.collision_count,
+                proximity_count=item.summary.proximity_count,
+                contact_count=item.summary.contact_count,
+                stage_count=item.summary.stage_count,
+                is_active=is_active,
+            )
+            updated_candidates.append(
+                IntelligenceCandidate(
+                    summary=summary,
+                    proposal=match.proposal if is_active else item.proposal,
+                    staging=match.staging if is_active else item.staging,
+                    validation=match.validation if is_active else item.validation,
+                )
+            )
+        report = dataclass_replace(
+            session.intelligence.report,
+            alternatives=tuple(item.summary for item in updated_candidates),
+        )
+        intelligence = AdvancedPlanningIntelligenceResult(
+            report=report, candidates=tuple(updated_candidates)
+        )
+        session = TreatmentSession(
+            proposal=match.proposal,
+            staging=match.staging,
+            validation=match.validation,
+            adjuncts=self._proposals.generate(match.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+            intelligence=intelligence,
+        )
+        self._sessions[case_id] = session
+        return session
+
+    def _attach_intelligence(self, session: TreatmentSession) -> TreatmentSession:
+        intelligence = self._intelligence.generate(
+            session.proposal,
+            session.staging,
+            session.validation,
+            staging_configuration=self._staging_configuration(),
+        )
+        return dataclass_replace(session, intelligence=intelligence)
+
     def _compose(
         self,
         proposal: TreatmentPlanProposal,
@@ -248,7 +339,8 @@ class TreatmentSessionStore:
             validation.status.value,
         )
         emit(88, "Validating plan")
-        return TreatmentSession(
+        emit(90, "Generating assisted planning candidates")
+        session = TreatmentSession(
             proposal,
             staging,
             validation,
@@ -261,6 +353,7 @@ class TreatmentSessionStore:
             experimental=True,
             planning_mode=proposal.planning_mode,
         )
+        return self._attach_intelligence(session)
 
     @staticmethod
     def _staging_configuration() -> StagingConfiguration:
@@ -371,6 +464,15 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
     manufacturing = build_manufacturing_boundary_report(
         has_stage_models=bool(session.staging.stages)
     ).payload()
+    intelligence_payload = (
+        session.intelligence.report.payload() if session.intelligence is not None else None
+    )
+    active_alternative = None
+    if session.intelligence is not None:
+        active_alternative = next(
+            (item for item in session.intelligence.report.alternatives if item.is_active),
+            None,
+        )
     return {
         "stages": stages,
         "provenance": session.proposal.provenance.value,
@@ -390,9 +492,18 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             "warnings": list(session.proposal.warnings),
             "source": "deterministic planner",
             "doctorReviewRequired": True,
+            "alternativeCount": (
+                len(session.intelligence.report.alternatives)
+                if session.intelligence is not None
+                else 0
+            ),
+            "activeAlternativeStrategy": (
+                active_alternative.strategy if active_alternative is not None else None
+            ),
         },
         "validationSummary": validation_summary,
         "manufacturingBoundary": manufacturing,
+        "planningIntelligence": intelligence_payload,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
         "editHistory": [

@@ -17,6 +17,7 @@ interface TreatmentSetupPanelProps {
   onToggleInitialPosition: (visible: boolean) => void;
   onToggleTargetPosition: (visible: boolean) => void;
   onOriginalOpacityChange: (value: number) => void;
+  onSelectAlternative?: (alternativeId: string) => void;
 }
 
 /** Treatment Setup left tools — existing proposal/stage data only. */
@@ -32,6 +33,7 @@ export function TreatmentSetupPanel({
   onToggleInitialPosition,
   onToggleTargetPosition,
   onOriginalOpacityChange,
+  onSelectAlternative,
 }: TreatmentSetupPanelProps): JSX.Element {
   const summary = buildTreatmentSetupSummary(bundle);
   const comparison = buildSetupComparison(bundle.stages[0], bundle.stages.at(-1));
@@ -156,6 +158,96 @@ export function TreatmentSetupPanel({
           <strong>{summary.setupAlternativesLabel}</strong>
         </div>
       </section>
+
+      {bundle.planningIntelligence && (
+        <section className="analysis-section" aria-labelledby="planning-intelligence">
+          <h3 id="planning-intelligence" className="eyebrow">
+            Planning Intelligence
+          </h3>
+          <small className="cad-review-note">{bundle.planningIntelligence.rule}</small>
+          <div className="cad-stat-row">
+            <span>Landmark-assisted</span>
+            <strong>
+              {bundle.planningIntelligence.landmarkAssistedTargetSetup.replaceAll("_", " ")}
+            </strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Arch-form-aware</span>
+            <strong>
+              {bundle.planningIntelligence.archFormAwarePlanning.replaceAll("_", " ")}
+            </strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Occlusion-aware</span>
+            <strong>
+              {bundle.planningIntelligence.occlusionAwarePlanning.replaceAll("_", " ")}
+            </strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Collision-aware</span>
+            <strong>
+              {bundle.planningIntelligence.collisionAwareCandidateGeneration.replaceAll(
+                "_",
+                " ",
+              )}
+            </strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Constrained 6-DOF</span>
+            <strong>
+              {bundle.planningIntelligence.constrainedSixDofTrajectories.replaceAll("_", " ")}
+            </strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Staging proposals</span>
+            <strong>
+              {bundle.planningIntelligence.stagingProposals.replaceAll("_", " ")}
+            </strong>
+          </div>
+          {bundle.planningIntelligence.alternatives.map((alternative) => (
+            <div className="proposal-row" key={alternative.alternativeId}>
+              <div className="proposal-row-header">
+                <strong>{alternative.label}</strong>
+                <span className={`proposal-status ${alternative.isActive ? "accepted" : ""}`}>
+                  {alternative.isActive ? "active" : alternative.contract.decisionState.replaceAll("_", " ")}
+                </span>
+              </div>
+              <div className="proposal-values">
+                <span>Model {alternative.contract.modelName}</span>
+                <span>v{alternative.contract.modelVersion}</span>
+                <span>
+                  Confidence{" "}
+                  {alternative.contract.confidence === null
+                    ? "not provided"
+                    : alternative.contract.confidence}
+                </span>
+                <span>Validation {alternative.contract.deterministicValidationStatus}</span>
+                <span>
+                  Collisions {alternative.collisionCount} · Stages {alternative.stageCount}
+                </span>
+              </div>
+              {onSelectAlternative &&
+                !alternative.isActive &&
+                alternative.contract.decisionState !== "rejected_by_validation" && (
+                  <div className="proposal-actions">
+                    <button
+                      className="text-button"
+                      onClick={() => onSelectAlternative(alternative.alternativeId)}
+                    >
+                      Accept setup
+                    </button>
+                  </div>
+                )}
+            </div>
+          ))}
+          {bundle.planningIntelligence.researchAdapters.map((adapter) => (
+            <div className="cad-stat-row" key={adapter.adapterId}>
+              <span>{adapter.modelName}</span>
+              <strong>{adapter.status.replaceAll("_", " ")}</strong>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

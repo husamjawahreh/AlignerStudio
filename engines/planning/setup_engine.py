@@ -167,7 +167,7 @@ class TreatmentPlanningEngine:
     def rebuild_proposal(
         self,
         proposal: TreatmentPlanProposal,
-        movement_overrides: dict[int, ToothMovement],
+        movement_overrides: dict[int | str, ToothMovement],
         edit_history: tuple[DoctorMovementEdit, ...],
         proposal_kind: ProposalKind,
     ) -> TreatmentPlanProposal:

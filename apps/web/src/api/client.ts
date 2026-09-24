@@ -266,6 +266,20 @@ export const api = {
     });
   },
 
+  selectSetupAlternative(caseId: string, alternativeId: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/setup-alternatives/select`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alternative_id: alternativeId }),
+    });
+  },
+
+  getPlanningIntelligence(caseId: string): Promise<Record<string, unknown>> {
+    return requestJson<Record<string, unknown>>(
+      `/cases/${caseId}/treatment/planning-intelligence`,
+    );
+  },
+
   verifyExport(caseId: string): Promise<Record<string, unknown>> {
     return requestJson<Record<string, unknown>>(`/cases/${caseId}/export/verify`, {
       method: "POST",
