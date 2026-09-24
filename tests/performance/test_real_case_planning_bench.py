@@ -100,6 +100,61 @@ def test_real_artifact_closest_tooth_pair_validation_is_practical() -> None:
     assert elapsed < 30.0, f"closest real pair validation regressed to {elapsed:.2f}s"
 
 
+def test_real_artifact_full_three_stage_generate_plan_is_practical(monkeypatch) -> None:
+    """End-to-end: fixture load + planning + 3-stage staging + geometric validation.
+
+    Proves the tooth_number-keying fix in `_validate_stage`: each stage must report the real
+    ~13 anatomically-adjacent close pairs (never 0 and never 91-of-91, which would mean every
+    tooth silently validated against itself).
+    """
+    root = _find_artifact_root()
+    if root is None:
+        pytest.skip("Validated real-case artifact is not available in this environment")
+
+    monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR", str(root))
+
+    from app.toothinstancenet_configuration import load_validated_fixture_result
+    from app.treatment_sessions import TreatmentSessionStore
+
+    from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
+    from domain.treatment_plan.setup import (
+        ToothMovement,
+        TreatmentObjective,
+        TreatmentObjectiveType,
+    )
+
+    started = time.perf_counter()
+    reviewed = load_validated_fixture_result(ArchType.UPPER)
+    treatment_input = TreatmentPlanningInput.from_identification(
+        reviewed.identification,
+        diagnostics=(),
+        planning_mode=TreatmentPlanningMode.SEMANTIC_ONLY_EXPERIMENTAL,
+    )
+    refs = [tooth.tooth_ref for tooth in reviewed.identification.teeth]
+    objectives = (
+        TreatmentObjective(
+            "bench", TreatmentObjectiveType.ALIGNMENT, "bench",
+            ((refs[0], ToothMovement(translation_x=0.2)),),
+        ),
+    )
+    session = TreatmentSessionStore().create_from_treatment_input(
+        "bench-case", treatment_input, objectives
+    )
+    elapsed = time.perf_counter() - started
+    print(f"[bench] full 3-stage generate_plan: {elapsed:.2f}s", flush=True)
+    for stage in session.validation.stage_results:
+        print(
+            f"[bench] stage {stage.stage_index}: close_pairs={len(stage.proximity_results)} "
+            f"status={stage.status.value}",
+            flush=True,
+        )
+        # Real anatomy: ~13 anatomically-adjacent pairs, never 0 and never all 91 (which would
+        # mean the tooth_number-keying bug regressed and every tooth is being compared to itself).
+        assert 0 < len(stage.proximity_results) < 91
+    assert elapsed < 180.0, f"full 3-stage generate_plan regressed to {elapsed:.2f}s"
+
+
 if __name__ == "__main__":
     test_real_artifact_fixture_reconstruction_is_practical()
     test_real_artifact_closest_tooth_pair_validation_is_practical()

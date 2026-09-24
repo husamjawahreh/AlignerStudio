@@ -198,31 +198,85 @@ library, it does not introduce a new package or license obligation.
 
 ## Known limitations
 
-- **A separate, pre-existing geometry-composition issue was discovered while benchmarking the
-  full 3-stage plan for the real 14-tooth case, and is *not* fixed by N4.** `_mesh_for_state`
-  (`engines/validation/geometric_engine.py`) always reads `state.final_target_faces` regardless
-  of stage index, while `state.vertices` varies per stage (source / interpolated / target).
-  When the real segmented tooth geometry flows through `TreatmentPlanningEngine.
-  generate_from_input` + `TreatmentStagingEngine.generate`, this combination causes **all 91**
-  tooth-pair combinations to pass the coarse whole-mesh AABB broad-phase filter in every stage
-  (verified directly: `close_pairs=91` of 91, in all 3 stages), instead of the ~13
-  anatomically-adjacent pairs seen when validating the raw fixture geometry directly. This
-  inflates the real end-to-end `generate_plan` duration for the tracked real artifact well
-  beyond the per-pair numbers above (full 3-stage compose did not finish in ~13 minutes in this
-  environment). N4.2 and N4.3 are each independently proven correct and dramatically faster in
-  isolation (single real pair: unbounded/>300s → 2.5s; one anatomically-correct 91-pair stage:
-  unbounded → 33s); this remaining slowness is a different, deeper bug in how planning/staging
-  composes per-stage vertex/face pairs, not a regression introduced by N4, and requires its own
-  dedicated investigation before touching (per the strict "do not change clinical/geometric
-  semantics" instruction for this pass).
-- `tests/python/test_semantic_only_planning.py::test_semantic_only_planning_does_not_crash_on_missing_fdi`
-  exercises the real tracked artifact end-to-end and is affected by the limitation above; it was
-  already effectively impractical before N4 (old fixture load alone was ~82s, combined with an
-  O(F1×F2) brute-force validation over pairs that were *also* already miscounted as 91-of-91
-  close). It is not part of the fast test loop in this report (deselected) and should be
-  re-classified as a slow/integration test once the composition issue above is fixed.
 - The rtree/vectorized `_mesh_pair_metrics` narrow-phase batch currently builds full numpy arrays
   for all candidate pairs of a call at once; for a pathological case with millions of true
-  candidates (e.g. if the composition issue above is fixed and still produces very large contact
-  areas) this could use significant memory. Chunking the batch was not implemented since no
-  realistic case in this pass required it once the composition issue is set aside.
+  candidates this could use significant memory. Chunking the batch was not implemented since no
+  realistic case in this pass required it.
+
+## N5 — Investigation and fix of the "all 91 pairs close" limitation (2026-09-24)
+
+The "Known limitations" section above originally reported that the real 14-tooth case's full
+3-stage `generate_plan` stayed impractically slow because `_mesh_for_state` always used
+`state.final_target_faces` regardless of stage index. Investigating that report properly found
+**two separate things**, one a false alarm and one a real, separate, active bug:
+
+**`_mesh_for_state` was not actually broken.** `source_faces` and `final_target_faces` are the
+*same* array by construction on every path that builds a `TargetToothState`/`StageToothState`
+today: `TreatmentPlanningEngine.generate_from_input` sets `source_faces=tooth.instance.mesh_faces`
+and `target_faces=tooth.instance.mesh_faces` — literally the same object reference — and
+`rebuild_proposal`/doctor edits only ever replace `target_vertices`, never `target_faces`.
+Movement is a per-vertex rigid transform that never changes topology or vertex count (checked
+explicitly in `_build_stage`). So using `final_target_faces` at any stage was always safe in
+practice. To make the *intended* per-stage representation explicit and fail closed instead of
+silently misbehaving if this invariant is ever broken in the future, `_mesh_for_state` now picks
+the face array that matches which vertex source `state.vertices` actually equals (`source_faces`
+at stage 0, `final_target_faces` at the final stage, and — for interpolated stages — requires
+`source_faces == final_target_faces`, erroring with `"source/target face topology mismatch for
+interpolated stage"` otherwise). This produces byte-identical output to before for every real
+code path (proven: existing `test_geometric_validation_phase7.py`,
+`test_treatment_staging_phase6.py`, `test_doctor_editing_phase9.py` and the N4 performance tests
+all pass unchanged), and adds `tests/python/test_stage_geometry_and_validation_keying.py`'s
+topology-mismatch tests as new fail-closed coverage.
+
+**The real, active bug: `GeometricValidationEngine._validate_stage` keyed its per-tooth mesh
+lookup by `state.tooth_number`.** In `semantic_only_experimental` planning mode — the mode used
+for *every* real ToothInstanceNet case, since no clinical FDI identity is asserted —
+`tooth_number` is `None` for all 14 teeth. `meshes = {state.tooth_number: _mesh_for_state(state)
+for state in ordered_states}` therefore collapsed to a single dict entry (whichever tooth was
+last in iteration order), and every one of the 91 tooth-pair combinations resolved
+`meshes[first.tooth_number]` and `meshes[second.tooth_number]` to the **same mesh**, silently
+comparing a tooth's mesh against **itself** instead of its real neighbor, 91 times per stage.
+This is what actually produced the previously-reported "all 91 pairs pass the AABB filter" —
+comparing a mesh's own bounds against itself trivially has zero distance — and it also explains
+why the full pipeline was so slow: the largest real tooth (~13k faces) was being compared
+against itself, which is at least as expensive as any genuine adjacent pair and happened for
+every one of the 91 "pairs," not just the ~13 real adjacent ones. **This bug applied to all real
+cases and made geometric collision/proximity validation vacuous (not merely slow) for every
+report a doctor would have seen from the semantic-only-experimental path.**
+
+**Fix:** `_validate_stage`'s mesh lookup is now keyed by `_state_sort_key(state)` — the same
+tooth_number-with-tooth_ref-fallback key already used to order teeth deterministically elsewhere
+in this file (`_state_sort_key`, `.detect()`), so it never collapses regardless of planning mode.
+
+### Before/after measurements (real cached artifact, `official_real_case_stage2_verified_v1`)
+
+| Measurement | Before (bug present) | After (fixed) |
+|---|---|---|
+| Close-pair count per stage (of 91 combinations) | 91 of 91 (every pair a self-comparison) | **13 of 91** (the real anatomically-adjacent pairs) |
+| Geometric validation time per stage | did not finish in 120s in earlier ad hoc measurement | **~33.0–33.6s** |
+| Intersections reported per stage | comparing a mesh to itself trivially — result depended on which tooth landed in the dict, not real anatomy | **0** (correct: untouched real arch has no genuine collisions) |
+| Full 3-stage `generate_plan` (fixture load + planning + staging + validation) | did not finish in ~13 minutes in earlier measurement | **102–104s** |
+| Stage 0 vs intermediate vs final geometry (moved tooth, translation_x=0.2 over 2 steps) | n/a | first-vertex x: `-20.850 → -20.750 → -20.650` — exact linear interpolation, confirms `_mesh_for_state`'s stage-0/final selection matches `source_vertices`/`final_target_vertices` exactly |
+| Stage 0 vs intermediate vs final geometry (unmoved tooth) | n/a | vertices differ by ≤2.2e-16 (IEEE-754 double epsilon) across all 3 stages — floating-point noise from the existing (untouched) rigid-transform math, not a real geometric change |
+
+Regression tests: `tests/python/test_stage_geometry_and_validation_keying.py` (6 tests — proves
+the real bug is fixed with clearly-separated/intersecting semantic-only-mode teeth, proves
+clinical_fdi and semantic-only modes agree on identical geometry, and proves the
+`_mesh_for_state` topology-mismatch fail-closed behavior). Full fast suite:
+`tests/python/test_toothinstancenet_fixture_performance.py`-plus-total is **144 passed, 1
+deselected, ~15s** (up from 138 passed before this fix; 6 new tests, all green). The previously-
+deselected `test_semantic_only_planning.py::test_semantic_only_planning_does_not_crash_on_missing_fdi`
+now completes in **~100s** (previously effectively unbounded) and fails only because its own
+premise is stale for the tracked artifact — the real artifact always has a populated `tooth_ref`,
+so the "missing FDI" 400/409/503 branch it expects is never reached and planning legitimately
+returns 200 OK; this is a pre-existing test-authoring issue unrelated to this fix and was left
+untouched (out of scope for this pass).
+
+### Real-case benchmark suite (`tests/performance`)
+
+Added `test_real_artifact_full_three_stage_generate_plan_is_practical`, asserting each stage
+reports strictly between 0 and 91 close pairs (catching a regression back to either the
+self-comparison bug or a total AABB-filter failure) and that the full 3-stage plan stays under
+180s. All 3 performance tests pass: fixture reconstruction ~1.5–3.0s/arch, closest real pair
+~2.5s, full 3-stage `generate_plan` **103.60s** with `close_pairs=13` on every stage.
+

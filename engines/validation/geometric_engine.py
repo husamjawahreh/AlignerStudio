@@ -63,9 +63,31 @@ def _state_sort_key(state: StageToothState) -> str:
     return str(state.tooth_number if state.tooth_number is not None else state.tooth_ref)
 
 
+def _faces_for_state(state: StageToothState) -> tuple[tuple[int, int, int], ...] | None:
+    """Select the face topology matching the vertex source actually used at this stage.
+
+    Stage 0 uses `source_vertices` verbatim, the final stage uses `final_target_vertices`
+    verbatim, and every stage in between linearly interpolates per vertex index between the
+    two — which is only geometrically valid when source and target share identical face
+    topology. Returns None if an intermediate stage's source/target topology diverges.
+    """
+    if state.vertices == state.source_vertices:
+        return state.source_faces
+    if state.vertices == state.final_target_vertices:
+        return state.final_target_faces
+    if state.source_faces == state.final_target_faces:
+        return state.source_faces
+    return None
+
+
 def _mesh_for_state(state: StageToothState) -> _ValidatedMesh:
     vertices = np.asarray(state.vertices, dtype=np.float64)
-    faces = np.asarray(state.final_target_faces, dtype=np.int64)
+    faces_source = _faces_for_state(state)
+    if faces_source is None:
+        return _ValidatedMesh(
+            _empty_mesh(), "source/target face topology mismatch for interpolated stage"
+        )
+    faces = np.asarray(faces_source, dtype=np.int64)
     if vertices.ndim != 2 or vertices.shape[1] != 3 or len(vertices) == 0:
         return _ValidatedMesh(_empty_mesh(), "empty or malformed vertex array")
     if faces.ndim != 2 or faces.shape[1] != 3 or len(faces) == 0:
@@ -485,18 +507,20 @@ class GeometricValidationEngine:
     def _validate_stage(self, stage, provenance, configuration):
         started = perf_counter()
         ordered_states = tuple(sorted(stage.tooth_states, key=_state_sort_key))
-        meshes = {state.tooth_number: _mesh_for_state(state) for state in ordered_states}
+        # tooth_number is None for every tooth in semantic-only-experimental mode; keying by it
+        # would collapse all teeth to one mesh entry and silently compare a tooth against itself.
+        meshes = {_state_sort_key(state): _mesh_for_state(state) for state in ordered_states}
         errors = tuple(
-            f"Tooth {state.tooth_number}: {meshes[state.tooth_number].error}"
+            f"Tooth {_state_sort_key(state)}: {meshes[_state_sort_key(state)].error}"
             for state in ordered_states
-            if meshes[state.tooth_number].error
+            if meshes[_state_sort_key(state)].error
         )
         proximity: list[ProximityResult] = []
         collisions: list[CollisionResult] = []
         contacts: list[ContactResult] = []
         for first, second in combinations(ordered_states, 2):
-            first_mesh = meshes[first.tooth_number]
-            second_mesh = meshes[second.tooth_number]
+            first_mesh = meshes[_state_sort_key(first)]
+            second_mesh = meshes[_state_sort_key(second)]
             if first_mesh.error or second_mesh.error:
                 continue
             if _aabb_distance(first_mesh.mesh.bounds, second_mesh.mesh.bounds) > max(

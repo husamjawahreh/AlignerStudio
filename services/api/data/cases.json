@@ -269,5 +269,55 @@
       "planning_status": "PROCESSING",
       "completed_at": "2026-09-24T13:36:45.909488+03:00"
     }
+  },
+  {
+    "id": "991b444c-36e4-4c55-8acf-c2d44538a88e",
+    "patient_reference": "Test UI 2",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T13:35:14.902951+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/991b444c-36e4-4c55-8acf-c2d44538a88e-upper-7e55e8c833e049fe8efe939d653d4ea3.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T13:35:17.388710+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/991b444c-36e4-4c55-8acf-c2d44538a88e-lower-2785a8e393c841d886db350aeb4a1760.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T13:35:20.601393+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "1cbdec3f-15c8-42b3-a7f2-96f180a2263e",
+      "case_id": "991b444c-36e4-4c55-8acf-c2d44538a88e",
+      "overall_progress": 55,
+      "current_stage": "SEGMENTING_LOWER",
+      "stage_status": "FAILED",
+      "stage_progress": null,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER"
+      ],
+      "pending_stages": [
+        "PREPARING",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": true,
+      "error_code": "PROCESSING_FAILED",
+      "user_message": "Processing could not be completed for this case",
+      "technical_diagnostic": "Segmentation completed without a reviewable identification result",
+      "started_at": "2026-09-24T13:35:22.145981+00:00",
+      "updated_at": "2026-09-24T13:35:40.830348+00:00",
+      "elapsed_seconds": 18,
+      "upper_status": "COMPLETED",
+      "lower_status": "COMPLETED",
+      "planning_status": "PENDING",
+      "completed_at": "2026-09-24T13:35:40.830370+00:00"
+    }
   }
 ]
