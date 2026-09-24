@@ -1,0 +1,23 @@
+[
+  {
+    "id": "a814e09a-e4f9-4d56-94aa-fcad134f8110",
+    "patient_reference": "semantic-plan",
+    "status": "created",
+    "created_at": "2026-09-24T09:28:43.970632+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/tmp/upper.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T09:28:43.971670+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/tmp/lower.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T09:28:43.971673+00:00"
+      }
+    ],
+    "processing_status": null
+  }
+]

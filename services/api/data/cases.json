@@ -1,0 +1,179 @@
+[
+  {
+    "id": "5db0afea-c2e8-49c9-8aba-c1f83d3324fd",
+    "patient_reference": "Production Test",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T07:16:48.369061+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/5db0afea-c2e8-49c9-8aba-c1f83d3324fd-upper-4d3608cf1d1d483bba1485179987af32.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T07:16:51.514328+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/5db0afea-c2e8-49c9-8aba-c1f83d3324fd-lower-9d7b1f531774490e94978642858e78c3.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T07:16:55.775354+00:00"
+      }
+    ],
+    "processing_status": null
+  },
+  {
+    "id": "2368251c-a14b-42ae-a440-d9c024ceedb7",
+    "patient_reference": "Production Test",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T08:10:07.144301+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/2368251c-a14b-42ae-a440-d9c024ceedb7-upper-f89874b5f4224de6be5e10ff8e3217f4.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T08:10:11.520100+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/2368251c-a14b-42ae-a440-d9c024ceedb7-lower-122422e86e8f420a9967536c90574721.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T08:10:14.687469+00:00"
+      }
+    ],
+    "processing_status": null
+  },
+  {
+    "id": "529a8d58-de54-4464-b235-d0693993395f",
+    "patient_reference": "test",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T08:56:50.474333+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/529a8d58-de54-4464-b235-d0693993395f-upper-6f965e44573c49e3a5d42d9ace4d95c3.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T08:57:00.687960+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/529a8d58-de54-4464-b235-d0693993395f-lower-69d7929172c74427a74a78f35c73e472.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T08:57:04.761969+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "e41c6354-2315-4e15-afda-6362cba398d9",
+      "case_id": "529a8d58-de54-4464-b235-d0693993395f",
+      "overall_progress": 70,
+      "current_stage": "BUILDING_PLAN",
+      "stage_status": "PROCESSING",
+      "stage_progress": null,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER"
+      ],
+      "pending_stages": [
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Preparing treatment setup",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T08:57:07.054022+00:00",
+      "updated_at": "2026-09-24T09:04:05.265678+00:00",
+      "completed_at": null
+    }
+  },
+  {
+    "id": "8fd393eb-2f48-4e07-8364-f09c8cb9fb9b",
+    "patient_reference": "testttt",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T09:20:04.505819+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/8fd393eb-2f48-4e07-8364-f09c8cb9fb9b-upper-4dd64679e78647589482fd3bb924b419.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T09:20:06.665737+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/8fd393eb-2f48-4e07-8364-f09c8cb9fb9b-lower-59307c3113194fa882125adce8c0957e.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T09:20:10.504315+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "f39504ce-d437-426b-b754-1c1bdb31b655",
+      "case_id": "8fd393eb-2f48-4e07-8364-f09c8cb9fb9b",
+      "overall_progress": 70,
+      "current_stage": "BUILDING_PLAN",
+      "stage_status": "PROCESSING",
+      "stage_progress": null,
+      "completed_stages": [
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER"
+      ],
+      "pending_stages": [
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Preparing treatment setup",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T09:20:11.750098+00:00",
+      "updated_at": "2026-09-24T09:26:10.198492+00:00",
+      "completed_at": null
+    }
+  },
+  {
+    "id": "6d6277b0-e521-4db4-9eca-5ebbed78d54f",
+    "patient_reference": "tttttt",
+    "status": "mesh_validated",
+    "created_at": "2026-09-24T09:24:30.462201+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/6d6277b0-e521-4db4-9eca-5ebbed78d54f-upper-95b44452241c4b899246a25a2a11e059.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-24T09:24:34.786101+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/services/api/data/uploads/6d6277b0-e521-4db4-9eca-5ebbed78d54f-lower-f3981ab87bbe476a93d7d3b61cceb592.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-24T09:24:40.524474+00:00"
+      }
+    ],
+    "processing_status": {
+      "job_id": "68531815-76bf-4c4c-bb27-86e98188a15c",
+      "case_id": "6d6277b0-e521-4db4-9eca-5ebbed78d54f",
+      "overall_progress": 0,
+      "current_stage": "PREPARING",
+      "stage_status": "PROCESSING",
+      "stage_progress": null,
+      "completed_stages": [],
+      "pending_stages": [
+        "PREPARING",
+        "VALIDATING_SCANS",
+        "SEGMENTING_UPPER",
+        "SEGMENTING_LOWER",
+        "BUILDING_PLAN",
+        "VALIDATING_PLAN",
+        "FINALIZING"
+      ],
+      "error_state": false,
+      "error_code": null,
+      "user_message": "Analyzing case",
+      "technical_diagnostic": null,
+      "started_at": "2026-09-24T09:24:45.995774+00:00",
+      "updated_at": "2026-09-24T09:24:45.995785+00:00",
+      "completed_at": null
+    }
+  }
+]

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from app.config import UPLOAD_DIR
 from app.pipeline_diagnostics import process_uploaded_case
+from app.processing import start_processing
 from app.schemas.cases import (
     CaseResponse,
     CreateCaseRequest,
@@ -107,6 +108,7 @@ async def upload_mesh(case_id: str, arch: str, file: UploadFile) -> CaseResponse
     contents = await file.read()
     dest_path.write_bytes(contents)
     case.add_mesh(MeshAsset(arch=arch, file_path=str(dest_path), original_filename=file.filename))
+    case_store.update(case)
     return _to_case_response(case)
 
 
@@ -121,6 +123,7 @@ def remove_mesh(case_id: str, arch: str) -> CaseResponse:
     if mesh is None:
         raise HTTPException(status_code=404, detail=f"No uploaded mesh for arch '{arch}'")
     Path(mesh.file_path).unlink(missing_ok=True)
+    case_store.update(case)
     return _to_case_response(case)
 
 
@@ -138,6 +141,7 @@ def validate_case_mesh(case_id: str, arch: str) -> MeshValidationResponse:
         case.mark_validated()
     else:
         case.mark_rejected()
+    case_store.update(case)
     return MeshValidationResponse(
         is_valid=result.is_valid,
         triangle_count=result.triangle_count,
@@ -191,9 +195,20 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
                 ),
             ),
         )
-        session = treatment_sessions.create_from_treatment_input(
-            case_id, treatment_input, objectives
-        )
+        try:
+            session = treatment_sessions.create_from_treatment_input(
+                case_id, treatment_input, objectives
+            )
+        except (TypeError, ValueError) as error:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "planning_unavailable",
+                    "message": "Planning could not be completed for the current semantic-only data.",
+                    "reason": str(error),
+                    "case_id": case_id,
+                },
+            ) from error
         if session.proposal.limitations:
             raise HTTPException(status_code=409, detail=list(session.proposal.limitations))
         return TreatmentPlanResponse(
@@ -230,6 +245,24 @@ def process_case_pipeline(case_id: str, arch: str) -> dict:
     if mesh is None:
         raise HTTPException(status_code=404, detail=f"No uploaded mesh for arch '{arch}'")
     return process_uploaded_case(mesh.file_path, ArchType(arch)).payload()
+
+
+@router.post("/{case_id}/processing")
+def begin_processing(case_id: str) -> dict:
+    try:
+        return start_processing(case_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/{case_id}/processing-status")
+def get_processing_status(case_id: str) -> dict:
+    if case_store.get(case_id) is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    status = case_store.get_processing(case_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail="No processing job exists for this case")
+    return status
 
 
 @router.post("/demo")

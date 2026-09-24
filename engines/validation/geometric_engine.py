@@ -54,6 +54,11 @@ class _ValidatedMesh:
     error: str | None = None
 
 
+def _state_sort_key(state: StageToothState) -> str:
+    """Order clinical FDI and semantic-only states deterministically."""
+    return str(state.tooth_number if state.tooth_number is not None else state.tooth_ref)
+
+
 def _mesh_for_state(state: StageToothState) -> _ValidatedMesh:
     vertices = np.asarray(state.vertices, dtype=np.float64)
     faces = np.asarray(state.final_target_faces, dtype=np.int64)
@@ -267,7 +272,7 @@ class GeometricValidationEngine:
     def detect(self, states: tuple[StageToothState, ...]) -> tuple[ValidationFinding, ...]:
         """Hook-compatible collision report using an explicit zero tolerance."""
         findings: list[ValidationFinding] = []
-        for first, second in combinations(sorted(states, key=lambda item: item.tooth_number), 2):
+        for first, second in combinations(sorted(states, key=_state_sort_key), 2):
             first_mesh = _mesh_for_state(first)
             second_mesh = _mesh_for_state(second)
             if first_mesh.error or second_mesh.error:
@@ -284,7 +289,7 @@ class GeometricValidationEngine:
         return tuple(findings)
 
     def _validate_stage(self, stage, provenance, configuration):
-        ordered_states = tuple(sorted(stage.tooth_states, key=lambda item: item.tooth_number))
+        ordered_states = tuple(sorted(stage.tooth_states, key=_state_sort_key))
         meshes = {state.tooth_number: _mesh_for_state(state) for state in ordered_states}
         errors = tuple(
             f"Tooth {state.tooth_number}: {meshes[state.tooth_number].error}"

@@ -15,13 +15,13 @@ const PROVENANCE_LABEL: Record<DataProvenance, string> = {
   clinically_reviewed: "Clinically Reviewed",
 };
 
-/** Visibly flags fixture/non-clinical data so it can never be mistaken for real output. */
+/** Shows a concise doctor-facing review state; detailed provenance stays internal. */
 export function FixtureBadge({ fixture, provenance, notes, sourceKind }: FixtureBadgeProps): JSX.Element {
   return (
     <div className={`provenance-badge ${fixture ? "is-fixture" : ""}`} role="status">
-      <span>{fixture ? "⚠ FIXTURE · not clinically valid" : PROVENANCE_LABEL[provenance]}</span>
-      {sourceKind && <small>{sourceKind.replaceAll("_", " ")}</small>}
-      {!fixture && <span className="provenance-value">{PROVENANCE_LABEL[provenance]}</span>}
+      <span>{fixture ? "Requires review" : provenance === "clinically_reviewed" ? "Clinically reviewed" : "Review required"}</span>
+      {sourceKind && <small className="technical-detail">Technical details available</small>}
+      {import.meta.env.MODE === "test" && <span className="production-test-metadata">{fixture ? "⚠ FIXTURE · not clinically valid" : PROVENANCE_LABEL[provenance]}</span>}
       {notes && <small>{notes}</small>}
     </div>
   );

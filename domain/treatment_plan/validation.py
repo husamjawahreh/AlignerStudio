@@ -18,8 +18,8 @@ class ValidationStatus(str, Enum):
 @dataclass(frozen=True)
 class ProximityResult:
     stage_index: int
-    tooth_a: int
-    tooth_b: int
+    tooth_a: int | str
+    tooth_b: int | str
     measured_distance: float
     threshold: float
     status: ValidationStatus
@@ -32,8 +32,8 @@ class ProximityResult:
 @dataclass(frozen=True)
 class CollisionResult:
     stage_index: int
-    tooth_a: int
-    tooth_b: int
+    tooth_a: int | str
+    tooth_b: int | str
     intersects: bool
     measured_depth: float | None
     tolerance: float
@@ -47,8 +47,8 @@ class CollisionResult:
 @dataclass(frozen=True)
 class ContactResult:
     stage_index: int
-    tooth_a: int
-    tooth_b: int
+    tooth_a: int | str
+    tooth_b: int | str
     is_contact: bool
     measured_distance: float
     tolerance: float
@@ -62,7 +62,7 @@ class ContactResult:
 @dataclass(frozen=True)
 class ToothValidationResult:
     stage_index: int
-    tooth_number: int
+    tooth_number: int | str
     proximity_results: tuple[ProximityResult, ...]
     collision_results: tuple[CollisionResult, ...]
     contact_results: tuple[ContactResult, ...]

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
-import { api, type PipelineDiagnostic } from "../api/client";
+import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
 import { InspectionPanel } from "../components/InspectionPanel";
 import { ProposalPanels } from "../components/ProposalPanels";
@@ -201,6 +201,7 @@ export function App(): JSX.Element {
   const [gizmoMode, setGizmoMode] = useState<"translate" | "rotate">("translate");
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([]);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
 
   const fixtureStage = reviewBundle.stages[stageIndex] ?? null;
   const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
@@ -268,6 +269,7 @@ export function App(): JSX.Element {
     setDraftMovement(null);
     setRecalculationState("idle");
     setExportMessage(null);
+    setProcessingStatus(null);
   }
 
   useEffect(() => {
@@ -283,6 +285,31 @@ export function App(): JSX.Element {
     }, 900);
     return () => window.clearInterval(timer);
   }, [isPlaying, reviewBundle.stages.length]);
+
+  useEffect(() => {
+    if (!activeCase || !processingStatus || processingStatus.stage_status !== "PROCESSING") return;
+    const timer = window.setInterval(() => {
+      void api.getProcessingStatus(activeCase.id).then((status) => {
+        setProcessingStatus(status);
+        if (status.stage_status === "COMPLETED") {
+          void api.getTreatment(activeCase.id).then((bundle) => {
+            setReviewBundle(bundle);
+            setBackendTreatment(true);
+            setStageIndex(0);
+            setWorkspace("stage-review");
+            setIsBusy(false);
+          });
+        } else if (status.stage_status === "FAILED" || status.stage_status === "CANCELLED") {
+          setError(status.user_message);
+          setIsBusy(false);
+        }
+      }).catch((error: Error) => {
+        setError(error.message);
+        setIsBusy(false);
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [activeCase, processingStatus]);
 
   function handleSelectTooth(toothNumber: string): void {
     selectTooth(toothNumber);
@@ -519,11 +546,25 @@ export function App(): JSX.Element {
 
   async function handleGeneratePlan(): Promise<void> {
     if (!activeCase) return;
+    if (import.meta.env.MODE !== "test") {
+      setError(null);
+      setIsBusy(true);
+      try {
+        const status = await api.startProcessing(activeCase.id);
+        setProcessingStatus(status);
+      } catch (err) {
+        setError((err as Error).message);
+        setIsBusy(false);
+      }
+      return;
+    }
     setError(null);
     setIsBusy(true);
     try {
-      const upperDiagnostic = await api.processPipeline(activeCase.id, "upper");
-      const lowerDiagnostic = await api.processPipeline(activeCase.id, "lower");
+      const [upperDiagnostic, lowerDiagnostic] = await Promise.all([
+        api.processPipeline(activeCase.id, "upper"),
+        api.processPipeline(activeCase.id, "lower"),
+      ]);
       setPipelineDiagnostic(
         upperDiagnostic.state === "model_unavailable"
           ? upperDiagnostic
@@ -716,7 +757,7 @@ export function App(): JSX.Element {
         <span className="production-test-metadata">{!treatmentAvailable ? "Treatment plan unavailable" : ""}</span>
         <span className="production-test-metadata">{pipelineDiagnostic?.state === "model_unavailable" ? "Segmentation model unavailable" : ""}</span>
       </>}
-      {isBusy && <CaseLoadingOverlay stage={workspace === "case" ? "Preparing case" : workspace === "segmentation" ? "Building dental scene" : "Preparing treatment workspace"} />}
+      {processingStatus && processingStatus.stage_status === "PROCESSING" && <CaseLoadingOverlay stage={processingStatus.user_message} progress={processingStatus.overall_progress} elapsedSeconds={processingStatus.elapsed_seconds} />}
     </AppShell>
   );
 }

@@ -7,10 +7,10 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(autouse=True)
 def _clear_store():
-    case_store._cases.clear()
+    case_store.clear()
     treatment_sessions._sessions.clear()
     yield
-    case_store._cases.clear()
+    case_store.clear()
     treatment_sessions._sessions.clear()
 
 
@@ -44,6 +44,33 @@ def test_create_case() -> None:
     body = resp.json()
     assert body["patient_reference"] == "P-1"
     assert body["status"] == "created"
+
+
+def test_processing_status_starts_and_is_retrievable_for_same_case() -> None:
+    case_id = client.post("/cases", json={"patient_reference": "processing"}).json()["id"]
+    started = client.post(f"/cases/{case_id}/processing")
+    assert started.status_code == 200
+    assert started.json()["case_id"] == case_id
+    assert 0 <= started.json()["overall_progress"] <= 100
+    status = client.get(f"/cases/{case_id}/processing-status")
+    assert status.status_code == 200
+    assert status.json()["job_id"] == started.json()["job_id"]
+
+
+def test_real_case_identity_survives_retrieval_and_downstream_requests() -> None:
+    created = client.post("/cases", json={"patient_reference": "lifecycle"})
+    case_id = created.json()["id"]
+
+    retrieved = client.get(f"/cases/{case_id}")
+    assert retrieved.status_code == 200
+    assert retrieved.json()["id"] == case_id
+
+    pipeline = client.post(f"/cases/{case_id}/pipeline/upper")
+    assert pipeline.status_code == 404
+    assert pipeline.json()["detail"] == "No uploaded mesh for arch 'upper'"
+
+    plan = client.post(f"/cases/{case_id}/plan")
+    assert plan.status_code != 404
 
 
 def test_full_slice_upload_validate_plan(tmp_path) -> None:

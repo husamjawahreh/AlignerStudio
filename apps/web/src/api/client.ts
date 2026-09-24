@@ -4,12 +4,26 @@ import type { MovementSummary, ReviewBundle } from "../review/types";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Request to ${path} failed (${response.status}): ${body}`);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 180000);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: controller.signal });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Request to ${path} failed (${response.status}): ${body}`);
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`The case analysis is still running. Request timed out while waiting for ${path}.`);
+    }
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(`The API connection was interrupted while requesting ${path}. Check that the local API is running.`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  return (await response.json()) as T;
 }
 
 export interface DemoTreatmentResponse {
@@ -21,6 +35,28 @@ export interface ExportDownload {
   blob: Blob;
   manifest: Record<string, unknown> | null;
   filename: string;
+}
+
+export interface ProcessingStatus {
+  job_id: string;
+  case_id: string;
+  overall_progress: number;
+  current_stage: string;
+  stage_status: "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  stage_progress: number | null;
+  completed_stages: string[];
+  pending_stages: string[];
+  error_state: boolean;
+  error_code: string | null;
+  user_message: string;
+  technical_diagnostic?: string | null;
+  started_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  elapsed_seconds?: number;
+  upper_status?: string;
+  lower_status?: string;
+  planning_status?: string;
 }
 
 export interface PipelineDiagnostic {
@@ -77,6 +113,10 @@ export const api = {
     });
   },
 
+  getCase(caseId: string): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}`);
+  },
+
   async uploadMesh(caseId: string, arch: "upper" | "lower", file: File): Promise<Case> {
     const formData = new FormData();
     formData.append("file", file);
@@ -102,6 +142,14 @@ export const api = {
 
   generatePlan(caseId: string): Promise<TreatmentPlan> {
     return requestJson<TreatmentPlan>(`/cases/${caseId}/plan`, { method: "POST" });
+  },
+
+  startProcessing(caseId: string): Promise<ProcessingStatus> {
+    return requestJson<ProcessingStatus>(`/cases/${caseId}/processing`, { method: "POST" });
+  },
+
+  getProcessingStatus(caseId: string): Promise<ProcessingStatus> {
+    return requestJson<ProcessingStatus>(`/cases/${caseId}/processing-status`);
   },
 
   createEngineeringDemo(): Promise<DemoTreatmentResponse> {
