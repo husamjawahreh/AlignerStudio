@@ -116,7 +116,8 @@ const BASE_PRESENTATION: OverlayRegistration[] = [
     visible: false,
     truthState: "not_available",
     renderingLayer: "ValidationLayer",
-    reason: "3D validation overlays require per-finding spatial binding; findings remain in panels.",
+    reason:
+      "WP-09 findings carry tooth-pair spatial_binding for selection/focus; no invented heatmaps or 3D regions.",
   },
   {
     id: "measurement",

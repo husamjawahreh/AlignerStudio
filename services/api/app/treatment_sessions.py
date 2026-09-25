@@ -1026,6 +1026,66 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
     validation_summary = build_validation_review_summary(
         session.proposal, session.staging, session.validation
     ).payload()
+
+    from engines.validation.geometric_engine import GeometricValidationConfiguration
+    from engines.validation.validation_v2_engine import build_validation_run
+
+    occ_capability = None
+    occ_reg_version = None
+    root_state = None
+    axes_state = None
+    landmark_state = None
+    if isinstance(occlusion_anatomy_payload, dict):
+        occ = occlusion_anatomy_payload.get("occlusion") or {}
+        if isinstance(occ, dict):
+            occ_capability = occ.get("capability_state")
+            reg = occ.get("registration") or {}
+            if isinstance(reg, dict):
+                occ_reg_version = reg.get("registration_version_id")
+        anatomy = occlusion_anatomy_payload.get("advanced_anatomy") or {}
+        if isinstance(anatomy, dict):
+            root_state = anatomy.get("root_geometry")
+            axes_state = anatomy.get("clinical_axes")
+            landmark_state = anatomy.get("landmark_geometry")
+        prereq = occlusion_anatomy_payload.get("prerequisites") or {}
+        if isinstance(prereq, dict):
+            occ_capability = occ_capability or prereq.get("occlusion")
+            root_state = root_state or prereq.get("root_geometry")
+            axes_state = axes_state or prereq.get("clinical_axes")
+            landmark_state = landmark_state or prereq.get("landmarks")
+
+    validation_config = GeometricValidationConfiguration(1.0, 0.001, 0.0)
+    validation_run = build_validation_run(
+        case_id=session.proposal.case_id,
+        proposal=session.proposal,
+        staging=session.staging,
+        validation=session.validation,
+        configuration=validation_config,
+        setup_version_id=session.proposal.version_id,
+        staging_version_id=current_staging_version_id,
+        clinical_tools_setup_version_id=getattr(
+            session, "clinical_tools_setup_version_id", None
+        ),
+        clinical_tools_staging_version_id=getattr(
+            session, "clinical_tools_staging_version_id", None
+        ),
+        current_setup_version_id=session.proposal.version_id,
+        current_staging_version_id=current_staging_version_id,
+        current_clinical_tools_setup_version_id=getattr(
+            session, "clinical_tools_setup_version_id", None
+        ),
+        current_clinical_tools_staging_version_id=getattr(
+            session, "clinical_tools_staging_version_id", None
+        ),
+        occlusion_capability_state=occ_capability,
+        occlusion_registration_version_id=occ_reg_version,
+        root_geometry_state=root_state,
+        clinical_axes_state=axes_state,
+        landmark_state=landmark_state,
+        manufacturing_ready=False,
+    )
+    validation_capability_payload = validation_run.payload()
+
     manufacturing = build_manufacturing_boundary_report(
         has_stage_models=bool(session.staging.stages)
     ).payload()
@@ -1067,6 +1127,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             ),
         },
         "validationSummary": validation_summary,
+        "validationCapability": validation_capability_payload,
         "manufacturingBoundary": manufacturing,
         "planningIntelligence": intelligence_payload,
         "realDataAvailable": True,

@@ -15,6 +15,7 @@ from engines.validation.hooks import (
     ToothProximityValidator,
     ValidationFinding,
 )
+from engines.validation.validation_v2_engine import build_validation_run
 
 __all__ = [
     "AnatomicalConstraintValidator",
@@ -30,4 +31,5 @@ __all__ = [
     "GeometricValidationConfiguration",
     "GeometricValidationEngine",
     "GeometricValidationError",
+    "build_validation_run",
 ]

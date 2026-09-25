@@ -51,6 +51,14 @@ from domain.treatment_plan.validation import (
     TreatmentValidationReport,
     ValidationStatus,
 )
+from domain.treatment_plan.validation_v2 import (
+    ValidationBinding,
+    ValidationCategory,
+    ValidationCheckState,
+    ValidationFreshness,
+    ValidationRun,
+    ValidationTruthState,
+)
 
 __all__ = [
     "Stage",
@@ -76,6 +84,12 @@ __all__ = [
     "ToothValidationResult",
     "TreatmentValidationReport",
     "ValidationStatus",
+    "ValidationBinding",
+    "ValidationCategory",
+    "ValidationCheckState",
+    "ValidationFreshness",
+    "ValidationRun",
+    "ValidationTruthState",
     "AttachmentProposal",
     "AttachmentSite",
     "AttachmentType",

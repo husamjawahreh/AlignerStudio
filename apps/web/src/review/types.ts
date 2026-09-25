@@ -201,7 +201,66 @@ export interface ReviewBundle {
   clinicalTools?: ClinicalToolsPayload;
   /** WP-08 occlusion + advanced anatomy capability binding. */
   occlusionAnatomy?: Record<string, unknown> | null;
+  /** WP-09 Validation 2.0 capability contract. */
+  validationCapability?: ValidationCapabilityPayload | null;
   stagingId?: string;
+}
+
+export interface ValidationCapabilityPayload {
+  contract_version: string;
+  validation_run_id: string;
+  case_id: string;
+  freshness: string;
+  overall_check_state: string;
+  overall_truth_state: string;
+  geometric_engine_version?: string | null;
+  provenance: string;
+  clinically_approved: false;
+  clinical_safety_guarantee: false;
+  pass_means_clinical_approval: false;
+  summary: {
+    check_count: number;
+    checks_passed: number;
+    warnings: number;
+    errors: number;
+    unavailable_checks: number;
+    review_required_checks: number;
+    finding_count: number;
+    affected_teeth: readonly (string | number)[];
+    affected_stages: readonly number[];
+    clinically_approved: false;
+    clinical_safety_guarantee: false;
+    validation_score: null;
+  };
+  checks: readonly {
+    check_id: string;
+    category: string;
+    label: string;
+    check_state: string;
+    truth_state: string;
+    context_kind: string;
+    finding_count: number;
+    limitations: readonly string[];
+    clinically_approved: false;
+  }[];
+  findings: readonly {
+    finding_id: string;
+    category: string;
+    severity: string;
+    check_state: string;
+    truth_state: string;
+    affected_tooth_refs: readonly (string | number)[];
+    arch: string | null;
+    stage_index: number | null;
+    context_kind: string;
+    message: string;
+    spatial_binding?: Record<string, unknown> | null;
+    clinical_interpretation: null;
+    clinical_diagnosis: null;
+  }[];
+  binding?: Record<string, unknown>;
+  limitations?: readonly string[];
+  timings_ms?: Record<string, number | null>;
 }
 
 export type ReadinessState =
