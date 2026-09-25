@@ -6,8 +6,26 @@ export interface WorkflowNavRow {
   value: string;
 }
 
-/** Refinement navigation — existing edit/proposal counts only (no P4 tooling). */
+function clinicalNavLabel(
+  sitesLength: number,
+  readiness: string | undefined,
+  freshness: string | undefined,
+  emptyLabel: string,
+): string {
+  if (freshness === "stale") return "Stale — regenerate";
+  if (readiness === "not_available" || readiness === "unavailable") {
+    return emptyLabel;
+  }
+  if (sitesLength === 0) return emptyLabel;
+  if (readiness === "requires_review") {
+    return `${sitesLength} · requires review`;
+  }
+  return String(sitesLength);
+}
+
+/** Refinement navigation — honest clinical-tool state (never fake clinical zeros). */
 export function buildRefinementNavigation(bundle: ReviewBundle): WorkflowNavRow[] {
+  const tools = bundle.clinicalTools;
   return [
     {
       id: "tooth-controls",
@@ -22,12 +40,22 @@ export function buildRefinementNavigation(bundle: ReviewBundle): WorkflowNavRow[
     {
       id: "attachments",
       label: "Attachments",
-      value: String(bundle.attachmentSites.length),
+      value: clinicalNavLabel(
+        bundle.attachmentSites.length,
+        tools?.readiness.attachment_placement,
+        tools?.freshness,
+        tools ? "Not available" : "Requires review",
+      ),
     },
     {
       id: "ipr",
       label: "IPR",
-      value: String(bundle.iprSites.length),
+      value: clinicalNavLabel(
+        bundle.iprSites.length,
+        tools?.readiness.ipr_measurement,
+        tools?.freshness,
+        tools ? "Not available" : "Requires review",
+      ),
     },
     {
       id: "edit-history",
@@ -97,6 +125,7 @@ export function buildProductionNavigation(bundle: ReviewBundle): WorkflowNavRow[
   const boundary = bundle.manufacturingBoundary;
   const finalStage = bundle.stages.at(-1);
   const packageReady = bundle.realDataAvailable && bundle.stages.length > 0;
+  const tools = bundle.clinicalTools;
 
   const capability = (status: string | undefined, fallback: string): string => {
     if (!status) return fallback;
@@ -120,12 +149,22 @@ export function buildProductionNavigation(bundle: ReviewBundle): WorkflowNavRow[
     {
       id: "ipr-report",
       label: "IPR Report",
-      value: String(bundle.iprSites.length),
+      value: clinicalNavLabel(
+        bundle.iprSites.length,
+        tools?.readiness.ipr_measurement,
+        tools?.freshness,
+        tools ? "Not available" : "Requires review",
+      ),
     },
     {
       id: "attachment-plan",
       label: "Attachment Plan",
-      value: String(bundle.attachmentSites.length),
+      value: clinicalNavLabel(
+        bundle.attachmentSites.length,
+        tools?.readiness.attachment_placement,
+        tools?.freshness,
+        tools ? "Not available" : "Requires review",
+      ),
     },
     {
       id: "auxiliary-features",

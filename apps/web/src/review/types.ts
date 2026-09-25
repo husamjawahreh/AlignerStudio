@@ -97,19 +97,30 @@ export interface ReviewIPRSite {
   siteId: string;
   toothA: number | string;
   toothB: number | string;
+  toothRefA?: string | null;
+  toothRefB?: string | null;
   currentDistance: number | null;
   targetDistance: number | null;
+  measuredAmount?: number | null;
+  computedProposalAmount?: number | null;
+  doctorEnteredAmount?: number | null;
   proposedAmount: number | null;
   status: ProposalStatus;
   warning: string;
   fixture: boolean;
   stage?: number | null;
   amountUnit?: string;
+  measurementMethod?: string;
+  valueSource?: "measured" | "computed_proposal" | "doctor_entered" | "not_available";
+  truthState?: "verified" | "computed" | "requires_review" | "not_available";
+  clinicallyApproved?: false;
+  limitations?: readonly string[];
 }
 
 export interface ReviewAttachmentSite {
   siteId: string;
   toothNumber: number | string;
+  toothRef?: string | null;
   attachmentType: string;
   referencePoint: [number, number, number] | null;
   reason: string;
@@ -119,6 +130,10 @@ export interface ReviewAttachmentSite {
   dimensions?: [number, number, number] | null;
   stage?: number | null;
   generated?: boolean;
+  truthState?: "verified" | "computed" | "requires_review" | "not_available";
+  geometryAvailable?: boolean;
+  clinicallyApproved?: false;
+  limitations?: readonly string[];
 }
 
 export type CapabilityStatus = "computed" | "unavailable" | "warning" | "boundary_only";
@@ -182,6 +197,8 @@ export interface ReviewBundle {
   setupPlanId?: string;
   treatmentSetup?: TreatmentSetup2Payload;
   smartStaging?: SmartStagingPayload;
+  /** WP-07 clinical tools honesty / readiness contract. */
+  clinicalTools?: ClinicalToolsPayload;
   stagingId?: string;
 }
 
@@ -267,6 +284,44 @@ export interface TreatmentSetup2Payload {
 }
 
 export type StagingFreshness = "current" | "stale" | "unavailable";
+
+export type ClinicalToolTruthState =
+  | "verified"
+  | "computed"
+  | "requires_review"
+  | "not_available";
+
+export type ClinicalToolFreshness = "current" | "stale" | "unavailable";
+
+export interface ClinicalToolsReadiness {
+  ipr_measurement: ReadinessState;
+  ipr_proposal: ReadinessState;
+  attachment_placement: ReadinessState;
+  attachment_geometry: ReadinessState;
+  validation: ReadinessState;
+  setup_binding: ClinicalToolFreshness;
+  staging_binding: ClinicalToolFreshness;
+  doctor_review_required: boolean;
+  source_geometry: ReadinessState;
+  notes: readonly string[];
+  clinically_approved: false;
+}
+
+export interface ClinicalToolsPayload {
+  contract_version: "clinical_tools_1.0";
+  source_setup_version_id: string;
+  source_staging_version_id: string | null;
+  adjuncts_proposal_id: string;
+  freshness: ClinicalToolFreshness;
+  readiness: ClinicalToolsReadiness;
+  ipr_site_count: number;
+  attachment_site_count: number;
+  measurable_ipr_pairs: number;
+  unavailable_ipr_pairs: number;
+  limitations: readonly string[];
+  clinically_approved: false;
+  notes: readonly string[];
+}
 
 export interface SmartStagingPayload {
   contract_version: "smart_staging_1.0";

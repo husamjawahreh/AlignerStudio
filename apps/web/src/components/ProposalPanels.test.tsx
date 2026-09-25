@@ -21,6 +21,6 @@ describe("ProposalPanels", () => {
     expect(screen.getByText(/dimensions require doctor review/)).toBeInTheDocument();
     expect(screen.getAllByText(/Stage 2/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Generated no/)).toBeInTheDocument();
-    expect(screen.getByText(/Dimensions undetermined/)).toBeInTheDocument();
+    expect(screen.getByText(/Dimensions Not available/)).toBeInTheDocument();
   });
 });

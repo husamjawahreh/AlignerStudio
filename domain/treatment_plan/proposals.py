@@ -48,6 +48,8 @@ class IPRSite:
     provenance: DataProvenance
     fixture: bool
     stage_index: int | None = None
+    # WP-07: doctor-entered amount remains distinguishable from computed proposal.
+    doctor_entered_amount: float | None = None
 
 
 @dataclass(frozen=True)

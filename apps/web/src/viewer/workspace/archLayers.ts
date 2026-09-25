@@ -56,7 +56,8 @@ export function createCadWorkspaceLayerRegistry(
     ipr: {
       available: false,
       visible: false,
-      reason: "IPR overlays are not available yet.",
+      reason:
+        "IPR overlays are planning-review only in WP-07; 3D IPR highlight overlays are not available.",
     },
     contacts: {
       available: false,
@@ -71,7 +72,8 @@ export function createCadWorkspaceLayerRegistry(
     attachments: {
       available: false,
       visible: false,
-      reason: "Attachment overlays are not available yet.",
+      reason:
+        "Attachment overlays are planning-review only in WP-07; 3D attachment geometry overlays are not available.",
     },
     measurements: {
       available: false,

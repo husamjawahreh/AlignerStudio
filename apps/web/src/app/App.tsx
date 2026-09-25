@@ -1743,6 +1743,8 @@ export function App(): JSX.Element {
               <ProposalPanels
                 iprSites={reviewBundle.iprSites}
                 attachmentSites={reviewBundle.attachmentSites}
+                clinicalToolsFreshness={reviewBundle.clinicalTools?.freshness}
+                clinicalToolsNotes={reviewBundle.clinicalTools?.notes}
                 onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
                 onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
                 onAttachmentStatus={(siteId, status) =>
@@ -1773,6 +1775,8 @@ export function App(): JSX.Element {
               <ProposalPanels
                 iprSites={reviewBundle.iprSites}
                 attachmentSites={reviewBundle.attachmentSites}
+                clinicalToolsFreshness={reviewBundle.clinicalTools?.freshness}
+                clinicalToolsNotes={reviewBundle.clinicalTools?.notes}
                 onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
                 onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
                 onAttachmentStatus={(siteId, status) =>

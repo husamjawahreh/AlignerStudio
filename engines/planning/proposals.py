@@ -107,7 +107,7 @@ class TreatmentProposalEngine:
             fixture=plan.fixture,
             history=history,
         )
-        return TreatmentProposalResult(
+        result = TreatmentProposalResult(
             proposal_id=proposal_id,
             plan_id=plan.plan_id,
             version_id=plan.version_id,
@@ -118,6 +118,10 @@ class TreatmentProposalEngine:
             warnings=warnings,
             history=history,
         )
+        # WP-07: never silently overwrite doctor-entered IPR amounts on regenerate.
+        from engines.planning.clinical_tools_engine import preserve_doctor_ipr_amounts
+
+        return preserve_doctor_ipr_amounts(previous, result)
 
     def modify_ipr(
         self,
@@ -131,7 +135,10 @@ class TreatmentProposalEngine:
         if site is None:
             raise TreatmentProposalError(f"Unknown IPR site: {site_id}")
         updated = replace(
-            site, proposed_amount=proposed_amount, status=ProposalStatus.DOCTOR_MODIFIED
+            site,
+            proposed_amount=proposed_amount,
+            doctor_entered_amount=proposed_amount,
+            status=ProposalStatus.DOCTOR_MODIFIED,
         )
         return self._replace_ipr(
             result, tuple(updated if item.site_id == site_id else item for item in result.ipr.sites)
@@ -327,6 +334,7 @@ class TreatmentProposalEngine:
             "a": site.tooth_a,
             "b": site.tooth_b,
             "amount": site.proposed_amount,
+            "doctor_entered": getattr(site, "doctor_entered_amount", None),
             "current": site.current_measurement.value,
             "target": site.target_measurement.value,
             "stage": site.stage_index,

@@ -18,8 +18,35 @@ describe("Workflow navigation presentation", () => {
       "Edit History",
     ]);
     expect(rows.find((row) => row.id === "attachments")?.value).toBe(
-      String(engineeringFixtureBundle.attachmentSites.length),
+      "1 · requires review",
     );
+    expect(rows.find((row) => row.id === "ipr")?.value).toBe("1 · requires review");
+  });
+
+  it("never presents empty clinical tools as a clinical zero", () => {
+    const empty: ReviewBundle = {
+      ...engineeringFixtureBundle,
+      iprSites: [],
+      attachmentSites: [],
+      clinicalTools: {
+        ...engineeringFixtureBundle.clinicalTools!,
+        ipr_site_count: 0,
+        attachment_site_count: 0,
+        measurable_ipr_pairs: 0,
+        readiness: {
+          ...engineeringFixtureBundle.clinicalTools!.readiness,
+          ipr_measurement: "not_available",
+          ipr_proposal: "not_available",
+          attachment_placement: "not_available",
+          attachment_geometry: "not_available",
+        },
+      },
+    };
+    const rows = buildRefinementNavigation(empty);
+    expect(rows.find((row) => row.id === "ipr")?.value).toBe("Not available");
+    expect(rows.find((row) => row.id === "attachments")?.value).toBe("Not available");
+    expect(rows.find((row) => row.id === "ipr")?.value).not.toBe("0");
+    expect(rows.find((row) => row.id === "attachments")?.value).not.toBe("0");
   });
 
   it("exposes Validation navigation labels and falls back to Unavailable", () => {

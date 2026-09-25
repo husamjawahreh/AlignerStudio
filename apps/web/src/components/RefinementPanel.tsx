@@ -19,6 +19,7 @@ export function RefinementPanel({
   onGizmoMode,
 }: RefinementPanelProps): JSX.Element {
   const rows = buildRefinementNavigation(bundle);
+  const tools = bundle.clinicalTools;
 
   return (
     <div className="refinement-panel case-form" data-testid="refinement-panel">
@@ -28,8 +29,15 @@ export function RefinementPanel({
         </h3>
         <small className="cad-review-note">
           Tooth Controls, Movement, Attachments, IPR, and Edit History use live proposal state. Apply
-          commits doctor edits through staging rebuild and validation refresh.
+          commits doctor edits through staging rebuild and validation refresh. Clinical-tool values
+          are not clinical approval.
         </small>
+        {tools?.freshness === "stale" && (
+          <p className="proposal-warning" data-testid="clinical-tools-stale">
+            Clinical tools are stale relative to the current Treatment Setup / Smart Staging
+            version. Regenerate adjunct proposals before treating IPR or attachments as current.
+          </p>
+        )}
       </section>
 
       <section className="analysis-section" aria-labelledby="tooth-controls">
@@ -69,9 +77,17 @@ export function RefinementPanel({
           Attachments
         </h3>
         <div className="cad-stat-row">
-          <span>Sites</span>
-          <strong>{rows.find((row) => row.id === "attachments")?.value ?? "0"}</strong>
+          <span>State</span>
+          <strong data-testid="attachments-nav-value">
+            {rows.find((row) => row.id === "attachments")?.value ?? "Not available"}
+          </strong>
         </div>
+        {tools?.readiness.attachment_geometry === "not_available" &&
+          bundle.attachmentSites.length > 0 && (
+            <small className="cad-review-note">
+              Candidates exist for review; attachment geometry dimensions are not available.
+            </small>
+          )}
       </section>
 
       <section className="analysis-section" aria-labelledby="ipr-nav">
@@ -79,9 +95,20 @@ export function RefinementPanel({
           IPR
         </h3>
         <div className="cad-stat-row">
-          <span>Sites</span>
-          <strong>{rows.find((row) => row.id === "ipr")?.value ?? "0"}</strong>
+          <span>State</span>
+          <strong data-testid="ipr-nav-value">
+            {rows.find((row) => row.id === "ipr")?.value ?? "Not available"}
+          </strong>
         </div>
+        {tools && (
+          <small className="cad-review-note">
+            Measured pairs: {tools.measurable_ipr_pairs}
+            {tools.unavailable_ipr_pairs > 0
+              ? ` · unavailable: ${tools.unavailable_ipr_pairs}`
+              : ""}
+            . Centroid distance is geometric, not a clinical IPR prescription.
+          </small>
+        )}
       </section>
 
       <section className="analysis-section" aria-labelledby="edit-history-nav">

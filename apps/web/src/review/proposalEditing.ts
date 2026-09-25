@@ -23,7 +23,13 @@ export function modifyIPRAmount(
     ...bundle,
     iprSites: bundle.iprSites.map((site) =>
       site.siteId === siteId
-        ? { ...site, proposedAmount: amount, status: "doctor_modified" }
+        ? {
+            ...site,
+            proposedAmount: amount,
+            doctorEnteredAmount: amount,
+            valueSource: "doctor_entered",
+            status: "doctor_modified",
+          }
         : site,
     ),
   };

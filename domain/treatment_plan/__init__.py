@@ -2,6 +2,13 @@ from domain.treatment_plan.input import TreatmentPlanningInput
 
 __all__ = ["TreatmentPlanningInput"]
 from domain.treatment_plan.models import Stage, ToothPosition, TreatmentPlan
+from domain.treatment_plan.clinical_tools import (
+    ClinicalCapabilityState,
+    ClinicalToolFreshness,
+    ClinicalToolTruthState,
+    ClinicalToolValueSource,
+    ClinicalToolsReadiness,
+)
 from domain.treatment_plan.proposals import (
     AttachmentProposal,
     AttachmentSite,
@@ -67,6 +74,11 @@ __all__ = [
     "AttachmentProposal",
     "AttachmentSite",
     "AttachmentType",
+    "ClinicalCapabilityState",
+    "ClinicalToolFreshness",
+    "ClinicalToolTruthState",
+    "ClinicalToolValueSource",
+    "ClinicalToolsReadiness",
     "IPRMeasurement",
     "IPRProposal",
     "IPRSite",

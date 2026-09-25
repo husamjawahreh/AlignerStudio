@@ -80,6 +80,9 @@ class TreatmentSession:
     # WP-06 Smart Staging lineage.
     smart_staging: Any = None
     staging_history: tuple = ()
+    # WP-07 Clinical tools binding (setup/staging versions that produced adjuncts).
+    clinical_tools_setup_version_id: str | None = None
+    clinical_tools_staging_version_id: str | None = None
 
 
 class TreatmentSessionStore:
@@ -180,17 +183,16 @@ class TreatmentSessionStore:
             ToothMovement(**{k: v for k, v in movement.items() if k != "reason"}),
             reason=reason_value,
         )
-        parent_staging = None
         if getattr(session, "smart_staging", None) is not None:
-            parent_staging = session.smart_staging.meta.staging_version_id
             stale_plan = with_freshness(session.smart_staging, edited.version_id)
         else:
             stale_plan = None
+        # WP-07: preserve adjuncts; do not silently rebase clinical tools onto the new setup.
         session = TreatmentSession(
             proposal=edited,
             staging=session.staging,
             validation=session.validation,
-            adjuncts=self._proposals.generate(edited, previous=session.adjuncts),
+            adjuncts=session.adjuncts,
             source_kind=session.source_kind,
             experimental=session.experimental,
             planning_mode=session.planning_mode,
@@ -198,8 +200,13 @@ class TreatmentSessionStore:
             version_history=session.version_history,
             smart_staging=stale_plan,
             staging_history=getattr(session, "staging_history", ()) or (),
+            clinical_tools_setup_version_id=getattr(
+                session, "clinical_tools_setup_version_id", None
+            ),
+            clinical_tools_staging_version_id=getattr(
+                session, "clinical_tools_staging_version_id", None
+            ),
         )
-        del parent_staging  # lineage retained on stale plan meta
         session = self._attach_intelligence(session)
         return self._remember(case_id, session)
 
@@ -210,7 +217,11 @@ class TreatmentSessionStore:
         description: str = "",
         author_source: str = "doctor",
     ) -> TreatmentSession:
-        """Explicit WP-06 regenerate: restage + validate against current setup version."""
+        """Explicit WP-06 regenerate: restage + validate against current setup version.
+
+        WP-07: preserves clinical-tool adjuncts and marks them stale vs the new staging
+        version until an explicit clinical-tools regenerate.
+        """
         session = self._normalize_session(self.get(case_id))
         parent_id = (
             session.smart_staging.meta.staging_version_id
@@ -222,12 +233,38 @@ class TreatmentSessionStore:
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
-        session = self._session_from_result(
-            session,
-            result,
-            staging_author_source=author_source,
-            staging_description=description or "Explicit staging regenerate",
+        plan = self._smart_stager.wrap(
+            result.proposal,
+            result.staging,
+            self._staging_configuration(),
+            validation=result.validation,
             parent_staging_version_id=parent_id,
+            author_source=author_source,
+            description=description or "Explicit staging regenerate",
+        )
+        history = append_staging_version(
+            tuple(session.staging_history),
+            SmartStagingVersionSnapshot(plan=plan, validation=result.validation),
+        )
+        session = TreatmentSession(
+            proposal=result.proposal,
+            staging=result.staging,
+            validation=result.validation,
+            adjuncts=session.adjuncts,
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+            intelligence=session.intelligence,
+            parent_version_id=session.parent_version_id,
+            version_history=session.version_history,
+            smart_staging=plan,
+            staging_history=history,
+            clinical_tools_setup_version_id=getattr(
+                session, "clinical_tools_setup_version_id", None
+            ),
+            clinical_tools_staging_version_id=getattr(
+                session, "clinical_tools_staging_version_id", None
+            ),
         )
         session = self._attach_intelligence(session)
         return self._remember(case_id, session)
@@ -288,6 +325,13 @@ class TreatmentSessionStore:
             version_history=session.version_history,
             smart_staging=plan,
             staging_history=session.staging_history,
+            # Restored staging may diverge from clinical-tool binding → stale until regenerate.
+            clinical_tools_setup_version_id=getattr(
+                session, "clinical_tools_setup_version_id", None
+            ),
+            clinical_tools_staging_version_id=getattr(
+                session, "clinical_tools_staging_version_id", None
+            ),
         )
         return self._remember(case_id, session)
 
@@ -374,7 +418,12 @@ class TreatmentSessionStore:
             description="Restored with Treatment Setup version",
         )
         plan = with_freshness(plan, snapshot.proposal.version_id)
-        restored = dataclass_replace(restored, smart_staging=plan)
+        restored = dataclass_replace(
+            restored,
+            smart_staging=plan,
+            clinical_tools_setup_version_id=snapshot.proposal.version_id,
+            clinical_tools_staging_version_id=plan.meta.staging_version_id,
+        )
         restored = self._attach_intelligence(restored)
         return self._remember(case_id, restored)
 
@@ -439,11 +488,12 @@ class TreatmentSessionStore:
             tuple(session.staging_history),
             SmartStagingVersionSnapshot(plan=plan, validation=result.validation),
         )
+        adjuncts = self._proposals.generate(result.proposal, previous=session.adjuncts)
         return TreatmentSession(
             proposal=result.proposal,
             staging=result.staging,
             validation=result.validation,
-            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
+            adjuncts=adjuncts,
             source_kind=session.source_kind,
             experimental=session.experimental,
             planning_mode=session.planning_mode,
@@ -451,6 +501,8 @@ class TreatmentSessionStore:
             version_history=session.version_history,
             smart_staging=plan,
             staging_history=history,
+            clinical_tools_setup_version_id=result.proposal.version_id,
+            clinical_tools_staging_version_id=plan.meta.staging_version_id,
         )
 
     @staticmethod
@@ -463,11 +515,18 @@ class TreatmentSessionStore:
         if not isinstance(staging_history, tuple):
             staging_history = tuple(staging_history)
         smart_staging = getattr(session, "smart_staging", None)
+        clinical_setup = getattr(session, "clinical_tools_setup_version_id", None)
+        clinical_staging = getattr(session, "clinical_tools_staging_version_id", None)
+        # Older pickled sessions may lack clinical-tool binding — bind to adjuncts version.
+        if clinical_setup is None and getattr(session, "adjuncts", None) is not None:
+            clinical_setup = getattr(session.adjuncts, "version_id", None)
         if (
             parent is session.parent_version_id
             and history is session.version_history
             and staging_history is getattr(session, "staging_history", ())
             and smart_staging is getattr(session, "smart_staging", None)
+            and clinical_setup is getattr(session, "clinical_tools_setup_version_id", None)
+            and clinical_staging is getattr(session, "clinical_tools_staging_version_id", None)
         ):
             return session
         return dataclass_replace(
@@ -476,6 +535,8 @@ class TreatmentSessionStore:
             version_history=history,
             staging_history=staging_history,
             smart_staging=smart_staging,
+            clinical_tools_setup_version_id=clinical_setup,
+            clinical_tools_staging_version_id=clinical_staging,
         )
 
     def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
@@ -543,9 +604,21 @@ class TreatmentSessionStore:
 
     def reset_proposals(self, case_id: str) -> TreatmentSession:
         """Regenerate adjunct proposals from the current plan version (no invented geometry)."""
-        session = self.get(case_id)
-        adjuncts = self._proposals.generate(session.proposal)
-        session = dataclass_replace(session, adjuncts=adjuncts)
+        return self.regenerate_clinical_tools(case_id)
+
+    def regenerate_clinical_tools(self, case_id: str) -> TreatmentSession:
+        """WP-07 explicit clinical-tools regenerate — binds to current setup/staging versions."""
+        session = self._normalize_session(self.get(case_id))
+        adjuncts = self._proposals.generate(session.proposal, previous=session.adjuncts)
+        staging_version_id = None
+        if session.smart_staging is not None:
+            staging_version_id = session.smart_staging.meta.staging_version_id
+        session = dataclass_replace(
+            session,
+            adjuncts=adjuncts,
+            clinical_tools_setup_version_id=session.proposal.version_id,
+            clinical_tools_staging_version_id=staging_version_id,
+        )
         return self._remember(case_id, session)
 
     def verify_export(self, case_id: str, destination: Path) -> dict[str, Any]:
@@ -637,6 +710,8 @@ class TreatmentSessionStore:
                 tuple(getattr(session, "staging_history", ()) or ()),
                 SmartStagingVersionSnapshot(plan=plan, validation=match.validation),
             ),
+            clinical_tools_setup_version_id=match.proposal.version_id,
+            clinical_tools_staging_version_id=plan.meta.staging_version_id,
         )
         return self._remember(case_id, session)
 
@@ -734,6 +809,8 @@ class TreatmentSessionStore:
             version_history=append_immutable_version((), baseline),
             smart_staging=plan,
             staging_history=append_staging_version((), staging_snapshot),
+            clinical_tools_setup_version_id=proposal.version_id,
+            clinical_tools_staging_version_id=plan.meta.staging_version_id,
         )
         return self._attach_intelligence(session)
 
@@ -840,6 +917,26 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         for item in movements
     )
     final_stage_index = len(session.staging.stages) - 1 if session.staging.stages else None
+    from engines.planning.clinical_tools_engine import (
+        build_clinical_tools_plan,
+        serialize_attachment_site,
+        serialize_ipr_site,
+    )
+
+    current_staging_version_id = None
+    if getattr(session, "smart_staging", None) is not None:
+        current_staging_version_id = session.smart_staging.meta.staging_version_id
+    clinical_plan = build_clinical_tools_plan(
+        session.adjuncts,
+        current_setup_version_id=session.proposal.version_id,
+        current_staging_version_id=current_staging_version_id,
+        bound_setup_version_id=getattr(session, "clinical_tools_setup_version_id", None),
+        bound_staging_version_id=getattr(session, "clinical_tools_staging_version_id", None),
+        has_validation=session.validation is not None,
+        has_source_geometry=bool(
+            session.proposal.setup and session.proposal.setup.source_states
+        ),
+    )
     validation_summary = build_validation_review_summary(
         session.proposal, session.staging, session.validation
     ).payload()
@@ -906,6 +1003,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             current_setup_version_id=session.proposal.version_id,
             staging_history=tuple(getattr(session, "staging_history", ()) or ()),
         ),
+        "clinicalTools": clinical_plan.payload(),
         "stagingId": session.staging.staging_id,
         "editHistory": [
             {
@@ -922,39 +1020,11 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             for item in session.proposal.edit_history
         ],
         "iprSites": [
-            {
-                "siteId": item.site_id,
-                "toothA": item.tooth_a,
-                "toothB": item.tooth_b,
-                "currentDistance": item.current_measurement.value,
-                "targetDistance": item.target_measurement.value,
-                "proposedAmount": item.proposed_amount,
-                "stage": item.stage_index
-                if item.stage_index is not None
-                else final_stage_index,
-                "amountUnit": item.current_measurement.unit,
-                "status": item.status.value,
-                "warning": "; ".join(warning.message for warning in item.warnings),
-                "fixture": item.fixture,
-            }
+            serialize_ipr_site(item, display_stage=final_stage_index)
             for item in session.adjuncts.ipr.sites
         ],
         "attachmentSites": [
-            {
-                "siteId": item.site_id,
-                "toothNumber": item.tooth_number,
-                "attachmentType": item.attachment_type.value,
-                "referencePoint": item.reference_point,
-                "reason": item.reason,
-                "dimensions": item.dimensions,
-                "stage": item.stage_index
-                if item.stage_index is not None
-                else final_stage_index,
-                "generated": item.generated,
-                "status": item.status.value,
-                "warning": "; ".join(warning.message for warning in item.warnings),
-                "fixture": item.fixture,
-            }
+            serialize_attachment_site(item, display_stage=final_stage_index)
             for item in session.adjuncts.attachments.sites
         ],
     }
