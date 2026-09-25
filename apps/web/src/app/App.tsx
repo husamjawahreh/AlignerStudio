@@ -46,6 +46,7 @@ import type {
   ReviewBundle,
   ReviewStage,
   ReviewToothMesh,
+  TreatmentSetupComparison,
 } from "../review/types";
 import { StageViewer } from "../viewer/StageViewer";
 import { createDentalSceneGraph } from "../viewer/sceneGraph";
@@ -287,6 +288,7 @@ export function App(): JSX.Element {
   const [transformTransaction, setTransformTransaction] = useState<InteractionTransaction | null>(
     null,
   );
+  const [versionCompare, setVersionCompare] = useState<TreatmentSetupComparison | null>(null);
 
   const fixtureStage = reviewBundle.stages[stageIndex] ?? null;
   const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
@@ -420,6 +422,7 @@ export function App(): JSX.Element {
     setEditReason("doctor_edit");
     setIsolateSelectedTooth(false);
     setArchMode("both");
+    setVersionCompare(null);
   }
 
   function startBusy(activity: string): void {
@@ -921,6 +924,59 @@ export function App(): JSX.Element {
     }
   }
 
+  async function handleSaveSetupVersion(description: string): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Saving a setup version requires an active treatment session.");
+      return;
+    }
+    startBusy("Saving treatment setup version");
+    try {
+      setReviewBundle(await api.saveTreatmentVersion(activeCase.id, description, "doctor"));
+      setVersionCompare(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      stopBusy();
+    }
+  }
+
+  async function handleRestoreSetupVersion(versionId: string): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Restoring a setup version requires an active treatment session.");
+      return;
+    }
+    startBusy("Restoring treatment setup version");
+    try {
+      setReviewBundle(await api.restoreTreatmentVersion(activeCase.id, versionId));
+      setStageIndex(0);
+      setDraftMovement(null);
+      setVersionCompare(null);
+      setUndoStack([]);
+      setRedoStack([]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      stopBusy();
+    }
+  }
+
+  async function handleCompareSetupVersions(
+    leftVersionId: string,
+    rightVersionId: string,
+  ): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Comparing setup versions requires an active treatment session.");
+      return;
+    }
+    try {
+      setVersionCompare(
+        await api.compareTreatmentVersions(activeCase.id, leftVersionId, rightVersionId),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function handleCreateCase(): Promise<void> {
     setError(null);
     startBusy("Creating case");
@@ -1303,6 +1359,7 @@ export function App(): JSX.Element {
               showTargetGhost={showTargetGhost}
               originalOpacity={originalOpacity}
               treatmentAvailable={treatmentAvailable}
+              versionCompare={versionCompare}
               onGeneratePlan={() => void handleGeneratePlan()}
               onToggleInitialPosition={setShowOriginal}
               onToggleTargetPosition={setShowTargetGhost}
@@ -1310,6 +1367,9 @@ export function App(): JSX.Element {
               onSelectAlternative={(alternativeId) =>
                 void handleSelectSetupAlternative(alternativeId)
               }
+              onSaveVersion={(description) => void handleSaveSetupVersion(description)}
+              onRestoreVersion={(versionId) => void handleRestoreSetupVersion(versionId)}
+              onCompareVersions={(left, right) => void handleCompareSetupVersions(left, right)}
             />
           )}
 

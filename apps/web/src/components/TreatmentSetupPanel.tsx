@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import type { ReviewBundle } from "../review/types";
+import type {
+  ReviewBundle,
+  TreatmentSetupComparison,
+  TreatmentSetupVersionMeta,
+} from "../review/types";
 import {
   buildSetupComparison,
   buildTreatmentSetupSummary,
@@ -13,14 +17,18 @@ interface TreatmentSetupPanelProps {
   showTargetGhost: boolean;
   originalOpacity: number;
   treatmentAvailable: boolean;
+  versionCompare?: TreatmentSetupComparison | null;
   onGeneratePlan: () => void;
   onToggleInitialPosition: (visible: boolean) => void;
   onToggleTargetPosition: (visible: boolean) => void;
   onOriginalOpacityChange: (value: number) => void;
   onSelectAlternative?: (alternativeId: string) => void;
+  onSaveVersion?: (description: string) => void;
+  onRestoreVersion?: (versionId: string) => void;
+  onCompareVersions?: (leftVersionId: string, rightVersionId: string) => void;
 }
 
-/** Treatment Setup left tools — existing proposal/stage data only. */
+/** Treatment Setup 2.0 — CURRENT / TARGET / VERSION over WP-03 workspace data. */
 export function TreatmentSetupPanel({
   bundle,
   bothArchesValid,
@@ -29,20 +37,28 @@ export function TreatmentSetupPanel({
   showTargetGhost,
   originalOpacity,
   treatmentAvailable,
+  versionCompare = null,
   onGeneratePlan,
   onToggleInitialPosition,
   onToggleTargetPosition,
   onOriginalOpacityChange,
   onSelectAlternative,
+  onSaveVersion,
+  onRestoreVersion,
+  onCompareVersions,
 }: TreatmentSetupPanelProps): JSX.Element {
   const summary = buildTreatmentSetupSummary(bundle);
   const comparison = buildSetupComparison(bundle.stages[0], bundle.stages.at(-1));
+  const setup = bundle.treatmentSetup;
+  const versions = setup?.versions ?? [];
+  const readiness = setup?.readiness;
+  const currentVsTarget = setup?.current_vs_target;
 
   return (
     <div className="treatment-setup-panel case-form" data-testid="treatment-setup-panel">
       <section className="analysis-section" aria-labelledby="treatment-setup-heading">
         <h3 id="treatment-setup-heading" className="eyebrow">
-          Treatment Setup
+          Treatment Setup 2.0
         </h3>
         <button
           aria-label="Generate Treatment Setup"
@@ -56,11 +72,30 @@ export function TreatmentSetupPanel({
           <span>Target setup</span>
           <strong>{summary.available ? "Available" : "Unavailable"}</strong>
         </div>
+        <div className="cad-stat-row" data-testid="setup-layer-source">
+          <span>SOURCE</span>
+          <strong>Immutable</strong>
+        </div>
+        <div className="cad-stat-row" data-testid="setup-layer-current">
+          <span>CURRENT</span>
+          <strong>{setup?.layers.current ? "Equals source (FV)" : "Unavailable"}</strong>
+        </div>
+        <div className="cad-stat-row" data-testid="setup-layer-target">
+          <span>TARGET</span>
+          <strong>
+            {setup
+              ? `${setup.moved_tooth_count} changed · ${setup.proposal_kind.replaceAll("_", " ")}`
+              : "Unavailable"}
+          </strong>
+        </div>
+        <small className="cad-review-note">
+          Target transforms are not clinical approval. No clinically approved state is exposed.
+        </small>
       </section>
 
       <section className="analysis-section" aria-labelledby="initial-position">
         <h3 id="initial-position" className="eyebrow">
-          Initial Position
+          Initial / Current Position
         </h3>
         <label className="toggle-row">
           <input
@@ -106,6 +141,12 @@ export function TreatmentSetupPanel({
           <span>Stage</span>
           <strong>{summary.targetStageLabel}</strong>
         </div>
+        <div className="cad-stat-row">
+          <span>Working version</span>
+          <strong data-testid="setup-working-version">
+            {bundle.versionId ? bundle.versionId.slice(0, 12) : "Unavailable"}
+          </strong>
+        </div>
       </section>
 
       <section className="analysis-section" aria-labelledby="tooth-movement">
@@ -124,16 +165,40 @@ export function TreatmentSetupPanel({
             {summary.totalMovement === null ? "Unavailable" : summary.totalMovement.toFixed(3)}
           </strong>
         </div>
+        <div className="cad-stat-row">
+          <span>Constraints</span>
+          <strong>
+            {(setup?.constraint_availability ?? "unavailable").replaceAll("_", " ")}
+          </strong>
+        </div>
       </section>
 
       <section className="analysis-section" aria-labelledby="setup-comparison">
         <h3 id="setup-comparison" className="eyebrow">
-          Setup Comparison
+          Current vs Target
         </h3>
-        <small className="cad-review-note">Original vs target from staged poses (display only).</small>
-        {comparison.length === 0 ? (
+        <small className="cad-review-note">
+          Geometric deltas only — not clinical intrusion/tip/torque claims.
+        </small>
+        {(currentVsTarget?.changed_teeth.length ?? 0) === 0 && comparison.length === 0 ? (
           <small className="cad-review-note">No comparable movement rows yet.</small>
         ) : (
+          (currentVsTarget?.changed_teeth ?? [])
+            .slice(0, 12)
+            .map((row) => (
+              <div className="cad-stat-row" key={row.tooth_key}>
+                <span>
+                  {row.tooth_ref ?? row.tooth_key}
+                  {row.arch ? ` · ${row.arch}` : ""}
+                </span>
+                <strong>
+                  Δxyz{" "}
+                  {row.translation_delta.map((value) => value.toFixed(2)).join(", ")}
+                </strong>
+              </div>
+            ))
+        )}
+        {!currentVsTarget &&
           comparison.map((row) => (
             <div className="cad-stat-row" key={row.toothKey}>
               <span>
@@ -141,18 +206,121 @@ export function TreatmentSetupPanel({
               </span>
               <strong>{row.targetMovement.toFixed(3)}</strong>
             </div>
-          ))
-        )}
+          ))}
       </section>
 
-      <section className="analysis-section" aria-labelledby="plan-versions">
+      {readiness && (
+        <section className="analysis-section" aria-labelledby="setup-readiness" data-testid="setup-readiness">
+          <h3 id="setup-readiness" className="eyebrow">
+            Readiness
+          </h3>
+          <small className="cad-review-note">Capability gates — not an AI score.</small>
+          {(
+            [
+              ["Geometry", readiness.real_geometry],
+              ["Identity", readiness.identity],
+              ["Arch", readiness.arch],
+              ["Transform", readiness.transform],
+              ["Constraints", readiness.constraint],
+              ["Validation", readiness.validation],
+              ["Occlusion", readiness.occlusion],
+              ["Clinical axes", readiness.clinical_axes],
+            ] as const
+          ).map(([label, state]) => (
+            <div className="cad-stat-row" key={label}>
+              <span>{label}</span>
+              <strong>{state.replaceAll("_", " ")}</strong>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="analysis-section" aria-labelledby="plan-versions" data-testid="setup-versions">
         <h3 id="plan-versions" className="eyebrow">
-          Plan versions
+          VERSION
         </h3>
         <div className="cad-stat-row">
-          <span>Version</span>
-          <strong>{summary.planVersionLabel}</strong>
+          <span>Setup plan</span>
+          <strong>{bundle.setupPlanId ?? "Unavailable"}</strong>
         </div>
+        <div className="cad-stat-row">
+          <span>Parent</span>
+          <strong>
+            {bundle.parentVersionId ? bundle.parentVersionId.slice(0, 12) : "None"}
+          </strong>
+        </div>
+        {onSaveVersion && (
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={!treatmentAvailable}
+            onClick={() => onSaveVersion("Doctor-saved treatment setup version")}
+            data-testid="setup-save-version"
+          >
+            Save version
+          </button>
+        )}
+        {versions.length === 0 ? (
+          <small className="cad-review-note">No saved versions yet.</small>
+        ) : (
+          versions.map((version: TreatmentSetupVersionMeta, index) => (
+            <div className="proposal-row" key={version.version_id}>
+              <div className="proposal-row-header">
+                <strong title={version.version_id}>
+                  {version.version_id.slice(0, 10)}…
+                </strong>
+                <span className="proposal-status">
+                  {version.proposal_kind.replaceAll("_", " ")}
+                </span>
+              </div>
+              <div className="proposal-values">
+                <span>{version.change_summary}</span>
+                <span>Moved {version.moved_tooth_count}</span>
+                <span>Validation {version.validation_status ?? "unavailable"}</span>
+                <span>{version.author_source}</span>
+              </div>
+              <div className="proposal-actions">
+                {onRestoreVersion && (
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => onRestoreVersion(version.version_id)}
+                  >
+                    Restore
+                  </button>
+                )}
+                {onCompareVersions && index > 0 && (
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() =>
+                      onCompareVersions(versions[index - 1].version_id, version.version_id)
+                    }
+                  >
+                    Compare prior
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+        {versionCompare && (
+          <div data-testid="setup-version-compare">
+            <small className="cad-review-note">
+              Compare {versionCompare.left_version_id.slice(0, 8)}… vs{" "}
+              {versionCompare.right_version_id.slice(0, 8)}… · changed{" "}
+              {versionCompare.changed_count} · unchanged {versionCompare.unchanged_count}
+            </small>
+            {versionCompare.changed_teeth.slice(0, 8).map((row) => (
+              <div className="cad-stat-row" key={row.tooth_key}>
+                <span>{row.tooth_ref ?? row.tooth_key}</span>
+                <strong>
+                  Δ {row.translation_delta.map((value) => value.toFixed(2)).join(", ")}
+                </strong>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="cad-stat-row">
           <span>Setup alternatives</span>
           <strong>{summary.setupAlternativesLabel}</strong>
@@ -264,14 +432,15 @@ export function TreatmentSetupInspector({
   children,
 }: TreatmentSetupInspectorProps): JSX.Element {
   const summary = buildTreatmentSetupSummary(bundle);
+  const setup = bundle.treatmentSetup;
   return (
     <>
       <div className="cad-inspector-section" data-testid="treatment-setup-inspector">
-        <span className="eyebrow">Treatment Setup</span>
+        <span className="eyebrow">Treatment Setup 2.0</span>
         <h2>{treatmentAvailable ? "Target Position ready" : "Setup unavailable"}</h2>
         <p>
           {treatmentAvailable
-            ? "Treatment Setup ready for doctor review."
+            ? "SOURCE · CURRENT · TARGET separated. Edits are reversible and versioned."
             : "Run analysis and generate a Treatment Setup."}
         </p>
         <div className="cad-stat-row">
@@ -281,30 +450,22 @@ export function TreatmentSetupInspector({
           </strong>
         </div>
         <div className="cad-stat-row">
-          <span>Total movement</span>
+          <span>VERSION</span>
           <strong>
-            {summary.totalMovement === null ? "Unavailable" : summary.totalMovement.toFixed(3)}
+            {bundle.versionId ? bundle.versionId.slice(0, 12) : summary.planVersionLabel}
           </strong>
         </div>
         <div className="cad-stat-row">
-          <span>Plan versions</span>
-          <strong>{summary.proposalKind}</strong>
+          <span>Saved versions</span>
+          <strong>{setup?.versions.length ?? 0}</strong>
         </div>
         <div className="cad-stat-row">
-          <span>Setup alternatives</span>
-          <strong>{summary.setupAlternativesLabel}</strong>
+          <span>Proposal</span>
+          <strong>{summary.proposalKind}</strong>
         </div>
-        {summary.source && (
-          <small className="cad-review-note">
-            Source: {summary.source}
-            {summary.doctorReviewRequired ? " · doctor review required" : ""}
-          </small>
-        )}
-        {summary.warnings.map((warning) => (
-          <small className="diagnostic-warning" key={warning}>
-            {warning}
-          </small>
-        ))}
+        <small className="cad-review-note">
+          Doctor edits are not clinical approval. Staging / IPR / attachments remain out of scope.
+        </small>
       </div>
       {children}
     </>

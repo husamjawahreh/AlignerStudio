@@ -8,7 +8,7 @@ import type {
   ToothLandmarksPayload,
   TreatmentPlan,
 } from "@alignerstudio/contracts";
-import type { MovementSummary, ReviewBundle } from "../review/types";
+import type { MovementSummary, ReviewBundle, TreatmentSetupComparison, TreatmentSetupVersionMeta } from "../review/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -237,6 +237,75 @@ export const api = {
   recalculateTreatment(caseId: string): Promise<ReviewBundle> {
     return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/recalculate`, {
       method: "POST",
+    });
+  },
+
+  applyTreatmentEditsBatch(
+    caseId: string,
+    edits: Array<{ toothNumber: number | string; movement: MovementSummary }>,
+    reason?: string,
+  ): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/edits/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reason,
+        edits: edits.map(({ toothNumber, movement }) => ({
+          ...(typeof toothNumber === "string" && toothNumber.includes(":instance:")
+            ? { tooth_ref: toothNumber }
+            : { tooth_number: Number(toothNumber) }),
+          translation_x: movement.translationX,
+          translation_y: movement.translationY,
+          translation_z: movement.translationZ,
+          rotation: movement.rotation,
+          tip: movement.tip,
+          torque: movement.torque,
+          angulation: movement.angulation ?? 0,
+          intrusion: movement.intrusion,
+          extrusion: movement.extrusion,
+          locked: movement.locked ?? false,
+          excluded: movement.excluded ?? false,
+        })),
+      }),
+    });
+  },
+
+  listTreatmentVersions(caseId: string): Promise<{ versions: TreatmentSetupVersionMeta[] }> {
+    return requestJson(`/cases/${caseId}/treatment/versions`);
+  },
+
+  saveTreatmentVersion(
+    caseId: string,
+    description = "",
+    authorSource = "doctor",
+  ): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/versions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description, author_source: authorSource }),
+    });
+  },
+
+  restoreTreatmentVersion(caseId: string, versionId: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/versions/restore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version_id: versionId }),
+    });
+  },
+
+  compareTreatmentVersions(
+    caseId: string,
+    leftVersionId: string,
+    rightVersionId: string,
+  ): Promise<TreatmentSetupComparison> {
+    return requestJson(`/cases/${caseId}/treatment/versions/compare`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        left_version_id: leftVersionId,
+        right_version_id: rightVersionId,
+      }),
     });
   },
 

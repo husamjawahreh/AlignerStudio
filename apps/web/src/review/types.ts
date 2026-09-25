@@ -175,6 +175,93 @@ export interface ReviewBundle {
   };
   manufacturingBoundary?: ManufacturingBoundary;
   planningIntelligence?: PlanningIntelligence;
+  /** WP-05 Treatment Setup 2.0 — stable lineage + content hashes. */
+  planId?: string;
+  versionId?: string;
+  parentVersionId?: string | null;
+  setupPlanId?: string;
+  treatmentSetup?: TreatmentSetup2Payload;
+}
+
+export type ReadinessState =
+  | "available"
+  | "requires_review"
+  | "not_available"
+  | "unavailable";
+
+export interface TreatmentSetupVersionMeta {
+  version_id: string;
+  parent_version_id: string | null;
+  plan_id: string;
+  setup_plan_id: string;
+  created_at: string;
+  author_source: string;
+  description: string;
+  proposal_kind: string;
+  moved_tooth_count: number;
+  validation_status: string | null;
+  change_summary: string;
+  immutable: boolean;
+  clinically_approved: false;
+}
+
+export interface TreatmentSetupReadiness {
+  real_geometry: ReadinessState;
+  identity: ReadinessState;
+  arch: ReadinessState;
+  transform: ReadinessState;
+  constraint: ReadinessState;
+  validation: ReadinessState;
+  occlusion: ReadinessState;
+  clinical_axes: ReadinessState;
+  notes: readonly string[];
+  unsupported_features_unlocked: false;
+  clinically_approved: false;
+}
+
+export interface TreatmentSetupToothDelta {
+  tooth_key: string;
+  tooth_ref: string | null;
+  arch: string | null;
+  translation_delta: readonly [number, number, number];
+  rotation_delta: readonly [number, number, number];
+  changed: boolean;
+  terminology: "geometric";
+}
+
+export interface TreatmentSetupComparison {
+  left_version_id: string;
+  right_version_id: string;
+  changed_teeth: readonly TreatmentSetupToothDelta[];
+  changed_count: number;
+  unchanged_count: number;
+  left_validation_status: string | null;
+  right_validation_status: string | null;
+  notes: readonly string[];
+  clinical_ranking: null;
+  clinically_approved: false;
+}
+
+export interface TreatmentSetup2Payload {
+  contract_version: "treatment_setup_2.0";
+  setup_plan_id: string;
+  plan_id: string;
+  version_id: string;
+  parent_version_id: string | null;
+  proposal_kind: string;
+  layers: {
+    source: string;
+    current: string;
+    target: string;
+  };
+  teeth: readonly Record<string, unknown>[];
+  moved_tooth_count: number;
+  readiness: TreatmentSetupReadiness;
+  constraint_availability: string;
+  current_vs_target: TreatmentSetupComparison;
+  versions: readonly TreatmentSetupVersionMeta[];
+  clinically_approved: false;
+  notes: readonly string[];
 }
 
 export interface ModelOutputContract {

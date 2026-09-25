@@ -201,6 +201,92 @@ class TreatmentEditingApplication:
         )
         return self.recalculate(edited, staging_configuration, validation_configuration)
 
+    def apply_edits(
+        self,
+        proposal: TreatmentPlanProposal,
+        edits: list[tuple[int | str, ToothMovement]],
+        *,
+        timestamp: str | None = None,
+        reason: str = "doctor_edit",
+    ) -> TreatmentPlanProposal:
+        """Apply multiple tooth target transforms in one rebuild (WP-05 multi-tooth)."""
+        if not edits:
+            return proposal
+        if reason == "reset":
+            reason = "doctor_reset"
+        timestamp_value = timestamp or datetime.now(timezone.utc).isoformat()
+        overrides: dict[int | str, ToothMovement] = {}
+        history = list(proposal.edit_history)
+        for tooth_number, new_movement in edits:
+            self._validate_movement(new_movement)
+            current = self._movement_for(proposal, tooth_number)
+            if (
+                reason not in ("doctor_reset", "reset", "system_restore")
+                and current.locked
+                and new_movement.locked
+                and not current.pose_equal(new_movement)
+            ):
+                raise TreatmentEditingError(
+                    f"Tooth {tooth_number} is locked; unlock before changing movement"
+                )
+            if (
+                reason not in ("doctor_reset", "reset", "system_restore")
+                and current.excluded
+                and new_movement.excluded
+                and not current.pose_equal(new_movement)
+            ):
+                raise TreatmentEditingError(
+                    f"Tooth {tooth_number} is excluded; include before changing movement"
+                )
+            edit_seed = json.dumps(
+                {
+                    "proposal_version": proposal.version_id,
+                    "tooth_number": tooth_number,
+                    "previous": current.__dict__,
+                    "new": new_movement.__dict__,
+                    "timestamp": timestamp_value,
+                    "reason": reason,
+                    "batch": True,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            edit_id = hashlib.sha256(edit_seed.encode()).hexdigest()
+            history.append(
+                DoctorMovementEdit(
+                    edit_id=edit_id,
+                    tooth_number=tooth_number,
+                    previous_movement=current,
+                    new_movement=new_movement,
+                    timestamp=timestamp_value,
+                    version_id=hashlib.sha256((edit_seed + ":edit").encode()).hexdigest(),
+                    provenance=DataProvenance.GENERATED,
+                    reason=reason,
+                )
+            )
+            overrides[tooth_number] = new_movement
+        return self.planner.rebuild_proposal(
+            proposal,
+            overrides,
+            tuple(history),
+            ProposalKind.DOCTOR_EDITED,
+        )
+
+    def apply_edits_and_recalculate(
+        self,
+        proposal: TreatmentPlanProposal,
+        edits: list[tuple[int | str, ToothMovement]],
+        staging_configuration: StagingConfiguration,
+        validation_configuration: GeometricValidationConfiguration,
+        *,
+        timestamp: str | None = None,
+        reason: str = "doctor_edit",
+    ) -> RecalculatedTreatmentPlan:
+        edited = self.apply_edits(
+            proposal, edits, timestamp=timestamp, reason=reason
+        )
+        return self.recalculate(edited, staging_configuration, validation_configuration)
+
     @staticmethod
     def _movement_for(proposal: TreatmentPlanProposal, tooth_number: int | str) -> ToothMovement:
         if proposal.setup is None:

@@ -27,6 +27,14 @@ from engines.planning.intelligence import (
 )
 from engines.planning.proposals import TreatmentProposalEngine
 from engines.planning.setup_engine import TreatmentPlanningEngine
+from engines.planning.setup_versioning import (
+    TreatmentSetupVersionSnapshot,
+    append_immutable_version,
+    build_treatment_setup_payload,
+    compare_proposals,
+    find_version,
+    snapshot_from_session_parts,
+)
 from engines.planning.staging_engine import TreatmentStagingEngine
 from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
@@ -36,6 +44,7 @@ from engines.validation.review_summary import build_validation_review_summary
 
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
 from app.session_persistence import delete_session, load_session, save_session
+from domain.treatment_plan.setup_v2 import stable_setup_plan_id
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +63,9 @@ class TreatmentSession:
     experimental: bool = True
     planning_mode: str = "clinical_fdi"
     intelligence: AdvancedPlanningIntelligenceResult | None = None
+    # WP-05 Treatment Setup 2.0 lineage (defaults keep pickle-compat with older sessions).
+    parent_version_id: str | None = None
+    version_history: tuple = ()
 
 
 class TreatmentSessionStore:
@@ -135,7 +147,122 @@ class TreatmentSessionStore:
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
             reason=normalize_edit_reason(reason),
         )
-        session = TreatmentSession(
+        session = self._session_from_result(session, result)
+        session = self._attach_intelligence(session)
+        return self._remember(case_id, session)
+
+    def apply_edits(
+        self,
+        case_id: str,
+        edits: list[tuple[int | str, dict[str, float]]],
+        *,
+        reason: str | None = None,
+    ) -> TreatmentSession:
+        """WP-05 multi-tooth target edit — one rebuild/validate pass, per-tooth provenance."""
+        from domain.movement.interaction import normalize_edit_reason
+
+        session = self.get(case_id)
+        normalized = [
+            (
+                tooth_key,
+                ToothMovement(**{k: v for k, v in movement.items() if k != "reason"}),
+            )
+            for tooth_key, movement in edits
+        ]
+        result = self._editing.apply_edits_and_recalculate(
+            session.proposal,
+            normalized,
+            self._staging_configuration(),
+            GeometricValidationConfiguration(1.0, 0.001, 0.0),
+            reason=normalize_edit_reason(reason),
+        )
+        session = self._session_from_result(session, result)
+        session = self._attach_intelligence(session)
+        return self._remember(case_id, session)
+
+    def save_version(
+        self,
+        case_id: str,
+        *,
+        description: str = "",
+        author_source: str = "doctor",
+    ) -> TreatmentSession:
+        """Freeze the current working setup as an immutable version snapshot."""
+        session = self._normalize_session(self.get(case_id))
+        snapshot = snapshot_from_session_parts(
+            proposal=session.proposal,
+            staging=session.staging,
+            validation=session.validation,
+            parent_version_id=session.parent_version_id,
+            description=description or "Saved treatment setup version",
+            author_source=author_source,
+        )
+        history = append_immutable_version(tuple(session.version_history), snapshot)
+        session = dataclass_replace(session, version_history=history)
+        return self._remember(case_id, session)
+
+    def list_versions(self, case_id: str) -> list[dict]:
+        session = self._normalize_session(self.get(case_id))
+        return [item.meta.payload() for item in session.version_history]
+
+    def restore_version(self, case_id: str, version_id: str) -> TreatmentSession:
+        """Restore an immutable snapshot into the working session (does not mutate the snapshot)."""
+        session = self._normalize_session(self.get(case_id))
+        snapshot = find_version(tuple(session.version_history), version_id)
+        if snapshot is None:
+            raise TreatmentSessionError(f"Unknown treatment setup version: {version_id}")
+        restored = TreatmentSession(
+            proposal=snapshot.proposal,
+            staging=snapshot.staging,
+            validation=snapshot.validation,
+            adjuncts=self._proposals.generate(snapshot.proposal, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+            intelligence=session.intelligence,
+            parent_version_id=snapshot.meta.version_id,
+            version_history=session.version_history,
+        )
+        restored = self._attach_intelligence(restored)
+        return self._remember(case_id, restored)
+
+    def compare_versions(
+        self, case_id: str, left_version_id: str, right_version_id: str
+    ) -> dict:
+        session = self._normalize_session(self.get(case_id))
+        left = self._resolve_compare_side(session, left_version_id)
+        right = self._resolve_compare_side(session, right_version_id)
+        return compare_proposals(
+            left["proposal"],
+            right["proposal"],
+            left_version_id=left_version_id,
+            right_version_id=right_version_id,
+            left_validation_status=left["validation_status"],
+            right_validation_status=right["validation_status"],
+        ).payload()
+
+    def _resolve_compare_side(self, session: TreatmentSession, version_id: str) -> dict:
+        if version_id in ("current", "working", session.proposal.version_id):
+            return {
+                "proposal": session.proposal,
+                "validation_status": session.validation.status.value,
+            }
+        if version_id == "target":
+            return {
+                "proposal": session.proposal,
+                "validation_status": session.validation.status.value,
+            }
+        snapshot = find_version(tuple(session.version_history), version_id)
+        if snapshot is None:
+            raise TreatmentSessionError(f"Unknown treatment setup version: {version_id}")
+        return {
+            "proposal": snapshot.proposal,
+            "validation_status": snapshot.validation.status.value,
+        }
+
+    def _session_from_result(self, session: TreatmentSession, result) -> TreatmentSession:
+        session = self._normalize_session(session)
+        return TreatmentSession(
             proposal=result.proposal,
             staging=result.staging,
             validation=result.validation,
@@ -143,9 +270,23 @@ class TreatmentSessionStore:
             source_kind=session.source_kind,
             experimental=session.experimental,
             planning_mode=session.planning_mode,
+            parent_version_id=session.proposal.version_id,
+            version_history=session.version_history,
         )
-        session = self._attach_intelligence(session)
-        return self._remember(case_id, session)
+
+    @staticmethod
+    def _normalize_session(session: TreatmentSession) -> TreatmentSession:
+        parent = getattr(session, "parent_version_id", None)
+        history = getattr(session, "version_history", ()) or ()
+        if not isinstance(history, tuple):
+            history = tuple(history)
+        if parent is session.parent_version_id and history is session.version_history:
+            return session
+        return dataclass_replace(
+            session,
+            parent_version_id=parent,
+            version_history=history,
+        )
 
     def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
         session = self.get(case_id)
@@ -155,15 +296,7 @@ class TreatmentSessionStore:
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
-        session = TreatmentSession(
-            proposal=result.proposal,
-            staging=result.staging,
-            validation=result.validation,
-            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
-            source_kind=session.source_kind,
-            experimental=session.experimental,
-            planning_mode=session.planning_mode,
-        )
+        session = self._session_from_result(session, result)
         session = self._attach_intelligence(session)
         return self._remember(case_id, session)
 
@@ -175,15 +308,7 @@ class TreatmentSessionStore:
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
-        session = TreatmentSession(
-            proposal=result.proposal,
-            staging=result.staging,
-            validation=result.validation,
-            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
-            source_kind=session.source_kind,
-            experimental=session.experimental,
-            planning_mode=session.planning_mode,
-        )
+        session = self._session_from_result(session, result)
         session = self._attach_intelligence(session)
         return self._remember(case_id, session)
 
@@ -194,15 +319,7 @@ class TreatmentSessionStore:
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
-        session = TreatmentSession(
-            proposal=result.proposal,
-            staging=result.staging,
-            validation=result.validation,
-            adjuncts=self._proposals.generate(result.proposal, previous=session.adjuncts),
-            source_kind=session.source_kind,
-            experimental=session.experimental,
-            planning_mode=session.planning_mode,
-        )
+        session = self._session_from_result(session, result)
         session = self._attach_intelligence(session)
         return self._remember(case_id, session)
 
@@ -315,6 +432,8 @@ class TreatmentSessionStore:
             experimental=session.experimental,
             planning_mode=session.planning_mode,
             intelligence=intelligence,
+            parent_version_id=session.proposal.version_id,
+            version_history=getattr(session, "version_history", ()) or (),
         )
         return self._remember(case_id, session)
 
@@ -384,6 +503,21 @@ class TreatmentSessionStore:
             ),
             experimental=True,
             planning_mode=proposal.planning_mode,
+            parent_version_id=None,
+            version_history=(),
+        )
+        # Seed immutable baseline version for Treatment Setup 2.0 lineage.
+        baseline = snapshot_from_session_parts(
+            proposal=proposal,
+            staging=staging,
+            validation=validation,
+            parent_version_id=None,
+            description="Initial treatment setup",
+            author_source="deterministic_planner",
+        )
+        session = dataclass_replace(
+            session,
+            version_history=append_immutable_version((), baseline),
         )
         return self._attach_intelligence(session)
 
@@ -538,6 +672,19 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         "planningIntelligence": intelligence_payload,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,
+        "planId": session.proposal.plan_id,
+        "versionId": session.proposal.version_id,
+        "parentVersionId": getattr(session, "parent_version_id", None),
+        "setupPlanId": stable_setup_plan_id(session.proposal.case_id),
+        "treatmentSetup": build_treatment_setup_payload(
+            case_id=session.proposal.case_id,
+            proposal=session.proposal,
+            staging=session.staging,
+            validation=session.validation,
+            parent_version_id=getattr(session, "parent_version_id", None),
+            version_history=tuple(getattr(session, "version_history", ()) or ()),
+            source_kind=session.source_kind,
+        ),
         "editHistory": [
             {
                 "editId": item.edit_id,

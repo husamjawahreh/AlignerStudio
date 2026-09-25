@@ -96,6 +96,27 @@ class ToothResetRequest(BaseModel):
     tooth_ref: str | None = None
 
 
+class BatchMovementEditRequest(BaseModel):
+    """WP-05 multi-tooth target edit — one commit, per-tooth provenance."""
+
+    edits: list[MovementEditRequest]
+    reason: str | None = None
+
+
+class SetupVersionSaveRequest(BaseModel):
+    description: str = ""
+    author_source: str = "doctor"
+
+
+class SetupVersionRestoreRequest(BaseModel):
+    version_id: str
+
+
+class SetupVersionCompareRequest(BaseModel):
+    left_version_id: str
+    right_version_id: str
+
+
 def _to_case_response(case: Case) -> CaseResponse:
     return CaseResponse(
         id=case.id,
@@ -415,6 +436,66 @@ def recalculate_treatment(case_id: str) -> dict:
         return review_bundle(treatment_sessions.recalculate(case_id))
     except (TreatmentSessionError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/edits/batch")
+def apply_treatment_edits_batch(case_id: str, request: BatchMovementEditRequest) -> dict:
+    """WP-05 multi-tooth target edit with a single restage/validate pass."""
+    try:
+        edits: list[tuple[int | str, dict]] = []
+        for item in request.edits:
+            tooth_key = item.tooth_ref if item.tooth_ref is not None else item.tooth_number
+            if tooth_key is None:
+                raise ValueError("Each edit requires tooth_number or tooth_ref")
+            payload = item.model_dump(exclude={"tooth_number", "tooth_ref", "reason"})
+            edits.append((tooth_key, payload))
+        return review_bundle(
+            treatment_sessions.apply_edits(case_id, edits, reason=request.reason)
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.get("/{case_id}/treatment/versions")
+def list_treatment_versions(case_id: str) -> dict:
+    try:
+        return {"versions": treatment_sessions.list_versions(case_id)}
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/versions")
+def save_treatment_version(case_id: str, request: SetupVersionSaveRequest) -> dict:
+    try:
+        return review_bundle(
+            treatment_sessions.save_version(
+                case_id,
+                description=request.description,
+                author_source=request.author_source or "doctor",
+            )
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/versions/restore")
+def restore_treatment_version(case_id: str, request: SetupVersionRestoreRequest) -> dict:
+    try:
+        return review_bundle(
+            treatment_sessions.restore_version(case_id, request.version_id)
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/versions/compare")
+def compare_treatment_versions(case_id: str, request: SetupVersionCompareRequest) -> dict:
+    try:
+        return treatment_sessions.compare_versions(
+            case_id, request.left_version_id, request.right_version_id
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.get("/{case_id}/treatment/proposals")
