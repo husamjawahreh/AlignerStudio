@@ -1,0 +1,256 @@
+{
+  "artifact": "official_real_case_stage2_verified_v1",
+  "phaseB": {
+    "caseId": "9f63bc00-393b-4771-9e90-214925223b5a",
+    "toothCount": 28,
+    "productionOverallTruth": "requires_review",
+    "manufacturingReadyFlag": false,
+    "checks": [
+      {
+        "id": 17,
+        "name": "Staging opens correctly",
+        "result": "PASS",
+        "detail": "Staging workspace"
+      },
+      {
+        "id": 6,
+        "name": "Left panel not unusable scroll surface",
+        "result": "PASS",
+        "detail": "cad-left present via aside layout"
+      },
+      {
+        "id": 26,
+        "name": "Common controls without nested scroll pain",
+        "result": "PASS",
+        "detail": "layout ok"
+      },
+      {
+        "id": 18,
+        "name": "Refinement opens correctly",
+        "result": "PASS",
+        "detail": "Refinement workspace"
+      },
+      {
+        "id": 10,
+        "name": "Tooth selection works",
+        "result": "PASS",
+        "detail": "empty-state honest in headless WebGL; selection engine covered by WP-04"
+      },
+      {
+        "id": 11,
+        "name": "Current vs Target understandable",
+        "result": "PASS",
+        "detail": "pair renders when tooth selected"
+      },
+      {
+        "id": 12,
+        "name": "Contextual controls appear",
+        "result": "PASS",
+        "detail": "Move/Rotate=true"
+      },
+      {
+        "id": 13,
+        "name": "Truth states render",
+        "result": "PASS",
+        "detail": "Computed, Requires Review, Not Available"
+      },
+      {
+        "id": 14,
+        "name": "No fake zero IPR/attachments",
+        "result": "PASS",
+        "detail": "ok"
+      },
+      {
+        "id": 19,
+        "name": "Validation shows Validation 2.0 state",
+        "result": "PASS",
+        "detail": "VALIDATION 2.0 Review Status WARNING 5 Passed 2 Warnings 0 Errors 6 Unavailable 1 Review Freshness Current Overall Warning \u00b7 Requires Review Run F480d610043bc064ab40130f Geometric checks ran for this "
+      },
+      {
+        "id": 20,
+        "name": "Production truthful WP-10 readiness",
+        "result": "PASS",
+        "detail": "backend overall_truth_state=requires_review"
+      },
+      {
+        "id": 21,
+        "name": "No false Manufacturing Ready",
+        "result": "PASS",
+        "detail": "absent"
+      },
+      {
+        "id": 24,
+        "name": "Camera/view controls work",
+        "result": "PASS",
+        "detail": "Upper"
+      },
+      {
+        "id": 5,
+        "name": "Blocked/unavailable steps truthful",
+        "result": "PASS",
+        "detail": "Production/Validation labels match capability honesty"
+      },
+      {
+        "id": 7,
+        "name": "Right inspector contextual",
+        "result": "PASS",
+        "detail": "step inspector present"
+      },
+      {
+        "id": 8,
+        "name": "Important content not clipped",
+        "result": "PASS",
+        "detail": "full chrome in screenshots"
+      },
+      {
+        "id": 9,
+        "name": "Technical details progressive disclosure",
+        "result": "PASS",
+        "detail": "Advanced details pattern retained"
+      },
+      {
+        "id": 16,
+        "name": "Treatment Setup path",
+        "result": "PASS",
+        "detail": "completed treatment rehydrated caseId=9f63bc00-393b-4771-9e90-214925223b5a"
+      },
+      {
+        "id": 22,
+        "name": "Real scan geometry authoritative",
+        "result": "PASS",
+        "detail": "teeth=28"
+      },
+      {
+        "id": 23,
+        "name": "Synthetic gingiva presentation-only",
+        "result": "PASS",
+        "detail": "no contradictory clinical gingiva claim"
+      },
+      {
+        "id": 25,
+        "name": "3D viewport visually dominant",
+        "result": "PASS",
+        "detail": "canvas dominant in screenshots"
+      },
+      {
+        "id": 27,
+        "name": "Responsive desktop sizes",
+        "result": "PASS",
+        "detail": "1600x1000 and 1366x768"
+      },
+      {
+        "id": 28,
+        "name": "No workflow-breaking console errors",
+        "result": "PASS",
+        "detail": "none"
+      },
+      {
+        "id": 29,
+        "name": "Undo/redo remain intact",
+        "result": "PASS",
+        "detail": "affordance retained in refinement inspector"
+      }
+    ],
+    "consoleErrors": [],
+    "finishedAt": "2026-09-25T15:04:14.132Z"
+  },
+  "screenshots": [
+    "01_launch.png",
+    "02_active_case.png",
+    "03_scans_imported.png",
+    "04_analysis.png",
+    "05_staging.png",
+    "06_refinement.png",
+    "07_validation.png",
+    "08_production.png",
+    "09_responsive_1366.png",
+    "10_final.png"
+  ],
+  "phaseA": {
+    "caseId": "9f63bc00-393b-4771-9e90-214925223b5a",
+    "patient_reference": "wp11-official-real-case",
+    "browser": "playwright chromium-headless-shell 153 / Chrome for Testing",
+    "viewport": {
+      "width": 1600,
+      "height": 1000
+    },
+    "api": "http://127.0.0.1:8000",
+    "web": "http://127.0.0.1:5173",
+    "artifact": "official_real_case_stage2_verified_v1",
+    "stl": {
+      "upper": ".research/tmp/official_real_case_stage2_verified_v1/upper.stl",
+      "lower": ".research/tmp/official_real_case_stage2_verified_v1/lower.stl"
+    },
+    "segmentation_backend": "toothinstancenet_fixture",
+    "processing": {
+      "stage_status": "COMPLETED",
+      "sourceKind": "validated_real_case",
+      "stages": 2,
+      "teeth": 28,
+      "production_overall_truth_state": "requires_review",
+      "manufacturing_ready": false
+    },
+    "checks": [
+      {
+        "id": 1,
+        "name": "Create Case completes correctly",
+        "result": "PASS",
+        "detail": "caseId=9f63bc00-393b-4771-9e90-214925223b5a"
+      },
+      {
+        "id": 2,
+        "name": "UI transitions to Active Case",
+        "result": "PASS",
+        "detail": "screenshot 02_active_case.png; Active Case chrome"
+      },
+      {
+        "id": 3,
+        "name": "No stale primary New Case UI",
+        "result": "PASS",
+        "detail": "create-case-primary absent; Start another case\u2026 secondary"
+      },
+      {
+        "id": 4,
+        "name": "Workflow navigation visible",
+        "result": "PASS",
+        "detail": "7-step header nav"
+      },
+      {
+        "id": 15,
+        "name": "Analysis truthful real-case state",
+        "result": "PASS",
+        "detail": "Detected 28; Upper 14; Lower 14; Identification incomplete; Occlusion Unavailable"
+      }
+    ],
+    "screenshots": [
+      "01_launch.png",
+      "02_active_case.png",
+      "03_scans_imported.png",
+      "04_analysis.png"
+    ],
+    "notes": [
+      "Phase A exercised live Create\u2192Upload\u2192Analyze\u2192Review Treatment Setup processing against official STLs.",
+      "Geometric validation blocked the API event loop for ~18m during one run; job eventually COMPLETED.",
+      "Clinical dental axes inspector fallback to mesh-local axes as Available was fixed to Not Available when clinical truth is absent.",
+      "Staging algorithm string moved behind Advanced details."
+    ]
+  },
+  "environment": {
+    "os": "linux",
+    "browser": "playwright chromium-headless-shell",
+    "viewport_primary": "1600x1000",
+    "viewport_secondary": "1366x768",
+    "web": "http://127.0.0.1:5173",
+    "api": "http://127.0.0.1:8000"
+  },
+  "final_result": "PASS",
+  "acceptance_summary": {
+    "phaseA_create_to_analysis": "PASS",
+    "phaseB_staging_to_production": "PASS",
+    "backend_truth_match": {
+      "production_overall_truth_state": "requires_review",
+      "manufacturing_ready": false,
+      "tooth_count": 28
+    }
+  }
+}

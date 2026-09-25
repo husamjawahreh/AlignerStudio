@@ -22,3 +22,10 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 data/treatment_sessions/
+
+# Local runtime case store (can grow huge; never push)
+data/cases.json
+
+# Playwright / local QA artifacts
+tests/e2e/test-results/
+tests/e2e/node_modules/

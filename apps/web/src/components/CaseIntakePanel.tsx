@@ -31,9 +31,10 @@ interface CaseIntakePanelProps {
   onRemoveMesh: (arch: "upper" | "lower") => void;
   onAnalyzeCase: () => void;
   onReviewTreatmentProposal: () => void;
+  onRequestNewCase?: () => void;
 }
 
-/** Case Intake left tools — Master Plan v2.1 labels and capabilities. */
+/** Case Intake — creation flow before case; active-case workspace after creation. */
 export function CaseIntakePanel({
   patientReference,
   onPatientReferenceChange,
@@ -51,6 +52,7 @@ export function CaseIntakePanel({
   onRemoveMesh,
   onAnalyzeCase,
   onReviewTreatmentProposal,
+  onRequestNewCase,
 }: CaseIntakePanelProps): JSX.Element {
   const arches = buildArchStatuses(archUploads);
   const readiness = buildCaseIntakeReadiness({
@@ -59,39 +61,71 @@ export function CaseIntakePanel({
     lowerState: archUploads.lower.state,
   });
   const processing = formatIntakeProcessingState(processingStatus);
+  const hasCase = caseId !== null;
 
   return (
-    <div className="case-intake-panel case-form" data-testid="case-intake-panel">
-      <section className="case-intake-section" aria-labelledby="case-intake-new-case">
-        <h3 id="case-intake-new-case" className="eyebrow">
-          New Case
-        </h3>
-        <button
-          className="primary-button"
-          onClick={onCreateCase}
-          disabled={isBusy}
-          aria-label="Create case"
-        >
-          New Case
-        </button>
-      </section>
-
-      <section className="case-intake-section" aria-labelledby="case-intake-information">
-        <h3 id="case-intake-information" className="eyebrow">
-          Case Information
-        </h3>
-        <label htmlFor="patient-reference">Patient reference</label>
-        <input
-          id="patient-reference"
-          value={patientReference}
-          onChange={(event) => onPatientReferenceChange(event.target.value)}
-          placeholder="P-0001"
-        />
-        <div className="cad-stat-row">
-          <span>Case identity</span>
-          <strong>{caseId ?? "Not created"}</strong>
-        </div>
-      </section>
+    <div
+      className={`case-intake-panel case-form ${hasCase ? "is-active-case" : "is-new-case"}`}
+      data-testid="case-intake-panel"
+      data-case-state={hasCase ? "active" : "create"}
+    >
+      {!hasCase ? (
+        <section className="case-intake-section" aria-labelledby="case-intake-create">
+          <h3 id="case-intake-create" className="eyebrow">
+            New Case
+          </h3>
+          <p className="cad-review-note">Create a case, then import upper and lower scans.</p>
+          <label htmlFor="patient-reference">Patient reference</label>
+          <input
+            id="patient-reference"
+            value={patientReference}
+            onChange={(event) => onPatientReferenceChange(event.target.value)}
+            placeholder="P-0001"
+          />
+          <button
+            className="primary-button"
+            onClick={onCreateCase}
+            disabled={isBusy}
+            aria-label="Create case"
+            data-testid="create-case-primary"
+          >
+            Create Case
+          </button>
+        </section>
+      ) : (
+        <section className="case-intake-section" aria-labelledby="case-intake-active">
+          <h3 id="case-intake-active" className="eyebrow">
+            Active Case
+          </h3>
+          <div className="cad-stat-row">
+            <span>Patient</span>
+            <strong>{patientReference || "—"}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Case</span>
+            <strong data-testid="active-case-id">{caseId}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Status</span>
+            <strong>{formatCaseStatus(caseStatus)}</strong>
+          </div>
+          <div className="cad-stat-row">
+            <span>Processing</span>
+            <strong>{processing.label}</strong>
+          </div>
+          {processing.detail ? <small className="cad-review-note">{processing.detail}</small> : null}
+          {onRequestNewCase ? (
+            <button
+              className="text-button"
+              onClick={onRequestNewCase}
+              disabled={isBusy}
+              data-testid="secondary-new-case"
+            >
+              Start another case…
+            </button>
+          ) : null}
+        </section>
+      )}
 
       <section className="case-intake-section" aria-labelledby="case-intake-scan-import">
         <h3 id="case-intake-scan-import" className="eyebrow">
@@ -117,7 +151,7 @@ export function CaseIntakePanel({
                 <div className={`mesh-upload-status ${upload.state}`}>
                   <span>{upload.filename}</span>
                   <small>
-                    {(upload.size / 1024).toFixed(1)} KB · {upload.state}
+                    {(upload.size / 1024).toFixed(1)} KB · {formatIntakeUploadState(upload.state)}
                   </small>
                   <button
                     className="text-button"
@@ -131,62 +165,35 @@ export function CaseIntakePanel({
             </div>
           );
         })}
-      </section>
-
-      <section className="case-intake-section" aria-labelledby="case-intake-data-readiness">
-        <h3 id="case-intake-data-readiness" className="eyebrow">
-          Data Readiness
-        </h3>
         <div className="cad-stat-row">
-          <span>Completeness</span>
+          <span>Data readiness</span>
           <strong>{readiness.completenessLabel}</strong>
         </div>
-        <div className="cad-stat-row">
-          <span>Upper Arch</span>
-          <strong>{formatIntakeUploadState(archUploads.upper.state)}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Lower Arch</span>
-          <strong>{formatIntakeUploadState(archUploads.lower.state)}</strong>
-        </div>
       </section>
 
-      <section className="case-intake-section" aria-labelledby="case-intake-case-status">
-        <h3 id="case-intake-case-status" className="eyebrow">
-          Case Status
-        </h3>
-        <div className="cad-stat-row">
-          <span>Case Status</span>
-          <strong>{formatCaseStatus(caseStatus)}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Processing state</span>
-          <strong>{processing.label}</strong>
-        </div>
-        {processing.detail ? <small className="cad-review-note">{processing.detail}</small> : null}
-      </section>
-
-      <section className="case-intake-section" aria-labelledby="case-intake-next-actions">
-        <h3 id="case-intake-next-actions" className="eyebrow">
-          Next actions
-        </h3>
-        <button
-          aria-label="Review segmentation"
-          className="secondary-button"
-          onClick={onAnalyzeCase}
-          disabled={!bothArchesValid}
-        >
-          Analyze case
-        </button>
-        <button
-          aria-label="Generate Treatment Setup"
-          className="primary-button"
-          onClick={onReviewTreatmentProposal}
-          disabled={!bothArchesValid || backendTreatment}
-        >
-          Review Treatment Setup
-        </button>
-      </section>
+      {hasCase && (
+        <section className="case-intake-section" aria-labelledby="case-intake-next-actions">
+          <h3 id="case-intake-next-actions" className="eyebrow">
+            Next
+          </h3>
+          <button
+            aria-label="Review segmentation"
+            className="secondary-button"
+            onClick={onAnalyzeCase}
+            disabled={!bothArchesValid}
+          >
+            Analyze case
+          </button>
+          <button
+            aria-label="Generate Treatment Setup"
+            className="primary-button"
+            onClick={onReviewTreatmentProposal}
+            disabled={!bothArchesValid || backendTreatment}
+          >
+            Review Treatment Setup
+          </button>
+        </section>
+      )}
     </div>
   );
 }
@@ -216,35 +223,39 @@ export function CaseIntakeInspector({
 
   return (
     <div className="cad-inspector-section" data-testid="case-intake-inspector">
-      <span className="eyebrow">Case Intake</span>
-      <h2>{caseId ? "Data Readiness" : "New Case"}</h2>
-      <p>Import Upper Arch and Lower Arch STL scans to establish the dental scene.</p>
+      <span className="eyebrow">Case</span>
+      <h2>{caseId ? "Active case" : "Create a case"}</h2>
+      <p>
+        {caseId
+          ? "Import upper and lower scans, then continue to Analysis."
+          : "Create a case to begin scan import and clinical review."}
+      </p>
       <div className="cad-stat-row">
-        <span>Case Information</span>
+        <span>Patient</span>
         <strong>{patientReference || "—"}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Case identity</span>
+        <span>Case</span>
         <strong>{caseId ?? "Not created"}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Upper Arch</span>
+        <span>Upper</span>
         <strong>{formatIntakeUploadState(archUploads.upper.state)}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Lower Arch</span>
+        <span>Lower</span>
         <strong>{formatIntakeUploadState(archUploads.lower.state)}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Data Readiness</span>
+        <span>Readiness</span>
         <strong>{readiness.completenessLabel}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Case Status</span>
+        <span>Status</span>
         <strong>{formatCaseStatus(caseStatus)}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Processing state</span>
+        <span>Processing</span>
         <strong>{processing.label}</strong>
       </div>
       {processing.detail ? <small className="cad-review-note">{processing.detail}</small> : null}

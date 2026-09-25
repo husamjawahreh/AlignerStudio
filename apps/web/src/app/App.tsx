@@ -6,6 +6,7 @@ import type {
 } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
+import { ConfirmDialog } from "../design-system";
 import { ExportPanel } from "../components/ExportPanel";
 import { AnalysisInspector, AnalysisPanel } from "../components/AnalysisPanel";
 import { CaseIntakeInspector, CaseIntakePanel } from "../components/CaseIntakePanel";
@@ -71,12 +72,15 @@ import {
   WorkflowHeader,
   WorkspaceContainer,
 } from "../components/workspace/WorkspacePrimitives";
-import { buildWorkflowActions, buildWorkflowSteps, workflowLabel, workflowPlanToken, workflowStepIndex, type WorkflowStepId } from "../workflow";
+import { buildWorkflowActions, buildWorkflowSteps, workflowLabel, workflowStepIndex, type WorkflowStepId } from "../workflow";
 import { CaseLoadingOverlay, ProductionEmptyState, StatusPill } from "../components/production/ProductionPrimitives";
 import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
 import {
   readRememberedActiveCaseId,
+  readRememberedActiveWorkspace,
   rememberActiveCaseId,
+  rememberActiveWorkspace,
+  resolveRestoredWorkspace,
 } from "../caseWorkspacePersistence";
 
 type WorkspaceId = WorkflowStepId;
@@ -269,6 +273,8 @@ export function App(): JSX.Element {
   >({});
   const [originalOpacity, setOriginalOpacity] = useState(0.3);
   const [wireframe, setWireframe] = useState(false);
+  const [confirmNewCaseOpen, setConfirmNewCaseOpen] = useState(false);
+  const [layersExpanded, setLayersExpanded] = useState(false);
   const [hiddenToothIds, setHiddenToothIds] = useState<ReadonlySet<number>>(new Set());
   const [reviewBundle, setReviewBundle] = useState<ReviewBundle>(() =>
     unavailableReviewBundle(
@@ -469,6 +475,12 @@ export function App(): JSX.Element {
   }, [activeCase?.id]);
 
   useEffect(() => {
+    if (activeCase?.id) {
+      rememberActiveWorkspace(workspace);
+    }
+  }, [activeCase?.id, workspace]);
+
+  useEffect(() => {
     let cancelled = false;
     const rememberedId = readRememberedActiveCaseId();
     if (!rememberedId) return;
@@ -492,20 +504,40 @@ export function App(): JSX.Element {
           };
         }
         setArchUploads(uploads);
+        let processingCompleted = false;
         try {
           const status = await api.getProcessingStatus(rememberedId);
-          if (!cancelled && status) setProcessingStatus(status);
+          if (!cancelled && status) {
+            setProcessingStatus(status);
+            processingCompleted = status.stage_status === "COMPLETED";
+          }
         } catch {
           // No processing status yet.
         }
+        const rememberedWorkspace = readRememberedActiveWorkspace();
         try {
           const bundle = await api.getTreatment(rememberedId);
           if (cancelled) return;
           setReviewBundle(bundle);
           setBackendTreatment(true);
-          setWorkspace("treatment-setup");
+          setWorkspace(
+            resolveRestoredWorkspace({
+              remembered: rememberedWorkspace,
+              hasTreatment: true,
+              hasProcessingCompleted: processingCompleted,
+            }),
+          );
         } catch {
           // Treatment not composed yet — case metadata alone is enough to continue intake.
+          if (!cancelled) {
+            setWorkspace(
+              resolveRestoredWorkspace({
+                remembered: rememberedWorkspace,
+                hasTreatment: false,
+                hasProcessingCompleted: processingCompleted,
+              }),
+            );
+          }
         }
       } catch {
         rememberActiveCaseId(null);
@@ -1208,9 +1240,9 @@ export function App(): JSX.Element {
         api.processPipeline(activeCase.id, "lower"),
       ]);
       setPipelineDiagnostic(mergePipelineDiagnostics(upperDiagnostic, lowerDiagnostic));
+      setWorkspace("analysis");
       const intelligence = await api.getDentalIntelligence(activeCase.id).catch(() => null);
       if (intelligence) setDentalIntelligence(intelligence);
-      setWorkspace("analysis");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -1219,7 +1251,6 @@ export function App(): JSX.Element {
   }
 
   const workspaceLabel = workflowLabel(workspace);
-  const workspaceToken = workflowPlanToken(workspace);
   const canShowScene = activeReviewStage !== null;
   const showStageTimeline =
     (workspace === "staging" || workspace === "refinement") && treatmentAvailable;
@@ -1238,9 +1269,17 @@ export function App(): JSX.Element {
     [activeCase, bothArchesValid, isBusy, pipelineReviewStage, treatmentAvailable, workspace],
   );
 
+  function requestNewCase(): void {
+    if (activeCase) {
+      setConfirmNewCaseOpen(true);
+      return;
+    }
+    void handleCreateCase();
+  }
+
   function handleContextualAction(label: string): void {
-    if (label === "New Case") {
-      void handleCreateCase();
+    if (label === "New Case" || label === "Create Case") {
+      requestNewCase();
       return;
     }
     if (label === "Scan Import") {
@@ -1263,7 +1302,7 @@ export function App(): JSX.Element {
       setWorkspace("refinement");
       return;
     }
-    if (label === "Open Validation") {
+    if (label === "Open Validation" || label === "Review Findings") {
       setWorkspace("validation");
       return;
     }
@@ -1285,13 +1324,18 @@ export function App(): JSX.Element {
         <nav className="cad-workflow-nav" aria-label="Clinical CAD workflow">
           {workflowSteps.map((step, index) => {
             const id = step.id;
+            const blocked = step.status === "blocked";
             return (
               <button
                 className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}`}
                 key={id}
-                onClick={() => setWorkspace(id)}
+                onClick={() => {
+                  if (blocked) return;
+                  setWorkspace(id);
+                }}
+                disabled={blocked}
                 aria-current={workspace === id ? "step" : undefined}
-                title={step.planToken}
+                title={blocked ? `${step.label} — complete prior steps first` : step.label}
               >
                 <span>{step.status === "complete" ? "✓" : String(index + 1).padStart(2, "0")}</span>
                 {step.label}
@@ -1310,39 +1354,36 @@ export function App(): JSX.Element {
         <LeftToolPanel>
           <div className="cad-panel-heading">
             <div>
-              <span className="eyebrow">Current step</span>
+              <span className="eyebrow">Workflow</span>
               <h2>{workspaceLabel}</h2>
             </div>
             <span className="panel-index">{String(workflowStepIndex(workspace) + 1).padStart(2, "0")}</span>
           </div>
-          <div className="cad-step-token" aria-hidden="true">{workspaceToken}</div>
-          {workspace !== "case-intake" && (
+          {workspace !== "case-intake" && activeCase && (
             <div className="cad-quick-actions">
-              <button className="secondary-button" onClick={() => setWorkspace("case-intake")}>
-                Case Intake
-              </button>
               <button
-                aria-label="Create case"
                 className="text-button"
-                onClick={handleCreateCase}
-                disabled={isBusy}
+                onClick={() => setWorkspace("case-intake")}
+                data-testid="goto-case-intake"
               >
-                New Case
+                Case
               </button>
             </div>
           )}
-          <div className="cad-contextual-actions" aria-label="Contextual actions">
-            {contextualActions.map((action) => (
-              <button
-                key={`${action.step}-${action.label}`}
-                className="secondary-button"
-                disabled={action.disabled}
-                onClick={() => handleContextualAction(action.label)}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
+          {contextualActions.length > 0 && (
+            <div className="cad-contextual-actions" aria-label="Contextual actions">
+              {contextualActions.map((action) => (
+                <button
+                  key={`${action.step}-${action.label}`}
+                  className="secondary-button"
+                  disabled={action.disabled}
+                  onClick={() => handleContextualAction(action.label)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {workspace === "case-intake" && (
             <CaseIntakePanel
@@ -1358,13 +1399,13 @@ export function App(): JSX.Element {
               backendTreatment={backendTreatment}
               processingStatus={processingStatus}
               onCreateCase={() => void handleCreateCase()}
+              onRequestNewCase={requestNewCase}
               onUpload={(arch, file) => void handleUploadAndValidate(arch, file)}
               onRemoveMesh={(arch) => void handleRemoveMesh(arch)}
               onAnalyzeCase={() => void handleReviewSegmentation()}
               onReviewTreatmentProposal={() => void handleGeneratePlan()}
             />
           )}
-
           {workspace === "analysis" && (
             <AnalysisPanel
               bothArchesValid={bothArchesValid}
@@ -1484,111 +1525,110 @@ export function App(): JSX.Element {
           )}
 
           {showSceneLayers && (
-            <div className="cad-layer-controls">
-              <span className="eyebrow">Layers</span>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showUpper}
-                  onChange={(event) => {
-                    setShowUpper(event.target.checked);
-                    if (event.target.checked && showLower) setArchMode("both");
-                    else if (event.target.checked) setArchMode("upper");
-                  }}
-                />
-                <span>Upper teeth</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showLower}
-                  onChange={(event) => {
-                    setShowLower(event.target.checked);
-                    if (event.target.checked && showUpper) setArchMode("both");
-                    else if (event.target.checked) setArchMode("lower");
-                  }}
-                />
-                <span>Lower teeth</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showGingiva}
-                  onChange={(event) => setShowGingiva(event.target.checked)}
-                />
-                <span>Gingiva (presentation)</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showTargetGhost}
-                  onChange={(event) => setShowTargetGhost(event.target.checked)}
-                  disabled={!treatmentAvailable}
-                />
-                <span>Target Position</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showSegmentation}
-                  onChange={(event) => setShowSegmentation(event.target.checked)}
-                />
-                <span>Segmentation</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showOriginal}
-                  onChange={(event) => setShowOriginal(event.target.checked)}
-                />
-                <span>Initial Position</span>
-              </label>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={showMovementVectors}
-                  onChange={(event) => setShowMovementVectors(event.target.checked)}
-                  disabled={!treatmentAvailable}
-                />
-                <span>Tooth Movement</span>
-              </label>
-              {showOriginal && (
-                <label className="range-row">
-                  <span>Original opacity</span>
+            <details
+              className="cad-layers-disclosure"
+              open={layersExpanded}
+              onToggle={(event) => setLayersExpanded((event.target as HTMLDetailsElement).open)}
+              data-testid="scene-layers"
+            >
+              <summary>Scene layers</summary>
+              <div className="cad-layer-controls">
+                <label className="toggle-row">
                   <input
-                    type="range"
-                    min="0.08"
-                    max="0.75"
-                    step="0.01"
-                    value={originalOpacity}
-                    onChange={(event) => setOriginalOpacity(Number(event.target.value))}
+                    type="checkbox"
+                    checked={showUpper}
+                    onChange={(event) => {
+                      setShowUpper(event.target.checked);
+                      if (event.target.checked && showLower) setArchMode("both");
+                      else if (event.target.checked) setArchMode("upper");
+                    }}
                   />
+                  <span>Upper</span>
                 </label>
-              )}
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={wireframe}
-                  onChange={(event) => setWireframe(event.target.checked)}
-                />
-                <span>Wireframe</span>
-              </label>
-            </div>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showLower}
+                    onChange={(event) => {
+                      setShowLower(event.target.checked);
+                      if (event.target.checked && showUpper) setArchMode("both");
+                      else if (event.target.checked) setArchMode("lower");
+                    }}
+                  />
+                  <span>Lower</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showGingiva}
+                    onChange={(event) => setShowGingiva(event.target.checked)}
+                  />
+                  <span>Gingiva (presentation)</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showTargetGhost}
+                    onChange={(event) => setShowTargetGhost(event.target.checked)}
+                    disabled={!treatmentAvailable}
+                  />
+                  <span>Target</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showOriginal}
+                    onChange={(event) => setShowOriginal(event.target.checked)}
+                  />
+                  <span>Current scan</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showMovementVectors}
+                    onChange={(event) => setShowMovementVectors(event.target.checked)}
+                    disabled={!treatmentAvailable}
+                  />
+                  <span>Movement</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={showSegmentation}
+                    onChange={(event) => setShowSegmentation(event.target.checked)}
+                  />
+                  <span>Segmentation</span>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={wireframe}
+                    onChange={(event) => setWireframe(event.target.checked)}
+                  />
+                  <span>Wireframe</span>
+                </label>
+                {showOriginal && (
+                  <label className="range-row">
+                    <span>Scan opacity</span>
+                    <input
+                      type="range"
+                      min="0.08"
+                      max="0.75"
+                      step="0.01"
+                      value={originalOpacity}
+                      onChange={(event) => setOriginalOpacity(Number(event.target.value))}
+                    />
+                  </label>
+                )}
+              </div>
+            </details>
           )}
 
           {activeCase && (
-            <div className="cad-case-status">
-              <span className="eyebrow">Case Status</span>
-              <strong>{activeCase.status.replaceAll("_", " ")}</strong>
-              {validation && (
-                <small>
-                  {validation.triangle_count.toLocaleString()} triangles ·{" "}
-                  {validation.is_valid ? "mesh valid" : "mesh invalid"}
-                </small>
-              )}
-              {pipelineDiagnostic && (
-                <small>{pipelineDiagnostic.tooth_instance_count} segmented instances</small>
-              )}
+            <div className="cad-case-status" data-testid="case-status-compact">
+              <span className="eyebrow">Case</span>
+              <strong>{activeCase.patient_reference || activeCase.id}</strong>
+              <small>{activeCase.status.replaceAll("_", " ")}</small>
             </div>
           )}
           {error && (
@@ -1602,7 +1642,7 @@ export function App(): JSX.Element {
         <section className="cad-viewport-column">
           <div className="cad-viewport-header">
             <div>
-              <span className="eyebrow">Current step · {workspaceToken}</span>
+              <span className="eyebrow">Workflow · {workspaceLabel}</span>
               <h1>{workspaceLabel}</h1>
             </div>
             <div className="cad-viewport-meta">
@@ -1842,7 +1882,7 @@ export function App(): JSX.Element {
       </WorkspaceContainer>
       <StatusBar>
         <span>{activeCase ? `Case ${activeCase.patient_reference}` : "No active case"}</span>
-        <span>{workspaceToken}</span>
+        <span>{workspaceLabel}</span>
         <span>{activeCase ? "Local workspace" : "Ready"}</span>
         {exportMessage && <span>{exportMessage}</span>}
       </StatusBar>
@@ -1868,6 +1908,18 @@ export function App(): JSX.Element {
         </>
       )}
       {loadingPresentation ? <CaseLoadingOverlay presentation={loadingPresentation} /> : null}
+      <ConfirmDialog
+        open={confirmNewCaseOpen}
+        title="Start another case?"
+        message="The current case stays in the session until you create a new one. Unsaved viewport edits may be cleared."
+        confirmLabel="Create new case"
+        cancelLabel="Cancel"
+        onCancel={() => setConfirmNewCaseOpen(false)}
+        onConfirm={() => {
+          setConfirmNewCaseOpen(false);
+          void handleCreateCase();
+        }}
+      />
     </AppShell>
   );
 

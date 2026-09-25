@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { ReviewBundle } from "../review/types";
+import { AdvancedDetails, TruthBadge } from "../design-system";
+import { formatProductTruthLabel, normalizeProductTruth } from "../design-system/truthState";
 import { buildProductionNavigation } from "../workflowNavigationPresentation";
 
 interface ProductionPanelProps {
@@ -9,12 +11,11 @@ interface ProductionPanelProps {
   onSelectProductionSource?: (stageIndex: number, sourceKind: string) => void;
 }
 
-function formatState(value: string | null | undefined): string {
-  if (!value) return "Not Available";
-  return value.replaceAll("_", " ");
+function truthOrLabel(value: string | null | undefined): string {
+  return formatProductTruthLabel(value);
 }
 
-/** Production left navigation — honest manufacturing boundary + WP-10 Production CAD. */
+/** Production left panel — honest readiness by component; no fake manufacturing ready. */
 export function ProductionPanel({
   bundle,
   treatmentAvailable,
@@ -26,18 +27,20 @@ export function ProductionPanel({
   const production = bundle.productionCad;
   const readiness = production?.readiness;
   const finalStageIndex =
-    bundle.stages.length > 0 ? bundle.stages[bundle.stages.length - 1]?.stageIndex : null;
+    bundle.stages.length > 0 ? bundle.stages[bundle.stages.length - 1]?.index : null;
+  const overallTruth =
+    normalizeProductTruth(production?.overall_truth_state) ?? "requires_review";
 
   return (
     <div className="production-panel case-form" data-testid="production-panel">
       <section className="analysis-section" aria-labelledby="production-heading">
         <h3 id="production-heading" className="eyebrow">
-          Production CAD
+          Production
         </h3>
-        <small className="cad-review-note">
-          Treatment design and geometric validation are separated from manufacturing preparation.
-          Appliance shells are not generated. CAD export is not manufacturing certification.
-        </small>
+        <p className="cad-review-note">
+          Export is an engineering package. Engineering offset is review-only — not manufacturing
+          certification.
+        </p>
       </section>
 
       {production && (
@@ -52,25 +55,23 @@ export function ProductionPanel({
           <div className="cad-stat-row">
             <span>Truth</span>
             <strong data-testid="production-truth">
-              {formatState(production.overall_truth_state)}
+              <TruthBadge state={overallTruth} />
             </strong>
           </div>
           <div className="cad-stat-row">
             <span>Freshness</span>
-            <strong data-testid="production-freshness">{formatState(production.freshness)}</strong>
+            <strong data-testid="production-freshness">
+              {truthOrLabel(production.freshness)}
+            </strong>
           </div>
           <div className="cad-stat-row">
             <span>Source</span>
             <strong data-testid="production-source-kind">
-              {formatState(production.binding.source_kind)}
+              {truthOrLabel(production.binding.source_kind)}
               {production.binding.selected_stage_index != null
                 ? ` · stage ${production.binding.selected_stage_index}`
                 : ""}
             </strong>
-          </div>
-          <div className="cad-stat-row">
-            <span>Version</span>
-            <strong data-testid="production-version-id">{production.production_version_id}</strong>
           </div>
           {onSelectProductionSource && finalStageIndex != null && (
             <button
@@ -79,53 +80,49 @@ export function ProductionPanel({
               onClick={() => onSelectProductionSource(finalStageIndex, "final_target")}
               disabled={!treatmentAvailable}
             >
-              Select final stage as production source
+              Select final stage as source
             </button>
           )}
+          <AdvancedDetails summary="Technical details">
+            <div className="cad-stat-row">
+              <span>Version</span>
+              <strong data-testid="production-version-id">{production.production_version_id}</strong>
+            </div>
+            {production.shell_generated ? (
+              <small className="cad-review-note">
+                Engineering offset sample present — Requires Review; not manufacturing certified.
+              </small>
+            ) : null}
+          </AdvancedDetails>
         </section>
       )}
 
       {readiness && (
         <section className="analysis-section" aria-labelledby="production-readiness">
           <h3 id="production-readiness" className="eyebrow">
-            Manufacturing readiness
+            Capability readiness
           </h3>
           {(
             [
               ["source_treatment_state", "Source state"],
-              ["validation_current", "Validation current"],
-              ["shell", "Shell"],
+              ["validation_current", "Validation"],
+              ["shell", "Shell / offset"],
               ["trimline", "Trimline"],
               ["thickness_defined", "Thickness"],
               ["undercut_analysis", "Undercut"],
               ["mesh_qc", "Mesh QC"],
-              ["export_validation", "Export validation"],
-              ["stage_model_export", "Stage model export"],
+              ["export_validation", "Export check"],
+              ["stage_model_export", "Stage export"],
             ] as const
           ).map(([key, label]) => (
             <div className="cad-stat-row" key={key}>
               <span>{label}</span>
-              <strong>{formatState(readiness[key])}</strong>
+              <strong>{truthOrLabel(readiness[key])}</strong>
             </div>
           ))}
           <small className="cad-review-note">
-            manufacturing_ready={String(readiness.manufacturing_ready)} · certified=
-            {String(readiness.manufacturing_certified)}
+            Manufacturing certified: no · Clinically approved: no
           </small>
-        </section>
-      )}
-
-      {production?.qc_checks && production.qc_checks.length > 0 && (
-        <section className="analysis-section" aria-labelledby="production-qc">
-          <h3 id="production-qc" className="eyebrow">
-            Production QC
-          </h3>
-          {production.qc_checks.slice(0, 10).map((check) => (
-            <div className="cad-stat-row" key={check.check_id}>
-              <span>{check.label}</span>
-              <strong>{formatState(check.status)}</strong>
-            </div>
-          ))}
         </section>
       )}
 
@@ -151,10 +148,7 @@ export function ProductionPanel({
       ))}
 
       {boundary && (
-        <section className="analysis-section" aria-labelledby="manufacturing-boundary">
-          <h3 id="manufacturing-boundary" className="eyebrow">
-            Manufacturing Boundary
-          </h3>
+        <AdvancedDetails summary="Manufacturing boundary">
           <div className="cad-stat-row">
             <span>Package kind</span>
             <strong>{boundary.packageKind.replaceAll("_", " ")}</strong>
@@ -164,19 +158,10 @@ export function ProductionPanel({
             <strong>{boundary.applianceShellGeneration.replaceAll("_", " ")}</strong>
           </div>
           <div className="cad-stat-row">
-            <span>Trimline / cutline</span>
+            <span>Trimline</span>
             <strong>{boundary.trimlineCutline.replaceAll("_", " ")}</strong>
           </div>
-          <div className="cad-stat-row">
-            <span>Separated layers</span>
-            <strong>{boundary.treatmentVsManufacturingSeparated ? "yes" : "no"}</strong>
-          </div>
-          {boundary.notes.slice(0, 2).map((note) => (
-            <small className="cad-review-note" key={note}>
-              {note}
-            </small>
-          ))}
-        </section>
+        </AdvancedDetails>
       )}
     </div>
   );
@@ -193,8 +178,8 @@ export function ProductionInspector({ children }: ProductionInspectorProps): JSX
         <span className="eyebrow">Production</span>
         <h2>Export Package</h2>
         <p>
-          Manufacturing Preparation remains Unavailable until appliance tooling exists. Stage
-          models are treatment geometry only. Export is not manufacturing certification.
+          Select a production source, review capability readiness, then export. Engineering offset
+          remains review-only.
         </p>
       </div>
       {children}

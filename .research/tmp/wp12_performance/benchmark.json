@@ -1,0 +1,328 @@
+{
+  "work_package": "WP-12",
+  "artifact_id": "official_real_case_stage2_verified_v1",
+  "artifact_zip_sha256": "b0f57d45e19ec1c981964dcad1309570fdc96ec21052ada62050fa3ccb8621b2",
+  "environment": {
+    "timestamp_utc": "2026-09-25T15:27:51.878021+00:00",
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "cpu_count": 12,
+    "artifact": "/home/hjawahreh/Desktop/Projects/AlignerStudio/.research/tmp/official_real_case_stage2_verified_v1",
+    "artifact_exists": true,
+    "validation_process_isolation": "1",
+    "validation_workers": "1",
+    "stage_count": "3"
+  },
+  "equivalence_isolated_vs_inprocess": {
+    "report_id_match": true,
+    "status_match": true,
+    "inprocess": {
+      "status": "warning",
+      "report_id": "bc276874c9ccb07865ba17ff3878792ca7b0fdc0728f686df1a28a1bb7fd91fc",
+      "stages": 3,
+      "proximity": 39,
+      "collisions": 0
+    },
+    "isolated": {
+      "status": "warning",
+      "report_id": "bc276874c9ccb07865ba17ff3878792ca7b0fdc0728f686df1a28a1bb7fd91fc",
+      "stages": 3,
+      "proximity": 39,
+      "collisions": 0
+    }
+  },
+  "full_dual_validate_enabled": false,
+  "dual_result": null,
+  "memory_reopen": {
+    "rss_before_reopen_mb": 751.4765625,
+    "rss_after_two_reopens_mb": 751.4765625,
+    "delta_mb": 0.0
+  },
+  "measurements": [
+    {
+      "label": "fixture_load_upper_cold",
+      "repeats": 1,
+      "wall_s": {
+        "min": 11.871242169989273,
+        "median": 11.871242169989273,
+        "max": 11.871242169989273,
+        "samples": [
+          11.871242169989273
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 45.728109,
+        "median": 45.728109,
+        "max": 45.728109
+      },
+      "rss_mb_after": 245.2578125,
+      "result_summary": {
+        "n": 14
+      }
+    },
+    {
+      "label": "fixture_load_upper_warm",
+      "repeats": 1,
+      "wall_s": {
+        "min": 0.0009555239812470973,
+        "median": 0.0009555239812470973,
+        "max": 0.0009555239812470973,
+        "samples": [
+          0.0009555239812470973
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 0.002712,
+        "median": 0.002712,
+        "max": 0.002712
+      },
+      "rss_mb_after": 245.2578125,
+      "result_summary": {
+        "n": 14
+      }
+    },
+    {
+      "label": "fixture_load_lower_cold",
+      "repeats": 1,
+      "wall_s": {
+        "min": 6.5823191450035665,
+        "median": 6.5823191450035665,
+        "max": 6.5823191450035665,
+        "samples": [
+          6.5823191450035665
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 36.60597,
+        "median": 36.60597,
+        "max": 36.60597
+      },
+      "rss_mb_after": 246.0703125,
+      "result_summary": {
+        "n": 14
+      }
+    },
+    {
+      "label": "fixture_load_lower_warm",
+      "repeats": 1,
+      "wall_s": {
+        "min": 0.0004939189821016043,
+        "median": 0.0004939189821016043,
+        "max": 0.0004939189821016043,
+        "samples": [
+          0.0004939189821016043
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 0.002712,
+        "median": 0.002712,
+        "max": 0.002712
+      },
+      "rss_mb_after": 246.0703125,
+      "result_summary": {
+        "n": 14
+      }
+    },
+    {
+      "label": "treatment_setup",
+      "repeats": 3,
+      "wall_s": {
+        "min": 1.3713081759924535,
+        "median": 1.3891209949797485,
+        "max": 1.5222006120020524,
+        "samples": [
+          1.5222006120020524,
+          1.3713081759924535,
+          1.3891209949797485
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 21.652634,
+        "median": 21.65265,
+        "max": 21.654842
+      },
+      "rss_mb_after": 246.45703125,
+      "result_summary": {
+        "plan_id": "450ce5c300f8cab3fd753911e5133efa55130fa697d34fa8b2c839ca2e7de9a7",
+        "teeth": 14
+      }
+    },
+    {
+      "label": "staging",
+      "repeats": 3,
+      "wall_s": {
+        "min": 1.4678167219972238,
+        "median": 1.5325975920131896,
+        "max": 1.550081068999134,
+        "samples": [
+          1.4678167219972238,
+          1.5325975920131896,
+          1.550081068999134
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 11.702994,
+        "median": 11.703114,
+        "max": 11.711794
+      },
+      "rss_mb_after": 248.9765625,
+      "result_summary": {
+        "staging_id": "45d14654c2e6ecca9767fb984b67850301116b5a10acd5a3f46976ccb94684a8",
+        "stages": 3,
+        "teeth_stage0": 14
+      }
+    },
+    {
+      "label": "validation_upper_inprocess_cold",
+      "repeats": 1,
+      "wall_s": {
+        "min": 214.49314741700073,
+        "median": 214.49314741700073,
+        "max": 214.49314741700073,
+        "samples": [
+          214.49314741700073
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 75.235985,
+        "median": 75.235985,
+        "max": 75.235985
+      },
+      "rss_mb_after": 278.75,
+      "result_summary": {
+        "status": "warning",
+        "report_id": "bc276874c9ccb07865ba17ff3878792ca7b0fdc0728f686df1a28a1bb7fd91fc",
+        "stages": 3,
+        "proximity": 39,
+        "collisions": 0
+      }
+    },
+    {
+      "label": "validation_upper_isolated",
+      "repeats": 1,
+      "wall_s": {
+        "min": 105.69474732302479,
+        "median": 105.69474732302479,
+        "max": 105.69474732302479,
+        "samples": [
+          105.69474732302479
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 16.517081,
+        "median": 16.517081,
+        "max": 16.517081
+      },
+      "rss_mb_after": 304.625,
+      "result_summary": {
+        "status": "warning",
+        "report_id": "bc276874c9ccb07865ba17ff3878792ca7b0fdc0728f686df1a28a1bb7fd91fc",
+        "stages": 3,
+        "proximity": 39,
+        "collisions": 0
+      }
+    },
+    {
+      "label": "validation_isolated_responsiveness",
+      "repeats": 1,
+      "wall_s": {
+        "min": 0.0811369150178507,
+        "median": 0.0811369150178507,
+        "max": 0.0811369150178507,
+        "samples": [
+          0.0811369150178507
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 0.024824,
+        "median": 0.024824,
+        "max": 0.024824
+      },
+      "rss_mb_after": 304.875,
+      "result_summary": {
+        "validation_wall_s": 0.012536698981421068,
+        "concurrent_ticks": 4,
+        "report_id": "c653d2249d2456072d913e626c8a251d33816b20702a88eb2fbc616ab252a009",
+        "responsive": true
+      }
+    },
+    {
+      "label": "session_compose_upper",
+      "repeats": 1,
+      "wall_s": {
+        "min": 104.70961849001469,
+        "median": 104.70961849001469,
+        "max": 104.70961849001469,
+        "samples": [
+          104.70961849001469
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 39.279479,
+        "median": 39.279479,
+        "max": 39.279479
+      },
+      "rss_mb_after": 320.5,
+      "result_summary": {
+        "source_kind": "validated_real_case",
+        "teeth": 14,
+        "validation": "warning",
+        "report_id": "ac3ec0544c905415926b5fcf29226959e9994158c1c04de7017db7b6538b8086"
+      }
+    },
+    {
+      "label": "session_compose_upper_cached",
+      "repeats": 1,
+      "wall_s": {
+        "min": 5.329437318985583,
+        "median": 5.329437318985583,
+        "max": 5.329437318985583,
+        "samples": [
+          5.329437318985583
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 33.686413,
+        "median": 33.686413,
+        "max": 33.686413
+      },
+      "rss_mb_after": 337.75,
+      "result_summary": {
+        "source_kind": "validated_real_case",
+        "teeth": 14,
+        "validation": "warning",
+        "report_id": "ac3ec0544c905415926b5fcf29226959e9994158c1c04de7017db7b6538b8086"
+      }
+    },
+    {
+      "label": "review_bundle_serialize",
+      "repeats": 3,
+      "wall_s": {
+        "min": 6.492026816995349,
+        "median": 6.595760713011259,
+        "max": 11.262163546023658,
+        "samples": [
+          11.262163546023658,
+          6.595760713011259,
+          6.492026816995349
+        ]
+      },
+      "peak_python_alloc_mb": {
+        "min": 18.175836,
+        "median": 18.175964,
+        "max": 170.25313
+      },
+      "rss_mb_after": 751.4765625,
+      "result_summary": {
+        "json_bytes": 16577174,
+        "stage_teeth": 14
+      }
+    },
+    {
+      "label": "production_cad_skip",
+      "error": "cannot import name 'ProductionCadEngine' from 'engines.export.production_cad_engine' (/home/hjawahreh/Desktop/Projects/AlignerStudio/engines/export/production_cad_engine.py)"
+    }
+  ],
+  "wp13_and_later_started": false
+}

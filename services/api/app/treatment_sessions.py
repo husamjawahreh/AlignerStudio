@@ -50,6 +50,8 @@ from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
     GeometricValidationEngine,
 )
+from engines.validation.isolated_execution import validate_staging
+from engines.validation.report_cache import get_cached_report, store_cached_report
 from engines.validation.review_summary import build_validation_review_summary
 
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
@@ -632,6 +634,9 @@ class TreatmentSessionStore:
         return self._remember(case_id, session)
 
     def export(self, case_id: str, destination: Path) -> TreatmentExportPackage:
+        from app.failure_injection import maybe_fail
+
+        maybe_fail("during_export")
         session = self.get(case_id)
         return TreatmentExportEngine().export(
             destination, session.proposal, session.staging, session.validation, session.adjuncts
@@ -700,6 +705,9 @@ class TreatmentSessionStore:
         if not any(stage.stage_index == stage_index for stage in session.staging.stages):
             raise TreatmentSessionError(f"Stage index {stage_index} is not present in staging")
         # Build plan to mint immutable production_version_id for the selection.
+        from app.failure_injection import maybe_fail
+
+        maybe_fail("before_production_complete")
         staging_version_id = None
         if session.smart_staging is not None:
             staging_version_id = session.smart_staging.meta.staging_version_id
@@ -888,9 +896,21 @@ class TreatmentSessionStore:
         )
         emit(82, "Evaluating collisions and proximity")
         validation_started = perf_counter()
-        validation = self._validator.validate(
-            staging, GeometricValidationConfiguration(1.0, 0.001, 0.0)
-        )
+        validation_cfg = GeometricValidationConfiguration(1.0, 0.001, 0.0)
+        cached = get_cached_report(staging, validation_cfg)
+        if cached is not None:
+            validation = cached
+            logger.info(
+                "GEOMETRIC_VALIDATION_CACHE_HIT plan_id=%s staging_id=%s report_id=%s",
+                proposal.plan_id,
+                staging.staging_id,
+                validation.report_id,
+            )
+        else:
+            # Process-isolated by default so long GPU-less narrow-phase work
+            # cannot starve API status/health handlers (WP-12).
+            validation = validate_staging(staging, validation_cfg)
+            store_cached_report(staging, validation_cfg, validation)
         logger.info(
             "GEOMETRIC_VALIDATION_COMPLETED plan_id=%s duration_ms=%.1f stages=%d status=%s",
             proposal.plan_id,

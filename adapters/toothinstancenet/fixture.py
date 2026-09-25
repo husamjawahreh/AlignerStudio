@@ -32,6 +32,12 @@ from engines.segmentation.toothinstancenet import ToothInstanceNetInferenceResul
 
 logger = logging.getLogger(__name__)
 
+# WP-12: process-local reconstruction cache. Key includes artifact identity + arch +
+# optional uploaded mesh hash so results never cross cases or silently substitute geometry.
+_FIXTURE_RESULT_CACHE: dict[tuple[str, str, str, str], ToothInstanceNetInferenceResult] = {}
+_FIXTURE_CACHE_MAX = 8
+_CHECKSUM_CACHE: dict[str, dict[str, str]] = {}
+
 
 class ToothInstanceNetFixtureError(ValueError):
     """Raised when an explicit validated artifact is malformed."""
@@ -114,6 +120,10 @@ def _artifact_root(path: str | Path) -> Path:
 
 
 def _verify_checksums(root: Path) -> dict[str, str]:
+    cache_key = str(root.resolve())
+    cached = _CHECKSUM_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     checksum_file = root / "SHA256SUMS.txt"
     if not checksum_file.is_file():
         raise ToothInstanceNetFixtureError("Validated artifact is missing SHA256SUMS.txt")
@@ -134,6 +144,7 @@ def _verify_checksums(root: Path) -> dict[str, str]:
     if not required.issubset(expected):
         missing = ", ".join(sorted(required - set(expected)))
         raise ToothInstanceNetFixtureError(f"Artifact checksum manifest is missing: {missing}")
+    _CHECKSUM_CACHE[cache_key] = expected
     return expected
 
 
@@ -256,11 +267,7 @@ def load_validated_fixture(
     """Load only an explicitly selected validated artifact; never auto-fallback."""
     started = perf_counter()
     root = _artifact_root(path)
-    checksums = _verify_checksums(root)
-    manifest = _validate_manifest(root)
-    payload, vertices, faces, instance_to_label = _validate_arch(root, arch, manifest)
-    instances_array = payload["instances"]
-    source_stl_sha256 = checksums[f"{arch.value}.stl"]
+    uploaded_hash = ""
     if source_mesh_path is not None:
         uploaded = Path(source_mesh_path)
         if not uploaded.is_file():
@@ -268,12 +275,44 @@ def load_validated_fixture(
                 f"Uploaded source mesh is missing for hash binding: {uploaded}"
             )
         uploaded_hash = _sha256(uploaded)
-        if uploaded_hash != source_stl_sha256:
-            raise ToothInstanceNetFixtureError(
-                f"Uploaded mesh SHA-256 does not match verified artifact {arch.value}.stl "
-                f"(uploaded={uploaded_hash}, expected={source_stl_sha256}). "
-                "Test-fixture processing refuses silent substitution of unrelated geometry."
-            )
+
+    # Cache before checksum/JSON/STL parse — key is artifact identity + arch + optional upload hash.
+    cache_key = (
+        str(root.resolve()),
+        arch.value,
+        ARTIFACT_ZIP_SHA256,
+        uploaded_hash or "artifact-bound",
+    )
+    cached = _FIXTURE_RESULT_CACHE.get(cache_key)
+    if cached is not None:
+        if uploaded_hash:
+            checksums = _verify_checksums(root)
+            expected = checksums[f"{arch.value}.stl"]
+            if uploaded_hash != expected:
+                raise ToothInstanceNetFixtureError(
+                    f"Uploaded mesh SHA-256 does not match verified artifact {arch.value}.stl "
+                    f"(uploaded={uploaded_hash}, expected={expected}). "
+                    "Test-fixture processing refuses silent substitution of unrelated geometry."
+                )
+        logger.info(
+            "FIXTURE_RECONSTRUCTION_CACHE_HIT arch=%s duration_ms=%.1f",
+            arch.value,
+            (perf_counter() - started) * 1000,
+        )
+        return cached
+
+    checksums = _verify_checksums(root)
+    manifest = _validate_manifest(root)
+    payload, vertices, faces, instance_to_label = _validate_arch(root, arch, manifest)
+    instances_array = payload["instances"]
+    source_stl_sha256 = checksums[f"{arch.value}.stl"]
+    if uploaded_hash and uploaded_hash != source_stl_sha256:
+        raise ToothInstanceNetFixtureError(
+            f"Uploaded mesh SHA-256 does not match verified artifact {arch.value}.stl "
+            f"(uploaded={uploaded_hash}, expected={source_stl_sha256}). "
+            "Test-fixture processing refuses silent substitution of unrelated geometry."
+        )
+
     source_json = f"{arch.value}.json"
     artifact_note = (
         f"source_kind=validated_real_case; artifact_id={ARTIFACT_ID}; fixture=true; "
@@ -286,17 +325,25 @@ def load_validated_fixture(
     instances: list[ToothInstance] = []
     identified: list[IdentifiedTooth] = []
     semantic_by_instance: list[tuple[int, int | None]] = []
+
+    # WP-12: single-pass reconstruction. Prior code rescanned all faces for each of
+    # 14 instances (O(instances × faces)). Grouping is order-preserving and
+    # value-identical to the per-instance filters (verified by WP-01 fixture tests).
+    vertices_by_instance: list[list[int]] = [[] for _ in range(14)]
+    for index, value in enumerate(instances_array):
+        instance_id = int(value)
+        if 0 <= instance_id < 14:
+            vertices_by_instance[instance_id].append(index)
+
+    faces_by_instance: list[list[int]] = [[] for _ in range(14)]
+    for face_index, face in enumerate(faces):
+        labels = [int(instances_array[vertex]) for vertex in face]
+        if labels[0] == labels[1] == labels[2] and 0 <= labels[0] < 14:
+            faces_by_instance[labels[0]].append(face_index)
+
     for source_instance_id in range(14):
-        vertex_indices = tuple(
-            index for index, value in enumerate(instances_array) if value == source_instance_id
-        )
-        # O(1)-average membership; vertex_indices stays a tuple so centroid sum order is unchanged.
-        vertex_index_lookup = frozenset(vertex_indices)
-        triangle_indices = tuple(
-            index
-            for index, face in enumerate(faces)
-            if all(vertex in vertex_index_lookup for vertex in face)
-        )
+        vertex_indices = tuple(vertices_by_instance[source_instance_id])
+        triangle_indices = tuple(faces_by_instance[source_instance_id])
         if not vertex_indices or not triangle_indices:
             raise ToothInstanceNetFixtureError(
                 f"Unable to reconstruct valid {arch.value} instance {source_instance_id}"
@@ -399,7 +446,7 @@ def load_validated_fixture(
         empty_instance_ids=(),
         notes=(artifact_note,),
     )
-    return ToothInstanceNetInferenceResult(
+    result = ToothInstanceNetInferenceResult(
         segmentation=segmentation,
         identification=ToothIdentificationResult(
             arch=arch,
@@ -411,3 +458,16 @@ def load_validated_fixture(
         diagnostics=diagnostics,
         status=diagnostics.state,
     )
+    _FIXTURE_RESULT_CACHE[cache_key] = result
+    if len(_FIXTURE_RESULT_CACHE) > _FIXTURE_CACHE_MAX:
+        # Drop oldest insertion (CPython 3.7+ dict order).
+        oldest = next(iter(_FIXTURE_RESULT_CACHE))
+        if oldest != cache_key:
+            _FIXTURE_RESULT_CACHE.pop(oldest, None)
+    return result
+
+
+def clear_fixture_result_cache() -> None:
+    """Test helper — drop process-local reconstruction cache."""
+    _FIXTURE_RESULT_CACHE.clear()
+    _CHECKSUM_CACHE.clear()

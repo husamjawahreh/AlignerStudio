@@ -1,0 +1,9 @@
+{
+  "name": "alignerstudio-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

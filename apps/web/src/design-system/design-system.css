@@ -341,3 +341,46 @@
 .as-tooltip-wrap {
   display: inline-flex;
 }
+
+/* WP-11 progressive disclosure + current/target */
+.as-advanced-details {
+  margin-top: 10px;
+  border-top: 1px solid var(--as-border);
+  padding-top: 8px;
+}
+.as-advanced-details > summary {
+  cursor: pointer;
+  color: var(--as-text-muted);
+  font-size: var(--as-font-size-xs);
+  letter-spacing: var(--as-letter-wide);
+  text-transform: uppercase;
+  list-style: none;
+}
+.as-advanced-details > summary::-webkit-details-marker { display: none; }
+.as-advanced-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.as-current-target {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0;
+}
+.as-current-target-col {
+  padding: 8px 10px;
+  border-radius: var(--as-radius-sm);
+  border: 1px solid var(--as-border);
+  background: var(--as-bg-panel-raised);
+}
+.as-current-target-col.is-current {
+  border-color: rgba(168, 196, 184, 0.45);
+}
+.as-current-target-col.is-target {
+  border-color: rgba(244, 208, 138, 0.4);
+}
+.as-current-target-col.is-unavailable {
+  opacity: 0.7;
+}

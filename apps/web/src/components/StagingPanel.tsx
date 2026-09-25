@@ -1,4 +1,5 @@
 import type { ReviewStage, SmartStagingPayload } from "../review/types";
+import { AdvancedDetails } from "../design-system";
 import {
   buildPerToothMovementReview,
   buildStageGoals,
@@ -78,14 +79,16 @@ export function StagingPanel({
                 : "No"}
           </strong>
         </div>
-        <div className="cad-stat-row">
-          <span>Algorithm</span>
-          <strong>
-            {smartStaging?.meta
-              ? `${smartStaging.meta.algorithm_name} @ ${smartStaging.meta.algorithm_version}`
-              : "Unavailable"}
-          </strong>
-        </div>
+        <AdvancedDetails summary="Staging technical details">
+          <div className="cad-stat-row">
+            <span>Algorithm</span>
+            <strong>
+              {smartStaging?.meta
+                ? `${smartStaging.meta.algorithm_name} @ ${smartStaging.meta.algorithm_version}`
+                : "Unavailable"}
+            </strong>
+          </div>
+        </AdvancedDetails>
         <small className="cad-review-note">
           Computational staging proposal — not clinically optimized or approved.
         </small>

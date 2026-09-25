@@ -85,7 +85,7 @@ def test_stale_processing_recovered_on_store_reload(tmp_path) -> None:
     recovered = InMemoryCaseStore(store_path)
     status = recovered.get_processing(case.id)
     assert status is not None
-    assert status["stage_status"] == "FAILED"
+    assert status["stage_status"] == "INTERRUPTED"
     assert status["error_code"] == "PROCESS_RESTARTED"
     assert "interrupted" in status["user_message"].lower()
 

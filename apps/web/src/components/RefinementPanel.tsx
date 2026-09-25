@@ -11,7 +11,7 @@ interface RefinementPanelProps {
   onGizmoMode: (mode: GizmoMode) => void;
 }
 
-/** Refinement left navigation — Master Plan labels; existing controls only. */
+/** Refinement left nav — concise status; gizmo lives in the contextual viewport toolbar. */
 export function RefinementPanel({
   bundle,
   gizmoMode,
@@ -20,6 +20,8 @@ export function RefinementPanel({
 }: RefinementPanelProps): JSX.Element {
   const rows = buildRefinementNavigation(bundle);
   const tools = bundle.clinicalTools;
+  const attachmentRow = rows.find((row) => row.id === "attachments");
+  const iprRow = rows.find((row) => row.id === "ipr");
 
   return (
     <div className="refinement-panel case-form" data-testid="refinement-panel">
@@ -27,22 +29,19 @@ export function RefinementPanel({
         <h3 id="refinement-heading" className="eyebrow">
           Refinement
         </h3>
-        <small className="cad-review-note">
-          Tooth Controls, Movement, Attachments, IPR, and Edit History use live proposal state. Apply
-          commits doctor edits through staging rebuild and validation refresh. Clinical-tool values
-          are not clinical approval.
-        </small>
+        <p className="cad-review-note">
+          Select a tooth in the viewport. Use the toolbar for Move / Rotate. Apply commits edits.
+        </p>
         {tools?.freshness === "stale" && (
           <p className="proposal-warning" data-testid="clinical-tools-stale">
-            Clinical tools are stale relative to the current Treatment Setup / Smart Staging
-            version. Regenerate adjunct proposals before treating IPR or attachments as current.
+            Clinical tools need refresh relative to the current setup or staging version.
           </p>
         )}
       </section>
 
       <section className="analysis-section" aria-labelledby="tooth-controls">
         <h3 id="tooth-controls" className="eyebrow">
-          Tooth Controls
+          Mode
         </h3>
         <div className="edit-actions">
           <button
@@ -50,7 +49,7 @@ export function RefinementPanel({
             onClick={() => onGizmoMode("translate")}
             disabled={!treatmentAvailable}
           >
-            Movement
+            Move
           </button>
           <button
             className={gizmoMode === "rotate" ? "primary-button" : "secondary-button"}
@@ -62,32 +61,14 @@ export function RefinementPanel({
         </div>
       </section>
 
-      <section className="analysis-section" aria-labelledby="movement-nav">
-        <h3 id="movement-nav" className="eyebrow">
-          Movement
-        </h3>
-        <div className="cad-stat-row">
-          <span>Status</span>
-          <strong>{rows.find((row) => row.id === "movement")?.value ?? "Unavailable"}</strong>
-        </div>
-      </section>
-
       <section className="analysis-section" aria-labelledby="attachments-nav">
         <h3 id="attachments-nav" className="eyebrow">
           Attachments
         </h3>
         <div className="cad-stat-row">
           <span>State</span>
-          <strong data-testid="attachments-nav-value">
-            {rows.find((row) => row.id === "attachments")?.value ?? "Not available"}
-          </strong>
+          <strong>{attachmentTruthLabel(attachmentRow?.value, tools)}</strong>
         </div>
-        {tools?.readiness.attachment_geometry === "not_available" &&
-          bundle.attachmentSites.length > 0 && (
-            <small className="cad-review-note">
-              Candidates exist for review; attachment geometry dimensions are not available.
-            </small>
-          )}
       </section>
 
       <section className="analysis-section" aria-labelledby="ipr-nav">
@@ -96,52 +77,54 @@ export function RefinementPanel({
         </h3>
         <div className="cad-stat-row">
           <span>State</span>
-          <strong data-testid="ipr-nav-value">
-            {rows.find((row) => row.id === "ipr")?.value ?? "Not available"}
-          </strong>
-        </div>
-        {tools && (
-          <small className="cad-review-note">
-            Measured pairs: {tools.measurable_ipr_pairs}
-            {tools.unavailable_ipr_pairs > 0
-              ? ` · unavailable: ${tools.unavailable_ipr_pairs}`
-              : ""}
-            . Centroid distance is geometric, not a clinical IPR prescription.
-          </small>
-        )}
-      </section>
-
-      <section className="analysis-section" aria-labelledby="edit-history-nav">
-        <h3 id="edit-history-nav" className="eyebrow">
-          Edit History
-        </h3>
-        <div className="cad-stat-row">
-          <span>Edits</span>
-          <strong>{rows.find((row) => row.id === "edit-history")?.value ?? "0"}</strong>
+          <strong>{iprTruthLabel(iprRow?.value, tools)}</strong>
         </div>
       </section>
     </div>
   );
 }
 
-interface RefinementInspectorProps {
-  editCount: number;
-  children?: ReactNode;
+function attachmentTruthLabel(
+  navValue: string | undefined,
+  tools: ReviewBundle["clinicalTools"],
+): string {
+  if (!tools) return "Not Available";
+  const sites = tools.readiness?.attachment_placement;
+  if (sites === "not_available" || sites === "unavailable") return "Not Available";
+  if (sites === "requires_review") return "Requires Review";
+  if (navValue === "0" || navValue?.toLowerCase() === "none") return "Requires Review";
+  return navValue ?? "Requires Review";
 }
 
-export function RefinementInspector({
-  editCount,
-  children,
-}: RefinementInspectorProps): JSX.Element {
+function iprTruthLabel(
+  navValue: string | undefined,
+  tools: ReviewBundle["clinicalTools"],
+): string {
+  if (!tools) return "Not Available";
+  const sites = tools.readiness?.ipr_measurement;
+  if (sites === "not_available" || sites === "unavailable") return "Not Available";
+  if (sites === "requires_review") return "Requires Review";
+  return navValue ?? "Requires Review";
+}
+
+interface RefinementInspectorProps {
+  children?: ReactNode;
+  editCount?: number;
+}
+
+export function RefinementInspector({ children, editCount }: RefinementInspectorProps): JSX.Element {
   return (
     <>
       <div className="cad-inspector-section" data-testid="refinement-inspector">
         <span className="eyebrow">Refinement</span>
         <h2>Tooth Controls</h2>
-        <div className="cad-stat-row">
-          <span>Edit History</span>
-          <strong>{editCount}</strong>
-        </div>
+        <p>Adjust the selected tooth, then Apply. Undo and redo are available in the inspector.</p>
+        {typeof editCount === "number" ? (
+          <div className="cad-stat-row">
+            <span>Doctor edits</span>
+            <strong>{editCount}</strong>
+          </div>
+        ) : null}
       </div>
       {children}
     </>

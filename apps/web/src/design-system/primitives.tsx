@@ -293,3 +293,53 @@ export function ToolGroup({ label, children }: ToolGroupProps): JSX.Element {
   );
 }
 
+interface AdvancedDetailsProps {
+  summary?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}
+
+/** Progressive disclosure for Level 3–4 technical / provenance content. */
+export function AdvancedDetails({
+  summary = "Advanced details",
+  children,
+  defaultOpen = false,
+}: AdvancedDetailsProps): JSX.Element {
+  return (
+    <details className="as-advanced-details" open={defaultOpen} data-testid="advanced-details">
+      <summary>{summary}</summary>
+      <div className="as-advanced-details-body">{children}</div>
+    </details>
+  );
+}
+
+interface CurrentTargetPairProps {
+  currentLabel?: string;
+  targetLabel?: string;
+  currentValue: ReactNode;
+  targetValue: ReactNode;
+  targetAvailable?: boolean;
+}
+
+/** Clear CURRENT vs TARGET presentation without fabricating target values. */
+export function CurrentTargetPair({
+  currentLabel = "Current",
+  targetLabel = "Target",
+  currentValue,
+  targetValue,
+  targetAvailable = true,
+}: CurrentTargetPairProps): JSX.Element {
+  return (
+    <div className="as-current-target" data-testid="current-target-pair">
+      <div className="as-current-target-col is-current">
+        <span className="eyebrow">{currentLabel}</span>
+        <strong>{currentValue}</strong>
+      </div>
+      <div className={`as-current-target-col is-target ${targetAvailable ? "" : "is-unavailable"}`}>
+        <span className="eyebrow">{targetLabel}</span>
+        <strong>{targetAvailable ? targetValue : "Not Available"}</strong>
+      </div>
+    </div>
+  );
+}
+

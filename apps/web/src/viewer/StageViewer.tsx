@@ -126,6 +126,15 @@ export function StageViewer({
   const multiSelectedRef = useRef(multiSelectedTeeth);
   const hoveredKeyRef = useRef<string | null>(null);
   const applyVisualsRef = useRef<(() => void) | null>(null);
+  const applyVisibilityRef = useRef<(() => void) | null>(null);
+  /** Visibility / wireframe filters — applied without tearing down BVH meshes (WP-12). */
+  const visibilityRef = useRef({
+    effectiveShowUpper: true,
+    effectiveShowLower: true,
+    wireframe: false,
+    hiddenToothIds,
+    isolatedToothKey: null as string | null,
+  });
   selectRef.current = onSelectTooth;
   clearSelectRef.current = onClearSelection;
   gizmoCallbackRef.current = onGizmoMovement;
@@ -136,6 +145,13 @@ export function StageViewer({
     isolatedArch === "upper" || (isolatedArch === null && showUpper);
   const effectiveShowLower =
     isolatedArch === "lower" || (isolatedArch === null && showLower);
+  visibilityRef.current = {
+    effectiveShowUpper,
+    effectiveShowLower,
+    wireframe,
+    hiddenToothIds,
+    isolatedToothKey: isolatedToothKey ?? null,
+  };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -193,29 +209,32 @@ export function StageViewer({
     };
     transformControls.addEventListener("dragging-changed", handleDragging);
 
-    scene.add(new THREE.HemisphereLight(0xf7f1e6, 0x101820, 0.95));
-    const keyLight = new THREE.DirectionalLight(0xfff4e8, 1.85);
-    keyLight.position.set(8, 18, 10);
+    scene.add(new THREE.HemisphereLight(0xfff8f0, 0x0c1218, 1.05));
+    const keyLight = new THREE.DirectionalLight(0xfff6ec, 2.05);
+    keyLight.position.set(7, 16, 11);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.bias = -0.00025;
-    keyLight.shadow.normalBias = 0.02;
-    keyLight.shadow.radius = 3.5;
+    keyLight.shadow.bias = -0.0002;
+    keyLight.shadow.normalBias = 0.025;
+    keyLight.shadow.radius = 4;
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0x9bb8c8, 0.7);
-    fillLight.position.set(-12, 5, -6);
+    const fillLight = new THREE.DirectionalLight(0xa8c4d4, 0.78);
+    fillLight.position.set(-11, 6, -5);
     scene.add(fillLight);
-    const rimLight = new THREE.DirectionalLight(0xd4b78a, 0.55);
-    rimLight.position.set(2, 6, -16);
+    const rimLight = new THREE.DirectionalLight(0xe2c49a, 0.62);
+    rimLight.position.set(1, 7, -15);
     scene.add(rimLight);
-    const bounceLight = new THREE.DirectionalLight(0xc8d0d6, 0.28);
-    bounceLight.position.set(0, -10, 4);
+    const bounceLight = new THREE.DirectionalLight(0xd0d6dc, 0.34);
+    bounceLight.position.set(0, -9, 5);
     scene.add(bounceLight);
+    scene.background = new THREE.Color(0x0d131a);
+    scene.fog = new THREE.FogExp2(0x0d131a, 0.012);
 
     const hierarchy = createCaseSceneHierarchy();
     scene.add(hierarchy.allContent);
-    setArchGroupVisibility(hierarchy, "upper", effectiveShowUpper);
-    setArchGroupVisibility(hierarchy, "lower", effectiveShowLower);
+    // Always build both arches; visibility filters update without BVH rebuild (WP-12).
+    setArchGroupVisibility(hierarchy, "upper", true);
+    setArchGroupVisibility(hierarchy, "lower", true);
 
     const originalObjects = new THREE.Group();
     originalObjects.name = "OriginalScans";
@@ -235,18 +254,21 @@ export function StageViewer({
     const stage = sceneGraph.segmentedStage;
     const targetTeeth = targetStage?.teeth ?? [];
 
-    const toothAllowed = (tooth: ReviewToothMesh): boolean => {
-      const archVisible = tooth.arch === "upper" ? effectiveShowUpper : effectiveShowLower;
+    const toothPassesFilter = (tooth: ReviewToothMesh): boolean => {
+      const filters = visibilityRef.current;
+      const archVisible =
+        tooth.arch === "upper" ? filters.effectiveShowUpper : filters.effectiveShowLower;
       if (!archVisible) return false;
-      if (hiddenToothIds.has(tooth.instanceId)) return false;
-      if (isolatedToothKey && reviewToothKey(tooth) !== isolatedToothKey) return false;
+      if (filters.hiddenToothIds.has(tooth.instanceId)) return false;
+      if (filters.isolatedToothKey && reviewToothKey(tooth) !== filters.isolatedToothKey) {
+        return false;
+      }
       return true;
     };
 
     if (showOriginal && layers["original-scan"].visible) {
       const loader = new STLLoader();
       for (const arch of ["upper", "lower"] as const) {
-        if (arch === "upper" ? !effectiveShowUpper : !effectiveShowLower) continue;
         const buffer = sceneGraph.originalScans[arch];
         if (!buffer) continue;
         const geometry = loader.parse(buffer.slice(0));
@@ -264,6 +286,7 @@ export function StageViewer({
         mesh.receiveShadow = true;
         mesh.userData.presentationOnly = true;
         mesh.userData.arch = arch;
+        mesh.userData.role = "original-scan";
         originalObjects.add(mesh);
       }
     }
@@ -271,7 +294,6 @@ export function StageViewer({
     // Target / proposed-setup ghost overlay (presentation only, not raycast).
     if (layers["proposed-setup"].visible && targetTeeth.length > 0) {
       for (const tooth of targetTeeth) {
-        if (!toothAllowed(tooth)) continue;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           "position",
@@ -288,12 +310,14 @@ export function StageViewer({
         mesh.userData.role = "target-ghost";
         mesh.userData.toothRef = key;
         mesh.userData.toothKey = key;
+        mesh.userData.instanceId = tooth.instanceId;
+        mesh.userData.arch = tooth.arch;
         hierarchy.treatmentLayer.add(mesh);
       }
     }
 
     for (const tooth of stage.teeth) {
-      if (!toothAllowed(tooth) || !layers.segmentation.visible) continue;
+      if (!layers.segmentation.visible) continue;
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute(
         "position",
@@ -304,7 +328,7 @@ export function StageViewer({
       const baseProfile = enamelProfileForArch(tooth.arch);
       const material = new THREE.MeshStandardMaterial({
         ...baseProfile,
-        wireframe,
+        wireframe: visibilityRef.current.wireframe,
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = true;
@@ -356,16 +380,21 @@ export function StageViewer({
             }),
           );
           vector.userData.presentationOnly = true;
+          vector.userData.role = "movement-vector";
+          vector.userData.toothKey = key;
+          vector.userData.instanceId = tooth.instanceId;
+          vector.userData.arch = tooth.arch;
           hierarchy.treatmentLayer.add(vector);
         }
       }
     }
 
     if (layers["gingiva-base"].visible) {
+      // Build gingiva for both arches; arch/isolate filters toggle visibility later.
       const gingivaMeshes = resolveGingivaPresentation(stage.teeth, sceneGraph.realGingiva, {
-        includeUpper: effectiveShowUpper && layers["upper-teeth"].visible,
-        includeLower: effectiveShowLower && layers["lower-teeth"].visible,
-        hiddenToothIds,
+        includeUpper: layers["upper-teeth"].visible,
+        includeLower: layers["lower-teeth"].visible,
+        hiddenToothIds: new Set(),
       });
       for (const gingiva of gingivaMeshes) {
         const geometry = new THREE.BufferGeometry();
@@ -386,6 +415,7 @@ export function StageViewer({
         mesh.userData.presentationOnly = true;
         mesh.userData.gingivaSource = gingiva.source;
         mesh.userData.arch = gingiva.arch;
+        mesh.userData.role = "gingiva";
         mesh.userData.clinicalGeometry = false;
         if (gingiva.arch === "upper") hierarchy.upperGingiva.add(mesh);
         else hierarchy.lowerGingiva.add(mesh);
@@ -544,10 +574,51 @@ export function StageViewer({
     resetRef.current = reset;
     viewRef.current = setView;
 
+    const applyVisibility = () => {
+      const filters = visibilityRef.current;
+      setArchGroupVisibility(hierarchy, "upper", filters.effectiveShowUpper);
+      setArchGroupVisibility(hierarchy, "lower", filters.effectiveShowLower);
+      records.forEach((record) => {
+        const visible = toothPassesFilter(record.tooth);
+        record.mesh.visible = visible;
+        record.material.wireframe = filters.wireframe;
+        record.material.transparent = filters.wireframe || record.material.transparent;
+        record.label.style.visibility = visible ? "visible" : "hidden";
+      });
+      hierarchy.treatmentLayer.traverse((object) => {
+        if (object.userData.role === "target-ghost" || object.userData.role === "movement-vector") {
+          const arch = object.userData.arch as "upper" | "lower" | undefined;
+          const instanceId = object.userData.instanceId as number | undefined;
+          const toothKey = object.userData.toothKey as string | undefined;
+          let visible = true;
+          if (arch === "upper" && !filters.effectiveShowUpper) visible = false;
+          if (arch === "lower" && !filters.effectiveShowLower) visible = false;
+          if (instanceId != null && filters.hiddenToothIds.has(instanceId)) visible = false;
+          if (filters.isolatedToothKey && toothKey && toothKey !== filters.isolatedToothKey) {
+            visible = false;
+          }
+          object.visible = visible;
+        }
+      });
+      originalObjects.traverse((object) => {
+        if (object.userData.role !== "original-scan") return;
+        const arch = object.userData.arch as "upper" | "lower";
+        object.visible =
+          arch === "upper" ? filters.effectiveShowUpper : filters.effectiveShowLower;
+      });
+      // Isolate mode: hide gingiva so a single tooth reads clearly.
+      hierarchy.upperGingiva.visible =
+        filters.effectiveShowUpper && filters.isolatedToothKey == null;
+      hierarchy.lowerGingiva.visible =
+        filters.effectiveShowLower && filters.isolatedToothKey == null;
+    };
+    applyVisibilityRef.current = applyVisibility;
+
     const applyVisuals = () => {
       const liveSelected = selectedToothRef.current;
       const multi = new Set(multiSelectedRef.current);
       const hovered = hoveredKeyRef.current;
+      const filters = visibilityRef.current;
       records.forEach((record) => {
         const selected = liveSelected != null && toothMatchesKey(record.tooth, liveSelected);
         const multiSelected = !selected && multi.has(record.toothKey);
@@ -565,7 +636,8 @@ export function StageViewer({
         record.opacityTarget = style.opacity;
         record.material.roughness = style.roughness;
         record.material.envMapIntensity = style.envMapIntensity;
-        record.material.transparent = style.transparent || wireframe;
+        record.material.transparent = style.transparent || filters.wireframe;
+        record.material.wireframe = filters.wireframe;
         record.label.classList.toggle("is-selected", selected);
         record.label.classList.toggle("is-hovered", hoveredTooth);
       });
@@ -641,7 +713,9 @@ export function StageViewer({
         );
         const point = new THREE.Vector3(...toothDisplayCentroid(record.tooth)).project(camera);
         record.label.style.transform = `translate(-50%, -50%) translate(${(point.x * 0.5 + 0.5) * container.clientWidth}px, ${(-point.y * 0.5 + 0.5) * container.clientHeight}px)`;
-        record.label.style.display = point.z < 1 && layers["tooth-labels"].visible ? "block" : "none";
+        const labelVisible =
+          record.mesh.visible && point.z < 1 && layers["tooth-labels"].visible;
+        record.label.style.display = labelVisible ? "block" : "none";
       });
       renderer.render(scene, camera);
       animationFrame = requestAnimationFrame(animate);
@@ -649,6 +723,7 @@ export function StageViewer({
     animate();
 
     ghostHighlightRef.current = refreshGhostHighlight;
+    applyVisibility();
     applyVisuals();
     const liveSelected = selectedToothRef.current;
     const liveSelectedRecord = records.find(({ tooth }) =>
@@ -683,6 +758,7 @@ export function StageViewer({
       gizmoRef.current = null;
       ghostHighlightRef.current = null;
       applyVisualsRef.current = null;
+      applyVisibilityRef.current = null;
       environment.dispose();
       disposeObjectTree(hierarchy.allContent);
       disposeObjectTree(presentationObjects);
@@ -690,13 +766,22 @@ export function StageViewer({
       labels.forEach((label) => label.remove());
       recordsRef.current = [];
     };
+    // Visibility/wireframe/gizmoMode are applied by dedicated effects so arch filters
+    // do not rebuild BufferGeometry + BVH (WP-12).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sceneGraph/target/original only
   }, [
     sceneGraph,
     targetStage,
-    effectiveShowLower,
-    effectiveShowUpper,
     showOriginal,
     originalOpacity,
+  ]);
+
+  useEffect(() => {
+    applyVisibilityRef.current?.();
+    applyVisualsRef.current?.();
+  }, [
+    effectiveShowLower,
+    effectiveShowUpper,
     wireframe,
     hiddenToothIds,
     isolatedArch,

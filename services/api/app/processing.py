@@ -31,8 +31,11 @@ STAGES = (
     "FINALIZING",
 )
 
-# Job-level lifecycle. STALE is a terminal recovered state (distinct from FAILED).
-STAGE_STATUSES = frozenset({"PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "STALE"})
+# Job-level lifecycle. STALE / INTERRUPTED / CANCELLED are terminal recovered states
+# (distinct from FAILED). COMPLETED requires durable completion evidence.
+STAGE_STATUSES = frozenset(
+    {"PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "STALE", "INTERRUPTED"}
+)
 
 # No heartbeat within this window → live status reports STALE and blocks duplicate starts.
 STALE_HEARTBEAT_SECONDS = 120
@@ -166,7 +169,7 @@ def _mark_stale_if_needed(status: dict) -> dict:
 def live_processing_status(case_id: str) -> dict | None:
     """Return the persisted job status with live elapsed + heartbeat stale detection.
 
-    Terminal jobs (COMPLETED/FAILED/CANCELLED/STALE) keep their final persisted elapsed value.
+    Terminal jobs (COMPLETED/FAILED/CANCELLED/STALE/INTERRUPTED) keep their final persisted elapsed value.
     """
     status = case_store.get_processing(case_id)
     if status is None:
@@ -231,7 +234,9 @@ def _status(
         "upper_status": arch["upper_status"],
         "lower_status": arch["lower_status"],
         "planning_status": arch["planning_status"],
-        "completed_at": _now() if stage_status in {"COMPLETED", "FAILED", "CANCELLED", "STALE"} else None,
+        "completed_at": _now()
+        if stage_status in {"COMPLETED", "FAILED", "CANCELLED", "STALE", "INTERRUPTED"}
+        else None,
         "result": "ok" if stage_status == "COMPLETED" else None,
     }
     case_store.set_processing(case_id, payload)
@@ -298,7 +303,12 @@ def start_processing(case_id: str) -> dict:
 
 
 def cancel_processing(case_id: str) -> dict:
-    """Request cooperative cancellation of the active PROCESSING job."""
+    """Request cooperative cancellation of the active PROCESSING job.
+
+    Cancellation is a durable terminal state. Partial segmentation marked
+    ``processing`` is demoted to ``cancelled`` so it is never treated as
+    current clinical truth. Does not report COMPLETED.
+    """
     with _lock:
         current = case_store.get_processing(case_id)
         if current is None:
@@ -307,6 +317,20 @@ def cancel_processing(case_id: str) -> dict:
             return current
         job_id = current["job_id"]
         _cancel_flags.add(job_id)
+        # Best-effort: stop WP-12 isolated validation workers for this process.
+        try:
+            from engines.validation.isolated_execution import cancel_validation_work
+
+            cancel_validation_work()
+        except Exception:  # noqa: BLE001 - cancel path must stay best-effort
+            pass
+        case = case_store.get(case_id)
+        if case is not None:
+            seg = getattr(case, "segmentation_results", None)
+            if isinstance(seg, dict) and seg.get("status") == "processing":
+                seg = {**seg, "status": "cancelled", "error": "Segmentation cancelled by user"}
+                setattr(case, "segmentation_results", seg)
+                case_store.update(case)
         return _status(
             case_id,
             job_id,
@@ -518,6 +542,9 @@ def _run(case_id: str, job_id: str) -> None:
             )
             raise ValueError("Segmentation completed without a reviewable identification result")
         persist_started = perf_counter()
+        from app.failure_injection import maybe_fail
+
+        maybe_fail("after_segmentation_output")
         complete_segmentation_record(case_id, status="completed", persist_ms=(perf_counter() - persist_started) * 1000)
         # WP-02: Dental Intelligence 2.0 from genuine persisted segmentation — never unlocks treatment.
         try:

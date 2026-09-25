@@ -39,7 +39,9 @@ describe("App engineering demo", () => {
     await act(async () => {
       screen.getByRole("button", { name: "Load engineering demo" }).click();
     });
-    await waitFor(() => expect(screen.getByText("engineering-fixture-demo")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getAllByText("engineering-fixture-demo").length).toBeGreaterThan(0),
+    );
     expect(screen.getAllByText(/FIXTURE · not clinically valid/).length).toBeGreaterThan(0);
     expect(screen.getByText("development treatment fixture")).toBeInTheDocument();
     expect(screen.queryByText("Real staged review data unavailable")).not.toBeInTheDocument();
@@ -80,13 +82,21 @@ describe("App engineering demo", () => {
     await waitFor(() => expect(screen.getByLabelText("Stage viewer")).toBeInTheDocument());
 
     await act(async () => {
-      screen.getByRole("button", { name: "Create case" }).click();
+      screen.getByTestId("goto-case-intake").click();
+    });
+    await act(async () => {
+      screen.getByTestId("secondary-new-case").click();
+    });
+    await act(async () => {
+      screen.getByRole("button", { name: "Create new case" }).click();
     });
     await waitFor(() => expect(screen.getByText("Treatment plan unavailable")).toBeInTheDocument());
     expect(screen.queryByLabelText("Stage viewer")).not.toBeInTheDocument();
     expect(screen.queryByText("IPR review")).not.toBeInTheDocument();
     expect(screen.queryByText("Attachments")).not.toBeInTheDocument();
     expect(screen.queryByText(/FIXTURE · not clinically valid/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("case-intake-panel")).toHaveAttribute("data-case-state", "active");
+    expect(screen.queryByTestId("create-case-primary")).not.toBeInTheDocument();
   });
 
   it("requires valid upper and lower STL uploads before generation is enabled", async () => {
@@ -149,15 +159,18 @@ describe("App engineering demo", () => {
     render(<App />);
     expect(screen.getByLabelText("Upper Arch STL")).toBeInTheDocument();
     expect(screen.getByLabelText("Lower Arch STL")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Generate Treatment Setup" })).not.toBeInTheDocument();
 
     await act(async () => {
       screen.getByRole("button", { name: "Create case" }).click();
     });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeDisabled(),
+    );
     const upper = new File(["upper"], "upper.stl", { type: "model/stl" });
     fireEvent.change(screen.getByLabelText("Upper Arch STL"), { target: { files: [upper] } });
     await waitFor(() => expect(screen.getByText("upper.stl")).toBeInTheDocument());
-    expect(screen.getByText("0.0 KB · valid")).toBeInTheDocument();
+    expect(screen.getByText(/0\.0 KB · Valid/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeDisabled();
 
     const lower = new File(["lower"], "lower.stl", { type: "model/stl" });
@@ -247,8 +260,8 @@ describe("App engineering demo", () => {
     await waitFor(() => expect(screen.getByLabelText("Stage viewer")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "FDI 11" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "FDI 31" })).toBeInTheDocument();
-    expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Duplicate FDI: 11");
-    expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Missing FDI: 12");
+    expect(screen.getByText(/Duplicate FDI: 11/)).toBeInTheDocument();
+    expect(screen.getByText(/Missing FDI: 12/)).toBeInTheDocument();
     expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Validated real-case fixture");
   });
 

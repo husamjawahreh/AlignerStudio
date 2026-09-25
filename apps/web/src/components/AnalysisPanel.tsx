@@ -10,6 +10,7 @@ import {
   formatToothIdentity,
   formatTruthState,
 } from "../analysisPresentation";
+import { AdvancedDetails } from "../design-system";
 
 interface AnalysisPanelProps {
   bothArchesValid: boolean;
@@ -40,7 +41,7 @@ export function AnalysisPanel({
     <div className="analysis-panel case-form" data-testid="analysis-panel">
       <section className="analysis-section" aria-labelledby="analysis-run">
         <h3 id="analysis-run" className="eyebrow">
-          Analysis
+          Tooth Segmentation
         </h3>
         <button
           aria-label="Review segmentation"
@@ -51,14 +52,34 @@ export function AnalysisPanel({
           Analyze case
         </button>
         <div className="cad-stat-row">
+          <span>Detected</span>
+          <strong data-testid="analysis-tooth-count">{teeth.length || overview.identifiedTeeth || 0}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Upper</span>
+          <strong>{overview.upperCount}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Lower</span>
+          <strong>{overview.lowerCount}</strong>
+        </div>
+        <div className="cad-stat-row">
           <span>State</span>
           <strong>{overview.stateLabel}</strong>
         </div>
         {overview.overallTruthState && (
           <div className="cad-stat-row">
-            <span>Intelligence truth</span>
+            <span>Review</span>
             <strong data-testid="intelligence-overall-truth">
               {formatTruthState(overview.overallTruthState)}
+            </strong>
+          </div>
+        )}
+        {overview.identityReadiness && (
+          <div className="cad-stat-row">
+            <span>Identity</span>
+            <strong data-testid="identity-readiness">
+              {formatTruthState(overview.identityReadiness)}
             </strong>
           </div>
         )}
@@ -66,81 +87,57 @@ export function AnalysisPanel({
 
       <section className="analysis-section" aria-labelledby="analysis-tooth-id">
         <h3 id="analysis-tooth-id" className="eyebrow">
-          Tooth Identification
+          Identification
         </h3>
         <div className="cad-stat-row">
           <span>Identified</span>
           <strong>
-            {overview.identifiedTeeth === null ? "Unavailable" : overview.identifiedTeeth}
+            {overview.identifiedTeeth === null ? "Not Available" : overview.identifiedTeeth}
           </strong>
         </div>
         <div className="cad-stat-row">
           <span>Uncertain</span>
           <strong>
-            {overview.uncertainTeeth === null ? "Unavailable" : overview.uncertainTeeth}
+            {overview.uncertainTeeth === null ? "Not Available" : overview.uncertainTeeth}
           </strong>
         </div>
         <div className="cad-stat-row">
-          <span>Unidentified</span>
+          <span>Unresolved</span>
           <strong>
-            {overview.unidentifiedTeeth === null ? "Unavailable" : overview.unidentifiedTeeth}
+            {overview.unidentifiedTeeth === null ? "Not Available" : overview.unidentifiedTeeth}
           </strong>
         </div>
-        {overview.identityReadiness && (
-          <div className="cad-stat-row">
-            <span>Identity readiness</span>
-            <strong data-testid="identity-readiness">
-              {formatTruthState(overview.identityReadiness)}
-            </strong>
-          </div>
-        )}
         {teeth.length > 0 ? (
-          <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
-            <strong>{teeth.length} visible meshes</strong>
-            <small>Tooth identities from analysis only — FDI shown only when provided</small>
-            {diagnostic?.fixture && import.meta.env.MODE === "test" && (
-              <span className="production-test-metadata">
-                Validated real-case fixture FIXTURE · not clinically valid
-              </span>
-            )}
-            {diagnostic?.fixture && import.meta.env.MODE !== "test" && (
-              <small>Requires Review — analysis identity is not clinical tooth numbering</small>
-            )}
-            {(diagnostic?.duplicate_fdi_numbers?.length ?? 0) > 0 && (
-              <small className="diagnostic-warning">
-                Duplicate FDI: {diagnostic?.duplicate_fdi_numbers?.join(", ")}
-              </small>
-            )}
-            {(diagnostic?.missing_fdi_numbers?.length ?? 0) > 0 && (
-              <small className="diagnostic-warning">
-                Missing FDI: {diagnostic?.missing_fdi_numbers?.join(", ")}
-              </small>
-            )}
-            {(diagnostic?.excluded_fragment_count ?? 0) > 0 && (
-              <small>
-                Excluded zero-face fragments: {diagnostic?.excluded_fragment_count}
-              </small>
-            )}
-            {teeth.map((tooth) => {
-              const toothIntel = dentalIntelligence?.teeth.find(
-                (item) => item.instance_id === tooth.instanceId && item.arch === tooth.arch,
-              );
-              const fdiState = toothIntel?.fdi_number.state;
-              return (
-                <label className="toggle-row" key={`${tooth.arch}-${tooth.instanceId}`}>
-                  <input
-                    type="checkbox"
-                    checked={!hiddenToothIds.has(tooth.instanceId)}
-                    onChange={() => onToggleToothVisibility(tooth.instanceId)}
-                  />
-                  <span>
-                    {formatToothIdentity(tooth)}
-                    {fdiState ? ` · ${formatTruthState(fdiState)}` : ""}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <AdvancedDetails summary="Tooth visibility">
+            <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
+              <strong>{teeth.length} meshes</strong>
+              <small>FDI shown only when provided by analysis</small>
+              {diagnostic?.fixture && import.meta.env.MODE === "test" && (
+                <span className="production-test-metadata">
+                  Validated real-case fixture FIXTURE · not clinically valid
+                </span>
+              )}
+              {teeth.map((tooth) => {
+                const toothIntel = dentalIntelligence?.teeth.find(
+                  (item) => item.instance_id === tooth.instanceId && item.arch === tooth.arch,
+                );
+                const fdiState = toothIntel?.fdi_number.state;
+                return (
+                  <label className="toggle-row" key={`${tooth.arch}-${tooth.instanceId}`}>
+                    <input
+                      type="checkbox"
+                      checked={!hiddenToothIds.has(tooth.instanceId)}
+                      onChange={() => onToggleToothVisibility(tooth.instanceId)}
+                    />
+                    <span>
+                      {formatToothIdentity(tooth)}
+                      {fdiState ? ` · ${formatTruthState(fdiState)}` : ""}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </AdvancedDetails>
         ) : (
           <small className="cad-review-note">No tooth meshes available yet.</small>
         )}
@@ -151,19 +148,11 @@ export function AnalysisPanel({
           Arch Analysis
         </h3>
         <div className="cad-stat-row">
-          <span>Upper Arch meshes</span>
-          <strong>{overview.upperCount}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Lower Arch meshes</span>
-          <strong>{overview.lowerCount}</strong>
-        </div>
-        <div className="cad-stat-row">
           <span>Arch analysis</span>
           <strong>{formatAvailability(overview.archAnalysisAvailable)}</strong>
         </div>
         <div className="cad-stat-row">
-          <span>Arch orientation</span>
+          <span>Orientation</span>
           <strong>{formatAvailability(overview.archOrientationAvailable)}</strong>
         </div>
         <div className="cad-stat-row">
@@ -177,12 +166,6 @@ export function AnalysisPanel({
         <div className="cad-stat-row">
           <span>Midline</span>
           <strong>{formatAvailability(overview.midlineAvailable)}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Inter-tooth distances</span>
-          <strong>
-            {overview.interToothCount === null ? "Unavailable" : overview.interToothCount}
-          </strong>
         </div>
       </section>
 
@@ -198,58 +181,49 @@ export function AnalysisPanel({
               : formatOcclusionAvailability(overview.occlusionAvailability)}
           </strong>
         </div>
-        <div className="cad-stat-row">
-          <span>Upper/lower registration</span>
-          <strong>
-            {formatOcclusionAvailability(
-              diagnostic?.anatomical_intelligence?.occlusion.upper_lower_registration ?? null,
-            )}
-          </strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Bite record</span>
-          <strong>
-            {formatOcclusionAvailability(
-              diagnostic?.anatomical_intelligence?.occlusion.bite_record ?? null,
-            )}
-          </strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Occlusal contacts</span>
-          <strong>
-            {formatOcclusionAvailability(
-              diagnostic?.anatomical_intelligence?.occlusion.occlusal_contacts ?? null,
-            )}
-          </strong>
-        </div>
-        {overview.occlusionCapabilityState && (
+        <p className="cad-review-note">Bite registration required for occlusion contacts.</p>
+        <AdvancedDetails summary="Occlusion details">
           <div className="cad-stat-row">
-            <span>Capability state</span>
-            <strong data-testid="occlusion-capability-state">
-              {overview.occlusionCapabilityState.replaceAll("_", " ")}
+            <span>Upper/lower registration</span>
+            <strong>
+              {formatOcclusionAvailability(
+                diagnostic?.anatomical_intelligence?.occlusion.upper_lower_registration ?? null,
+              )}
             </strong>
           </div>
-        )}
-        {overview.registrationState && (
           <div className="cad-stat-row">
-            <span>Registration state</span>
-            <strong data-testid="registration-state">
-              {overview.registrationState.replaceAll("_", " ")}
+            <span>Bite record</span>
+            <strong>
+              {formatOcclusionAvailability(
+                diagnostic?.anatomical_intelligence?.occlusion.bite_record ?? null,
+              )}
             </strong>
           </div>
-        )}
-        {overview.geometricContactCount !== null && (
           <div className="cad-stat-row">
-            <span>Geometric contact candidates</span>
-            <strong data-testid="geometric-contact-count">
-              {overview.geometricContactCount}
+            <span>Occlusal contacts</span>
+            <strong>
+              {formatOcclusionAvailability(
+                diagnostic?.anatomical_intelligence?.occlusion.occlusal_contacts ?? null,
+              )}
             </strong>
           </div>
-        )}
-        <small className="cad-review-note">
-          Occlusion stays unavailable until genuine registration or bite evidence exists.
-          Geometric proximity is never a clinical occlusal diagnosis.
-        </small>
+          {overview.occlusionCapabilityState && (
+            <div className="cad-stat-row">
+              <span>Capability</span>
+              <strong data-testid="occlusion-capability-state">
+                {overview.occlusionCapabilityState.replaceAll("_", " ")}
+              </strong>
+            </div>
+          )}
+          {overview.registrationState && (
+            <div className="cad-stat-row">
+              <span>Registration</span>
+              <strong data-testid="registration-state">
+                {overview.registrationState.replaceAll("_", " ")}
+              </strong>
+            </div>
+          )}
+        </AdvancedDetails>
       </section>
 
       <section className="analysis-section" aria-labelledby="analysis-advanced-anatomy">
@@ -330,9 +304,11 @@ export function AnalysisPanel({
         <div className="cad-stat-row">
           <span>Clinical dental axes</span>
           <strong data-testid="clinical-axes-truth">
-            {overview.clinicalAxesTruth
-              ? formatTruthState(overview.clinicalAxesTruth)
-              : formatAvailability(overview.localAxesAvailable)}
+            {formatTruthState(
+              overview.clinicalAxesTruth ??
+                (overview.clinicalAxesAnatomyState as "not_available" | null) ??
+                null,
+            )}
           </strong>
         </div>
         <div className="cad-stat-row">
@@ -535,9 +511,11 @@ export function AnalysisInspector({
       <div className="cad-stat-row">
         <span>Clinical dental axes</span>
         <strong>
-          {overview.clinicalAxesTruth
-            ? formatTruthState(overview.clinicalAxesTruth)
-            : formatAvailability(overview.localAxesAvailable)}
+          {formatTruthState(
+            overview.clinicalAxesTruth ??
+              (overview.clinicalAxesAnatomyState as "not_available" | null) ??
+              null,
+          )}
         </strong>
       </div>
       <div className="cad-stat-row">

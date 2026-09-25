@@ -83,7 +83,7 @@ describe("P8 browser refresh rehydrate", () => {
     render(<App />);
 
     await waitFor(() => expect(api.getCase).toHaveBeenCalledWith("restored-case"));
-    await waitFor(() => expect(screen.getByText("P-RESTORE")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("P-RESTORE").length).toBeGreaterThan(0));
     await waitFor(() => expect(api.getTreatment).toHaveBeenCalledWith("restored-case"));
     await waitFor(() => expect(screen.getByLabelText("Stage viewer")).toBeInTheDocument());
   });
@@ -133,7 +133,7 @@ describe("P8 undo/redo on engineering fixture path", () => {
       screen.getByRole("button", { name: `Select ${key}` }).click();
     });
 
-    const translationInput = await screen.findByLabelText("Translation X");
+    const translationInput = await screen.findByLabelText("Move X");
     const before = (translationInput as HTMLInputElement).value;
     await act(async () => {
       fireEvent.change(translationInput, { target: { value: "0.42" } });
@@ -148,7 +148,7 @@ describe("P8 undo/redo on engineering fixture path", () => {
       undo.click();
     });
     await waitFor(() => {
-      expect((screen.getByLabelText("Translation X") as HTMLInputElement).value).toBe(before);
+      expect((screen.getByLabelText("Move X") as HTMLInputElement).value).toBe(before);
     });
 
     const redo = screen.getByRole("button", { name: "Redo doctor edit" });
@@ -156,7 +156,7 @@ describe("P8 undo/redo on engineering fixture path", () => {
       redo.click();
     });
     await waitFor(() => {
-      expect(Number((screen.getByLabelText("Translation X") as HTMLInputElement).value)).toBeCloseTo(
+      expect(Number((screen.getByLabelText("Move X") as HTMLInputElement).value)).toBeCloseTo(
         0.42,
         2,
       );

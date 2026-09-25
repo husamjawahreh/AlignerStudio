@@ -206,7 +206,7 @@ export function buildAnalysisOverview(input: {
             typeof anatomy?.cbct_volumetric_anatomy === "string"
               ? anatomy.cbct_volumetric_anatomy
               : null,
-          occlusionValidated: false as false,
+          occlusionValidated: false as const,
         };
       })()
     : emptyIntelFields;

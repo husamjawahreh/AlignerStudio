@@ -91,9 +91,10 @@ class InMemoryCaseStore:
             status = getattr(case, "processing_status", None)
             if status and status.get("stage_status") == "PROCESSING":
                 # Restart recovery: previous job identity is dead; retry must create a new job_id.
+                # INTERRUPTED (not COMPLETED/CANCELLED) — honest durable terminal state.
                 status.update(
                     {
-                        "stage_status": "FAILED",
+                        "stage_status": "INTERRUPTED",
                         "error_state": True,
                         "error_code": "PROCESS_RESTARTED",
                         "user_message": "Case analysis was interrupted. Start analysis again.",
@@ -106,12 +107,26 @@ class InMemoryCaseStore:
                 )
                 if "created_at" not in status and status.get("started_at"):
                     status["created_at"] = status["started_at"]
+                # Do not leave in-flight segmentation marked as current clinical truth.
+                seg = getattr(case, "segmentation_results", None)
+                if isinstance(seg, dict) and seg.get("status") == "processing":
+                    seg["status"] = "interrupted"
+                    seg["error"] = "Segmentation interrupted by process restart"
+                    setattr(case, "segmentation_results", seg)
                 recovered = True
-                logger.warning("PROCESSING_RECOVERED case_id=%s job_id=%s", case.id, status.get("job_id"))
+                logger.warning(
+                    "PROCESSING_RECOVERED case_id=%s job_id=%s stage_status=INTERRUPTED",
+                    case.id,
+                    status.get("job_id"),
+                )
         if recovered:
             self._persist()
 
     def _persist(self) -> None:
+        """Atomically persist the case store (tmp + replace). Never leave half-written JSON."""
+        from app.failure_injection import maybe_fail
+
+        maybe_fail("before_case_store_persist")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         records = [
             {
@@ -134,7 +149,10 @@ class InMemoryCaseStore:
             }
             for case in self._cases.values()
         ]
-        self.path.write_text(json.dumps(records, indent=2))
+        payload = json.dumps(records, indent=2)
+        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+        temporary.write_text(payload)
+        temporary.replace(self.path)
 
 
 case_store = InMemoryCaseStore()

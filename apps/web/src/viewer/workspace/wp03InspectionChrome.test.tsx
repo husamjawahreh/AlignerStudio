@@ -137,7 +137,7 @@ describe("WP-03 inspection + chrome", () => {
       new RegExp(tooth.toothRef!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
     );
     expect(screen.getByTestId("inspection-fdi-truth").textContent).toMatch(/Not Available/i);
-    expect(screen.getByTestId("inspection-intelligence").textContent).toMatch(/Clinical dental axes/);
+    expect(screen.getByTestId("inspection-intelligence").textContent).toMatch(/Clinical axes/);
     expect(screen.getByTestId("inspection-intelligence").textContent).toMatch(/Not Available/);
   });
 

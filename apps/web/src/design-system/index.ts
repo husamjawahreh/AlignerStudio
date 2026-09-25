@@ -4,6 +4,8 @@ export {
   truthFromProvenance,
   fdiTruthPresentation,
   FORBIDDEN_DOCTOR_TERMS,
+  normalizeProductTruth,
+  formatProductTruthLabel,
 } from "./truthState";
 export { TruthBadge, TruthPresentationBadge } from "./TruthBadge";
 export {
@@ -22,6 +24,8 @@ export {
   ConfirmDialog,
   Tooltip,
   ToolGroup,
+  AdvancedDetails,
+  CurrentTargetPair,
 } from "./primitives";
 export { matchCommandShortcut } from "./commands";
 export type { CommandDefinition, CommandId } from "./commands";

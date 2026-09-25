@@ -128,12 +128,20 @@ export function buildWorkflowActions(input: {
 }): WorkflowAction[] {
   switch (input.activeStep) {
     case "case-intake":
+      if (input.hasCase) {
+        return [
+          {
+            label: "Scan Import",
+            step: "case-intake",
+            disabled: input.isBusy,
+          },
+        ];
+      }
       return [
-        { label: "New Case", step: "case-intake", disabled: input.isBusy },
         {
-          label: "Scan Import",
+          label: "Create Case",
           step: "case-intake",
-          disabled: !input.hasCase || input.isBusy,
+          disabled: input.isBusy,
         },
       ];
     case "analysis":
@@ -171,7 +179,7 @@ export function buildWorkflowActions(input: {
     case "validation":
       return [
         {
-          label: "Open Validation",
+          label: "Review Findings",
           step: "validation",
           disabled: !input.hasTreatment,
         },

@@ -186,6 +186,9 @@ async def upload_mesh(case_id: str, arch: str, file: UploadFile) -> CaseResponse
     dest_path.write_bytes(contents)
     case.add_mesh(MeshAsset(arch=arch, file_path=str(dest_path), original_filename=file.filename))
     case_store.update(case)
+    from app.failure_injection import maybe_fail
+
+    maybe_fail("after_upload_persist")
     return _to_case_response(case)
 
 

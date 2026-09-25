@@ -1,0 +1,98 @@
+{
+  "work_package": "WP-13",
+  "timestamp_utc": "2026-09-25T17:54:36.684572+00:00",
+  "artifact": "/home/hjawahreh/Desktop/Projects/AlignerStudio/.research/tmp/official_real_case_stage2_verified_v1",
+  "wp14_wp15_started": false,
+  "rows": [
+    {
+      "scenario": "B_backend_restart_during_processing",
+      "expected": "INTERRUPTED + PROCESS_RESTARTED; seg interrupted",
+      "observed": "INTERRUPTED/PROCESS_RESTARTED/seg=interrupted",
+      "recovery": "PASS \u2014 durable INTERRUPTED, not COMPLETED",
+      "data_integrity": "no completion claimed; result=None",
+      "pass": true
+    },
+    {
+      "scenario": "A_refresh_during_processing",
+      "expected": "status readable; PROCESSING or INTERRUPTED after restart",
+      "observed": "INTERRUPTED",
+      "recovery": "PASS \u2014 browser may poll status; authoritative state is case store",
+      "data_integrity": "sessionStorage only holds case id + workspace hint",
+      "pass": true
+    },
+    {
+      "scenario": "C_segmentation_interruption",
+      "expected": "INTERRUPTED; segmentation status interrupted|cancelled",
+      "observed": "seg=interrupted",
+      "recovery": "PASS",
+      "data_integrity": "partial arches not marked completed",
+      "pass": true
+    },
+    {
+      "scenario": "D_validation_interruption",
+      "expected": "ALIGNERSTUDIO_FAILURE_INJECTION:before_validation_complete",
+      "observed": "ALIGNERSTUDIO_FAILURE_INJECTION:before_validation_complete",
+      "recovery": "PASS \u2014 no durable session claimed complete",
+      "data_integrity": "validate not marked complete without durable session",
+      "pass": true
+    },
+    {
+      "scenario": "E_export_interruption",
+      "expected": "ALIGNERSTUDIO_FAILURE_INJECTION:during_export",
+      "observed": "ALIGNERSTUDIO_FAILURE_INJECTION:during_export",
+      "recovery": "PASS \u2014 export raised before claiming package complete",
+      "data_integrity": "no silent export success",
+      "pass": true
+    },
+    {
+      "scenario": "F_cancellation",
+      "expected": "CANCELLED; result is not ok/complete",
+      "observed": "CANCELLED/None",
+      "recovery": "PASS",
+      "data_integrity": "honest terminal cancel",
+      "pass": true
+    },
+    {
+      "scenario": "G_reopen_after_interruption",
+      "expected": "INTERRUPTED persists across store reload",
+      "observed": "INTERRUPTED",
+      "recovery": "PASS",
+      "data_integrity": "durable interrupted state readable",
+      "pass": true
+    },
+    {
+      "scenario": "H_stale_result_detection",
+      "expected": "JOB_STALE when heartbeat expires without live future",
+      "observed": "covered_by_test_fv01_processing_lifecycle",
+      "recovery": "PASS \u2014 existing FV-01/P7 gates",
+      "data_integrity": "stale \u2260 completed",
+      "pass": true
+    },
+    {
+      "scenario": "I_duplicate_request",
+      "expected": "same job_id returned while PROCESSING",
+      "observed": "covered_by_test_wp13_reliability + P7",
+      "recovery": "PASS",
+      "data_integrity": "no duplicate job identity",
+      "pass": true
+    },
+    {
+      "scenario": "J_export_verify_reopen",
+      "expected": "verify ok before and after session reload",
+      "observed": "verify={'verified': True, 'manifest_hash_matches': True, 'missing_files': [], 'hash_mismatches': [], 'package_kind': 'engineering_treatment_export', 'treatment_plan_id': 'de43592b955a25ac259c7fb3bb028b1bd0b75d6b063d85e609857ff345e3ae1a', 'plan_version': '670a2d2f1c2a58d78a4fa4cd0b5157bb8d6a767d1258238acbfac44a0ba4f7e6', 'provenance': {'plan': 'generated', 'proposals': 'generated', 'staging': 'generated', 'validation': 'generated'}, 'fixture': True, 'experimental': False, 'manufacturing_boundary': {'applianceShellGeneration': 'unavailable', 'artifactLayers': ['treatment_design', 'geometric_validation', 'manufacturing_preparation', 'manufacturing_validation'], 'manufacturingQcReport': 'unavailable', 'notes': ['Stage model export contains treatment-stage meshes for review/audit only.', 'Appliance shell generation is unavailable; no fake shells are produced.', 'Trimline/cutline, shell thickness, undercut, and manufacturing QC are unavailable.', 'Treatment design and geometric validation are separated from manufacturing preparation.', 'WP-10 Production CAD exposes this boundary; unsupported CAD remains not available.'], 'packageKind': 'engineering_treatment_export', 'printableModelPreparation': 'boundary_only', 'shellThicknessMaterialProfile': 'unavailable', 'stageModelExport': 'computed', 'treatmentVsManufacturingSeparated': True, 'trimlineCutline': 'unavailable', 'undercutEngagementChecks': 'unavailable'}, 'clinical_approval': False, 'session_reimport_available': False, 'session_reimport_status': 'unavailable', 'session_reimport_notes': 'Export ZIP reopen verifies integrity for audit only. Restoring an editable treatment session requires the durable treatment-session checkpoint, not the export package alone.', 'verified_files': [{'path': 'reports/attachments.json', 'sha256': '59fe411e86e9f13e57347c781b54197bccdd6ccbd63e5ebfb6b07cb64253f34a'}, {'path': 'reports/edit-history.json', 'sha256': '6e76af7a08ddb78c952ea78af5a91ad3b642ce27e2e806b858ba545f95597e1f'}, {'path': 'reports/ipr.json', 'sha256': 'fc8a935f8e1f32e9edf0bbf086c04920a827dd48e899aa2a78b49dc7ad88447c'}, {'path': 'reports/movements.csv', 'sha256': 'f7d7c7dd862c82f1a3fd13843119e71a87e1c4edf8cde47d252171a0cef41fbd'}, {'path': 'reports/movements.json', 'sha256': 'e8d1b777afb141391a3ddb2af893c70bb2a2fc5d1d7c4a8747833fc52a551708'}, {'path': 'reports/provenance.json', 'sha256': '36a776bc26013cf6413a02c8e494541e67afb0825c71e8579760a8f16468a3c3'}, {'path': 'reports/staging.json', 'sha256': '9dd0f3a4879d5f34d43cfe4ef8262d5d168ad2d643a1f02b4305aa93dfb1efae'}, {'path': 'reports/validation.json', 'sha256': 'c02a31a126eec2bb9815553cdcff8390805df20bfb1a5f3341e7b39d4b305ab1'}, {'path': 'stages/stage-000.stl', 'sha256': '34fd3178da22e90154508a38ce4e6279d14afb5fb1ec9382d383fca5562b2160'}, {'path': 'stages/stage-001.stl', 'sha256': 'a2275279d8eaef21a0952a554eb055efd722113dae61b89248f457a7d0bc9412'}, {'path': 'stages/stage-002.stl', 'sha256': '0fd5d51bb015832d4f421cd7d2e53acc1f7f214c051aec984cd4ab45b31174b8'}, {'path': 'treatment-plan.json', 'sha256': '76fa2585e31fd1eae1c86a51552ad0fd705ee8e8d0955490aa5afa38cd5076ae'}], 'archive_entries': ['manifest.json', 'reports/attachments.json', 'reports/edit-history.json', 'reports/ipr.json', 'reports/movements.csv', 'reports/movements.json', 'reports/provenance.json', 'reports/staging.json', 'reports/validation.json', 'stages/stage-000.stl', 'stages/stage-001.stl', 'stages/stage-002.stl', 'treatment-plan.json'], 'reopen_mode': 'audit_verify'}; reload_plan=de43592b955a25ac259c7fb3bb028b1bd0b75d6b063d85e609857ff345e3ae1a; verify2={'verified': True, 'manifest_hash_matches': True, 'missing_files': [], 'hash_mismatches': [], 'package_kind': 'engineering_treatment_export', 'treatment_plan_id': 'de43592b955a25ac259c7fb3bb028b1bd0b75d6b063d85e609857ff345e3ae1a', 'plan_version': '670a2d2f1c2a58d78a4fa4cd0b5157bb8d6a767d1258238acbfac44a0ba4f7e6', 'provenance': {'plan': 'generated', 'proposals': 'generated', 'staging': 'generated', 'validation': 'generated'}, 'fixture': True, 'experimental': False, 'manufacturing_boundary': {'applianceShellGeneration': 'unavailable', 'artifactLayers': ['treatment_design', 'geometric_validation', 'manufacturing_preparation', 'manufacturing_validation'], 'manufacturingQcReport': 'unavailable', 'notes': ['Stage model export contains treatment-stage meshes for review/audit only.', 'Appliance shell generation is unavailable; no fake shells are produced.', 'Trimline/cutline, shell thickness, undercut, and manufacturing QC are unavailable.', 'Treatment design and geometric validation are separated from manufacturing preparation.', 'WP-10 Production CAD exposes this boundary; unsupported CAD remains not available.'], 'packageKind': 'engineering_treatment_export', 'printableModelPreparation': 'boundary_only', 'shellThicknessMaterialProfile': 'unavailable', 'stageModelExport': 'computed', 'treatmentVsManufacturingSeparated': True, 'trimlineCutline': 'unavailable', 'undercutEngagementChecks': 'unavailable'}, 'clinical_approval': False, 'session_reimport_available': False, 'session_reimport_status': 'unavailable', 'session_reimport_notes': 'Export ZIP reopen verifies integrity for audit only. Restoring an editable treatment session requires the durable treatment-session checkpoint, not the export package alone.', 'verified_files': [{'path': 'reports/attachments.json', 'sha256': '59fe411e86e9f13e57347c781b54197bccdd6ccbd63e5ebfb6b07cb64253f34a'}, {'path': 'reports/edit-history.json', 'sha256': '6e76af7a08ddb78c952ea78af5a91ad3b642ce27e2e806b858ba545f95597e1f'}, {'path': 'reports/ipr.json', 'sha256': 'fc8a935f8e1f32e9edf0bbf086c04920a827dd48e899aa2a78b49dc7ad88447c'}, {'path': 'reports/movements.csv', 'sha256': 'f7d7c7dd862c82f1a3fd13843119e71a87e1c4edf8cde47d252171a0cef41fbd'}, {'path': 'reports/movements.json', 'sha256': 'e8d1b777afb141391a3ddb2af893c70bb2a2fc5d1d7c4a8747833fc52a551708'}, {'path': 'reports/provenance.json', 'sha256': '36a776bc26013cf6413a02c8e494541e67afb0825c71e8579760a8f16468a3c3'}, {'path': 'reports/staging.json', 'sha256': '9dd0f3a4879d5f34d43cfe4ef8262d5d168ad2d643a1f02b4305aa93dfb1efae'}, {'path': 'reports/validation.json', 'sha256': 'c02a31a126eec2bb9815553cdcff8390805df20bfb1a5f3341e7b39d4b305ab1'}, {'path': 'stages/stage-000.stl', 'sha256': '34fd3178da22e90154508a38ce4e6279d14afb5fb1ec9382d383fca5562b2160'}, {'path': 'stages/stage-001.stl', 'sha256': 'a2275279d8eaef21a0952a554eb055efd722113dae61b89248f457a7d0bc9412'}, {'path': 'stages/stage-002.stl', 'sha256': '0fd5d51bb015832d4f421cd7d2e53acc1f7f214c051aec984cd4ab45b31174b8'}, {'path': 'treatment-plan.json', 'sha256': '76fa2585e31fd1eae1c86a51552ad0fd705ee8e8d0955490aa5afa38cd5076ae'}], 'archive_entries': ['manifest.json', 'reports/attachments.json', 'reports/edit-history.json', 'reports/ipr.json', 'reports/movements.csv', 'reports/movements.json', 'reports/provenance.json', 'reports/staging.json', 'reports/validation.json', 'stages/stage-000.stl', 'stages/stage-001.stl', 'stages/stage-002.stl', 'treatment-plan.json'], 'reopen_mode': 'audit_verify'}",
+      "recovery": "PASS",
+      "data_integrity": "hashes/provenance survive reopen",
+      "pass": true
+    },
+    {
+      "scenario": "K_real_case_determinism",
+      "expected": "identical tooth_ref + arch + zip sha across reloads",
+      "observed": "refs_match=True; n=14; zip=b0f57d45e19e",
+      "recovery": "PASS",
+      "data_integrity": "no FDI fabrication; semantic refs stable",
+      "pass": true
+    }
+  ],
+  "pass_count": 11,
+  "total": 11
+}

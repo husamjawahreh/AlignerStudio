@@ -1,0 +1,13 @@
+{
+  "upper": {
+    "cold_s": 0.8350582139973994,
+    "warm_cache_s": 0.00016562000382691622
+  },
+  "lower": {
+    "cold_s": 1.6800810949935112,
+    "warm_cache_s": 0.00011452799662947655
+  },
+  "before_audit_tracemalloc_upper_cold_s": 13.917,
+  "before_audit_tracemalloc_upper_warm_median_s": 11.194,
+  "note": "After: single-pass reconstruction + provenance-keyed result cache. Wall times without tracemalloc."
+}

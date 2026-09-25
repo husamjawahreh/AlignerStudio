@@ -19,7 +19,7 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
   const unavailableChecks = checks.filter((item) => item.check_state === "not_available");
   const reviewChecks = checks.filter((item) => item.check_state === "requires_review");
   const stageFindings = runFindings.filter(
-    (item) => item.stage_index === stage.stageIndex || item.stage_index == null,
+    (item) => item.stage_index === stage.index || item.stage_index == null,
   );
 
   return (

@@ -98,3 +98,26 @@ export const FORBIDDEN_DOCTOR_TERMS = [
   "ToothInstanceNet",
   "localhost",
 ] as const;
+
+/** Normalize API / snake_case truth strings to product truth states. */
+export function normalizeProductTruth(
+  value: string | null | undefined,
+): ProductTruthState | null {
+  if (!value) return null;
+  const key = value.trim().toLowerCase().replaceAll("-", "_");
+  if (key === "verified") return "verified";
+  if (key === "computed") return "computed";
+  if (key === "requires_review" || key === "review_required") return "requires_review";
+  if (key === "not_available" || key === "unavailable" || key === "boundary_only") {
+    return "not_available";
+  }
+  return null;
+}
+
+/** Doctor-facing label for any truth-like API string. */
+export function formatProductTruthLabel(value: string | null | undefined): string {
+  const normalized = normalizeProductTruth(value);
+  if (normalized) return PRODUCT_TRUTH_LABELS[normalized];
+  if (!value) return PRODUCT_TRUTH_LABELS.not_available;
+  return value.replaceAll("_", " ");
+}

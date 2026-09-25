@@ -1664,3 +1664,38 @@ body,
 .stage-tooth-label.is-hovered {
   outline: 1px solid rgba(244, 208, 138, 0.7);
 }
+
+/* WP-11 shell polish */
+.cad-layers-disclosure {
+  margin: 8px 12px;
+  border-top: 1px solid var(--as-border);
+  padding-top: 8px;
+}
+.cad-layers-disclosure > summary {
+  cursor: pointer;
+  color: var(--as-text-muted);
+  font-size: var(--as-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--as-letter-wide);
+}
+.cad-case-status {
+  margin: 8px 12px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+}
+.cad-workflow-step:disabled,
+.cad-workflow-step.is-blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.case-intake-panel.is-active-case .case-intake-section:first-child {
+  border-left: 2px solid rgba(91, 194, 140, 0.55);
+  padding-left: 10px;
+}
+.cad-viewport-frame {
+  background: radial-gradient(120% 80% at 50% 35%, #16202b 0%, #0d131a 55%, #0a0e13 100%);
+}
+.inspection-panel .as-truth-badge {
+  align-self: flex-start;
+}
