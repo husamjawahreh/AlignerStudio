@@ -5,9 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from itertools import combinations
+from threading import Lock
 from time import perf_counter
+from typing import Callable
 
 import numpy as np
 import trimesh
@@ -25,6 +29,25 @@ from domain.treatment_plan.validation import (
 from engines.validation.hooks import ValidationFinding
 
 logger = logging.getLogger(__name__)
+
+# Pair-metric cache key: ordered (id(vertices_a), id(vertices_b)). Staging reuses identical
+# vertex tuple objects for unmoved teeth so cross-stage hits remain value-identical.
+_PairMetrics = tuple[float, bool, float]
+_PairCache = dict[tuple[int, int], _PairMetrics]
+
+
+def _validation_worker_count() -> int:
+    """Optional worker pool for close-pair narrow-phase.
+
+    Default is 1: trimesh/rtree triangle queries are not safe/fast under concurrent
+    threads on this stack (measured hang/regression vs serial). Opt in only via
+    ALIGNERSTUDIO_VALIDATION_WORKERS after re-benchmarking on the target machine.
+    """
+    configured = os.environ.get("ALIGNERSTUDIO_VALIDATION_WORKERS", "1")
+    try:
+        return max(1, int(configured))
+    except ValueError:
+        return 1
 
 
 class GeometricValidationError(ValueError):
@@ -474,20 +497,61 @@ class GeometricValidationEngine:
         configuration: GeometricValidationConfiguration,
     ) -> TreatmentValidationReport:
         started = perf_counter()
+        # Deterministic, provenance-safe cache: only reused when both tooth vertex tuple
+        # objects are identical (unmoved geometry across stages). Never suppresses findings.
+        pair_cache: _PairCache = {}
+        cache_hits = 0
+        cache_misses = 0
+        cache_lock = Lock()
+
+        def cached_metrics(
+            first_state: StageToothState,
+            second_state: StageToothState,
+            first_mesh: trimesh.Trimesh,
+            second_mesh: trimesh.Trimesh,
+            broadphase_tolerance: float,
+            intersection_tolerance: float,
+        ) -> _PairMetrics:
+            nonlocal cache_hits, cache_misses
+            key = (id(first_state.vertices), id(second_state.vertices))
+            with cache_lock:
+                cached = pair_cache.get(key)
+                if cached is not None:
+                    cache_hits += 1
+                    return cached
+            measured = _mesh_pair_metrics(
+                first_mesh, second_mesh, broadphase_tolerance, intersection_tolerance
+            )
+            with cache_lock:
+                existing = pair_cache.get(key)
+                if existing is not None:
+                    cache_hits += 1
+                    return existing
+                pair_cache[key] = measured
+                cache_misses += 1
+                return measured
+
         stage_results = tuple(
-            self._validate_stage(stage, staging.provenance, configuration)
+            self._validate_stage(
+                stage,
+                staging.provenance,
+                configuration,
+                pair_metrics=cached_metrics,
+            )
             for stage in staging.stages
         )
         status = _overall_status(stage.status for stage in stage_results)
         logger.info(
             "GEOMETRIC_VALIDATION_STAGES_COMPLETED plan_id=%s duration_ms=%.1f stages=%d "
-            "proximity=%d collisions=%d contacts=%d",
+            "proximity=%d collisions=%d contacts=%d cache_hits=%d cache_misses=%d",
             staging.plan_id,
             (perf_counter() - started) * 1000,
             len(stage_results),
             sum(len(stage.proximity_results) for stage in stage_results),
             sum(len(stage.collision_results) for stage in stage_results),
             sum(len(stage.contact_results) for stage in stage_results),
+            cache_hits,
+            cache_misses,
         )
         payload = json.dumps(
             {
@@ -538,7 +602,18 @@ class GeometricValidationEngine:
                 )
         return tuple(findings)
 
-    def _validate_stage(self, stage, provenance, configuration):
+    def _validate_stage(
+        self,
+        stage,
+        provenance,
+        configuration,
+        *,
+        pair_metrics: Callable[
+            [StageToothState, StageToothState, trimesh.Trimesh, trimesh.Trimesh, float, float],
+            _PairMetrics,
+        ]
+        | None = None,
+    ):
         started = perf_counter()
         ordered_states = tuple(sorted(stage.tooth_states, key=_state_sort_key))
         # tooth_number is None for every tooth in semantic-only-experimental mode; keying by it
@@ -549,9 +624,19 @@ class GeometricValidationEngine:
             for state in ordered_states
             if meshes[_state_sort_key(state)].error
         )
-        proximity: list[ProximityResult] = []
-        collisions: list[CollisionResult] = []
-        contacts: list[ContactResult] = []
+        metrics_fn = pair_metrics or (
+            lambda _first_state, _second_state, first_mesh, second_mesh, broad, narrow: (
+                _mesh_pair_metrics(first_mesh, second_mesh, broad, narrow)
+            )
+        )
+        broadphase = max(
+            configuration.proximity_threshold,
+            configuration.contact_tolerance,
+            configuration.collision_tolerance,
+        )
+        candidate_pairs: list[
+            tuple[StageToothState, StageToothState, _ValidatedMesh, _ValidatedMesh]
+        ] = []
         for first, second in combinations(ordered_states, 2):
             # Staging collision/proximity/contact is intra-arch. Cross-arch AABB overlap is
             # expected occlusion and belongs to a separate occlusion analysis — comparing it
@@ -565,22 +650,44 @@ class GeometricValidationEngine:
             second_mesh = meshes[_state_sort_key(second)]
             if first_mesh.error or second_mesh.error:
                 continue
-            if _aabb_distance(first_mesh.mesh.bounds, second_mesh.mesh.bounds) > max(
-                configuration.proximity_threshold,
-                configuration.contact_tolerance,
-                configuration.collision_tolerance,
-            ):
+            if _aabb_distance(first_mesh.mesh.bounds, second_mesh.mesh.bounds) > broadphase:
                 continue
-            distance, intersects, depth = _mesh_pair_metrics(
-                first_mesh.mesh,
-                second_mesh.mesh,
-                max(
-                    configuration.proximity_threshold,
-                    configuration.contact_tolerance,
+            candidate_pairs.append((first, second, first_mesh, second_mesh))
+
+        # Pre-build rtree acceleration so parallel workers never race tree construction.
+        for _, _, first_mesh, second_mesh in candidate_pairs:
+            _ = first_mesh.mesh.triangles_tree
+            _ = second_mesh.mesh.triangles_tree
+
+        def _evaluate(
+            item: tuple[StageToothState, StageToothState, _ValidatedMesh, _ValidatedMesh],
+        ) -> tuple[StageToothState, StageToothState, _PairMetrics]:
+            first, second, first_mesh, second_mesh = item
+            return (
+                first,
+                second,
+                metrics_fn(
+                    first,
+                    second,
+                    first_mesh.mesh,
+                    second_mesh.mesh,
+                    broadphase,
                     configuration.collision_tolerance,
                 ),
-                configuration.collision_tolerance,
             )
+
+        workers = _validation_worker_count()
+        if workers == 1 or len(candidate_pairs) <= 1:
+            evaluated = [_evaluate(item) for item in candidate_pairs]
+        else:
+            with ThreadPoolExecutor(max_workers=min(workers, len(candidate_pairs))) as pool:
+                # map preserves input order → deterministic report assembly.
+                evaluated = list(pool.map(_evaluate, candidate_pairs))
+
+        proximity: list[ProximityResult] = []
+        collisions: list[CollisionResult] = []
+        contacts: list[ContactResult] = []
+        for first, second, (distance, intersects, depth) in evaluated:
             first_key = _tooth_identity_key(first)
             second_key = _tooth_identity_key(second)
             pair_key = f"{stage.stage_index}:{first_key}:{second_key}"

@@ -863,7 +863,7 @@ No model is allowed to silently bypass validation.
 # 11 — P7
 # PERFORMANCE, RELIABILITY & SCALE
 
-**Status: QUEUED**
+**Status: IMPLEMENTED (engineering evidence; not clinical/production acceptance)**
 
 ## Performance targets
 

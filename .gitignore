@@ -21,3 +21,4 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+data/treatment_sessions/

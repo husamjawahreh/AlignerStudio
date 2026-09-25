@@ -137,7 +137,9 @@ class TreatmentStagingEngine:
                 raise TreatmentStagingError(
                     f"Tooth {tooth_key} source and target vertex counts differ."
                 )
-            if stage_index == 0:
+            # Reuse identical vertex tuple objects when geometry is unchanged so downstream
+            # validation can cache pair metrics across stages without hashing large meshes.
+            if stage_index == 0 or source.source_vertices == target.target_vertices:
                 vertices = source.source_vertices
             elif stage_index == denominator:
                 vertices = target.target_vertices

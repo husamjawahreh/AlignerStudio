@@ -59,6 +59,10 @@ import {
 import { buildWorkflowActions, buildWorkflowSteps, workflowLabel, workflowPlanToken, workflowStepIndex, type WorkflowStepId } from "../workflow";
 import { CaseLoadingOverlay, ProductionEmptyState, StatusPill } from "../components/production/ProductionPrimitives";
 import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
+import {
+  readRememberedActiveCaseId,
+  rememberActiveCaseId,
+} from "../caseWorkspacePersistence";
 
 type WorkspaceId = WorkflowStepId;
 
@@ -387,6 +391,58 @@ export function App(): JSX.Element {
     }, 900);
     return () => window.clearInterval(timer);
   }, [isPlaying, reviewBundle.stages.length]);
+
+  useEffect(() => {
+    rememberActiveCaseId(activeCase?.id ?? null);
+  }, [activeCase?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const rememberedId = readRememberedActiveCaseId();
+    if (!rememberedId) return;
+    void (async () => {
+      try {
+        const restored = await api.getCase(rememberedId);
+        if (cancelled) return;
+        setActiveCase(restored);
+        const uploads: Record<Arch, ArchUpload> = {
+          upper: EMPTY_UPLOAD,
+          lower: EMPTY_UPLOAD,
+        };
+        for (const mesh of restored.meshes ?? []) {
+          const arch = mesh.arch as Arch;
+          if (arch !== "upper" && arch !== "lower") continue;
+          uploads[arch] = {
+            filename: mesh.original_filename,
+            size: 0,
+            state: "valid",
+            validation: null,
+          };
+        }
+        setArchUploads(uploads);
+        try {
+          const status = await api.getProcessingStatus(rememberedId);
+          if (!cancelled && status) setProcessingStatus(status);
+        } catch {
+          // No processing status yet.
+        }
+        try {
+          const bundle = await api.getTreatment(rememberedId);
+          if (cancelled) return;
+          setReviewBundle(bundle);
+          setBackendTreatment(true);
+          setWorkspace("treatment-setup");
+        } catch {
+          // Treatment not composed yet — case metadata alone is enough to continue intake.
+        }
+      } catch {
+        rememberActiveCaseId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const isProcessing = processingStatus?.stage_status === "PROCESSING";

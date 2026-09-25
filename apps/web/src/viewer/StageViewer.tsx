@@ -20,6 +20,7 @@ import {
 } from "./movementPresentation";
 import { resolveGingivaPresentation } from "./syntheticGingiva";
 import { reviewToothKey, toothMatchesKey } from "./toothKey";
+import { float32PositionsFromVertices, uint32IndicesFromFaces } from "./geometryBuffers";
 
 interface StageViewerProps {
   stage?: ReviewStage;
@@ -220,9 +221,9 @@ export function StageViewer({
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           "position",
-          new THREE.Float32BufferAttribute(tooth.vertices.flatMap((vertex) => [...vertex]), 3),
+          new THREE.Float32BufferAttribute(float32PositionsFromVertices(tooth.vertices), 3),
         );
-        geometry.setIndex(tooth.faces.flatMap((face) => [...face]));
+        geometry.setIndex(uint32IndicesFromFaces(tooth.faces));
         geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
           ...dentalMaterialProfiles.enamelGhost,
@@ -241,8 +242,11 @@ export function StageViewer({
         : layers["lower-teeth"].visible && showLower;
       if (!archVisible || !layers.segmentation.visible || hiddenToothIds.has(tooth.instanceId)) continue;
       const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(tooth.vertices.flatMap((vertex) => [...vertex]), 3));
-      geometry.setIndex(tooth.faces.flatMap((face) => [...face]));
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(float32PositionsFromVertices(tooth.vertices), 3),
+      );
+      geometry.setIndex(uint32IndicesFromFaces(tooth.faces));
       geometry.computeVertexNormals();
       const baseProfile = enamelProfileForArch(tooth.arch);
       const material = new THREE.MeshStandardMaterial({
@@ -305,9 +309,9 @@ export function StageViewer({
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           "position",
-          new THREE.Float32BufferAttribute(gingiva.vertices.flatMap((vertex) => [...vertex]), 3),
+          new THREE.Float32BufferAttribute(float32PositionsFromVertices(gingiva.vertices), 3),
         );
-        geometry.setIndex(gingiva.faces.flatMap((face) => [...face]));
+        geometry.setIndex(uint32IndicesFromFaces(gingiva.faces));
         geometry.computeVertexNormals();
         const profile =
           gingiva.source === "real"

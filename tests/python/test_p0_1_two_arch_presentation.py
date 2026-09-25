@@ -117,7 +117,7 @@ def test_plan_endpoint_wires_both_arches_into_treatment_session(monkeypatch) -> 
         _fast_validate,
     )
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
     client = TestClient(app)
     case_id = client.post("/cases", json={"patient_reference": "p0-1-api"}).json()["id"]
     case = case_store.get(case_id)
@@ -138,4 +138,4 @@ def test_plan_endpoint_wires_both_arches_into_treatment_session(monkeypatch) -> 
     assert sum(1 for tooth in teeth if tooth["arch"] == "lower") == 14
 
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()

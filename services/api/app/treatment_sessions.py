@@ -35,6 +35,7 @@ from engines.validation.geometric_engine import (
 from engines.validation.review_summary import build_validation_review_summary
 
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
+from app.session_persistence import delete_session, load_session, save_session
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class TreatmentSession:
 
 
 class TreatmentSessionStore:
-    """Process-local treatment session store for the demo API."""
+    """Process-local treatment session store with durable restart recovery."""
 
     def __init__(self) -> None:
         self._sessions: dict[str, TreatmentSession] = {}
@@ -71,6 +72,12 @@ class TreatmentSessionStore:
             validator=self._validator,
             validation_config=GeometricValidationConfiguration(1.0, 0.001, 0.0),
         )
+
+    def _remember(self, case_id: str, session: TreatmentSession) -> TreatmentSession:
+        self._sessions[case_id] = session
+        save_session(case_id, session)
+        return session
+
     def create_engineering_fixture(self, case_id: str) -> TreatmentSession:
         """Create an explicit engineering fixture, never a substitute for segmentation."""
         identification = ToothIdentificationEngine().identify(
@@ -78,8 +85,7 @@ class TreatmentSessionStore:
         )
         proposal = self._planner.generate(case_id, identification, demo_objectives())
         session = self._compose(proposal)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def create_from_treatment_input(
         self,
@@ -91,14 +97,23 @@ class TreatmentSessionStore:
         """Compose existing treatment engines from reviewed domain input."""
         proposal = self._planner.generate_from_input(case_id, treatment_input, objectives)
         session = self._compose(proposal, progress_callback=progress_callback)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def get(self, case_id: str) -> TreatmentSession:
         session = self._sessions.get(case_id)
-        if session is None:
-            raise TreatmentSessionError("Treatment data is unavailable for this case")
-        return session
+        if session is not None:
+            return session
+        recovered = load_session(case_id)
+        if isinstance(recovered, TreatmentSession):
+            self._sessions[case_id] = recovered
+            return recovered
+        raise TreatmentSessionError("Treatment data is unavailable for this case")
+
+    def clear(self) -> None:
+        """Drop in-memory sessions (tests). Durable files are removed when present."""
+        for case_id in list(self._sessions):
+            delete_session(case_id)
+        self._sessions.clear()
 
     def apply_edit(
         self, case_id: str, tooth_number: int | str, movement: dict[str, float]
@@ -122,8 +137,7 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
         )
         session = self._attach_intelligence(session)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
         session = self.get(case_id)
@@ -143,8 +157,7 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
         )
         session = self._attach_intelligence(session)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def reset_all(self, case_id: str) -> TreatmentSession:
         session = self.get(case_id)
@@ -164,8 +177,7 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
         )
         session = self._attach_intelligence(session)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def recalculate(self, case_id: str) -> TreatmentSession:
         session = self.get(case_id)
@@ -184,8 +196,7 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
         )
         session = self._attach_intelligence(session)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def export(self, case_id: str, destination: Path) -> TreatmentExportPackage:
         session = self.get(case_id)
@@ -199,15 +210,13 @@ class TreatmentSessionStore:
             session.adjuncts, site_id, ProposalStatus(status)
         )
         session = dataclass_replace(session, adjuncts=adjuncts)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def modify_ipr_amount(self, case_id: str, site_id: str, amount: float) -> TreatmentSession:
         session = self.get(case_id)
         adjuncts = self._proposals.modify_ipr(session.adjuncts, site_id, amount)
         session = dataclass_replace(session, adjuncts=adjuncts)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def set_attachment_status(self, case_id: str, site_id: str, status: str) -> TreatmentSession:
         session = self.get(case_id)
@@ -215,16 +224,14 @@ class TreatmentSessionStore:
             session.adjuncts, site_id, ProposalStatus(status)
         )
         session = dataclass_replace(session, adjuncts=adjuncts)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def reset_proposals(self, case_id: str) -> TreatmentSession:
         """Regenerate adjunct proposals from the current plan version (no invented geometry)."""
         session = self.get(case_id)
         adjuncts = self._proposals.generate(session.proposal)
         session = dataclass_replace(session, adjuncts=adjuncts)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def verify_export(self, case_id: str, destination: Path) -> dict[str, Any]:
         """Export then verify package hashes; returns auditable verification report."""
@@ -296,8 +303,7 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
             intelligence=intelligence,
         )
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def ensure_planning_intelligence(self, case_id: str) -> TreatmentSession:
         """Expand assisted alternatives (validated) when only a baseline shell exists."""
@@ -305,8 +311,7 @@ class TreatmentSessionStore:
         if session.intelligence is not None and len(session.intelligence.candidates) > 1:
             return session
         session = self._attach_intelligence(session, generate_alternatives=True)
-        self._sessions[case_id] = session
-        return session
+        return self._remember(case_id, session)
 
     def _attach_intelligence(
         self, session: TreatmentSession, *, generate_alternatives: bool | None = None

@@ -37,10 +37,10 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(autouse=True)
 def _clear_store():
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
     yield
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
 
 
 def _stack():

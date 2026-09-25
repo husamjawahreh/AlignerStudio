@@ -48,7 +48,7 @@ def test_semantic_only_planning_does_not_crash_on_missing_fdi(monkeypatch) -> No
         _fast_validate,
     )
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
     client = TestClient(app)
     created = client.post("/cases", json={"patient_reference": "semantic-plan"})
     case_id = created.json()["id"]
@@ -69,4 +69,4 @@ def test_semantic_only_planning_does_not_crash_on_missing_fdi(monkeypatch) -> No
     assert len(teeth) == 28
     assert all(tooth["fdiNumber"] is None for tooth in teeth)
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()

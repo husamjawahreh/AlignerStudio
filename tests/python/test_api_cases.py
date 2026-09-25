@@ -11,10 +11,10 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clear_store():
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
     yield
     case_store.clear()
-    treatment_sessions._sessions.clear()
+    treatment_sessions.clear()
 
 
 client = TestClient(app)
