@@ -21,6 +21,8 @@ import {
 import { resolveGingivaPresentation } from "./syntheticGingiva";
 import { reviewToothKey, toothMatchesKey } from "./toothKey";
 import { float32PositionsFromVertices, uint32IndicesFromFaces } from "./geometryBuffers";
+import type { CameraCommand } from "../interaction/model";
+import { toothReviewLabel } from "../interaction/model";
 import {
   CAMERA_PRESETS,
   type CameraPresetId,
@@ -55,8 +57,12 @@ interface StageViewerProps {
   originalOpacity: number;
   wireframe: boolean;
   hiddenToothIds: ReadonlySet<number>;
-  onSelectTooth: (toothRef: string) => void;
+  onSelectTooth: (toothRef: string, options?: { additive?: boolean }) => void;
   onClearSelection?: () => void;
+  onHoverTooth?: (toothRef: string | null) => void;
+  hoveredToothKey?: string | null;
+  cameraCommand?: { nonce: number; command: CameraCommand } | null;
+  showBuiltinCameraTools?: boolean;
   onFit: () => void;
   onReset: () => void;
   gizmoMode?: "translate" | "rotate";
@@ -105,6 +111,10 @@ export function StageViewer({
   hiddenToothIds,
   onSelectTooth,
   onClearSelection,
+  onHoverTooth,
+  hoveredToothKey = null,
+  cameraCommand = null,
+  showBuiltinCameraTools = true,
   onFit,
   onReset,
   gizmoMode = "translate",
@@ -119,6 +129,7 @@ export function StageViewer({
   const recordsRef = useRef<ToothRecord[]>([]);
   const selectRef = useRef(onSelectTooth);
   const clearSelectRef = useRef(onClearSelection);
+  const hoverRef = useRef(onHoverTooth);
   const gizmoRef = useRef<TransformControls | null>(null);
   const gizmoCallbackRef = useRef(onGizmoMovement);
   const ghostHighlightRef = useRef<((key: string | null) => void) | null>(null);
@@ -137,6 +148,7 @@ export function StageViewer({
   });
   selectRef.current = onSelectTooth;
   clearSelectRef.current = onClearSelection;
+  hoverRef.current = onHoverTooth;
   gizmoCallbackRef.current = onGizmoMovement;
   selectedToothRef.current = selectedTooth;
   multiSelectedRef.current = multiSelectedTeeth;
@@ -345,9 +357,13 @@ export function StageViewer({
       else hierarchy.lowerTeeth.add(mesh);
       raycastMeshes.push(mesh);
       fitMeshIndex.push({ object: mesh, toothKey: key, arch: tooth.arch });
+      const identity = toothReviewLabel(tooth);
       const label = document.createElement("div");
-      label.className = `stage-tooth-label is-${tooth.arch}`;
-      label.textContent = tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : `${key} · semantic`;
+      label.className = `stage-tooth-label is-${tooth.arch}${identity.unresolved ? " is-unresolved" : ""}`;
+      label.textContent = identity.text;
+      label.title = identity.unresolved
+        ? `${identity.toothRef} · identity not resolved`
+        : identity.text;
       label.setAttribute("data-testid", `tooth-label-${tooth.instanceId}`);
       label.setAttribute("data-tooth-key", key);
       container.appendChild(label);
@@ -623,12 +639,14 @@ export function StageViewer({
         const selected = liveSelected != null && toothMatchesKey(record.tooth, liveSelected);
         const multiSelected = !selected && multi.has(record.toothKey);
         const hoveredTooth = !selected && hovered === record.toothKey;
+        const identity = toothReviewLabel(record.tooth);
         const style = toothVisualStyle({
           arch: record.tooth.arch,
           selected,
           hovered: hoveredTooth,
           multiSelected,
           validationStatus: record.tooth.validationStatus,
+          truthState: identity.unresolved && !selected && !multiSelected ? "requires_review" : null,
         });
         record.colorTarget.set(style.color);
         record.emissiveTarget.set(style.emissive);
@@ -662,6 +680,7 @@ export function StageViewer({
       const nextHover = hit?.toothKey ?? null;
       if (nextHover !== hoveredKeyRef.current) {
         hoveredKeyRef.current = nextHover;
+        hoverRef.current?.(nextHover);
         applyVisuals();
       }
     };
@@ -670,6 +689,7 @@ export function StageViewer({
       const dx = event.clientX - pointerDown.x;
       const dy = event.clientY - pointerDown.y;
       pointerDown = null;
+      if (transformControls.dragging || transformControls.axis) return;
       // Ignore drag-orbits as clicks.
       if (dx * dx + dy * dy > 25) return;
       const rect = renderer.domElement.getBoundingClientRect();
@@ -678,8 +698,11 @@ export function StageViewer({
       const hit = pickToothFromPointer(raycaster, camera, pointer, raycastMeshes, {
         preferBvh: true,
       });
-      if (hit?.toothKey) selectRef.current(hit.toothKey);
-      else clearSelectRef.current?.();
+      if (hit?.toothKey) {
+        selectRef.current(hit.toothKey, {
+          additive: event.shiftKey || event.ctrlKey || event.metaKey,
+        });
+      } else clearSelectRef.current?.();
     };
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointermove", handlePointerMove);
@@ -800,10 +823,38 @@ export function StageViewer({
     applyVisualsRef.current?.();
   }, [gizmoMode, selectedTooth, multiSelectedTeeth, transformEnabled]);
 
+  useEffect(() => {
+    hoveredKeyRef.current = hoveredToothKey;
+    applyVisualsRef.current?.();
+  }, [hoveredToothKey]);
+
+  useEffect(() => {
+    if (!cameraCommand) return;
+    const command = cameraCommand.command;
+    if (command.type === "fit-case") {
+      fitRef.current?.({ target: "case" });
+      onFit();
+    } else if (command.type === "fit-arch") {
+      fitRef.current?.({ target: "arch", arch: command.arch });
+    } else if (command.type === "fit-selection") {
+      fitRef.current?.({
+        target: "selected",
+        selectedKey: command.keys[0] ?? null,
+        selectedKeys: command.keys,
+      });
+    } else if (command.type === "preset") {
+      viewRef.current?.(command.preset);
+    } else {
+      resetRef.current?.();
+      onReset();
+    }
+  }, [cameraCommand, onFit, onReset]);
+
   return (
     <div className="viewport-shell" data-testid="viewport-shell">
       <div ref={containerRef} className="stage-viewport" data-testid="stage-viewer" />
       {contextualToolbar}
+      {showBuiltinCameraTools ? (
       <div className="viewport-toolbar" aria-label="3D camera controls">
         {CAMERA_PRESETS.map((preset) => (
           <button
@@ -866,6 +917,7 @@ export function StageViewer({
         </button>
         <span className="viewport-hint">Orbit · Pan · Zoom · Click empty to deselect</span>
       </div>
+      ) : null}
     </div>
   );
 }

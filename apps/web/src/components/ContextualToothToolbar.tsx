@@ -19,6 +19,7 @@ interface ContextualToothToolbarProps {
   onApply: () => void;
   onCancel: () => void;
   onClearSelection: () => void;
+  embedded?: boolean;
 }
 
 /** Selection-scoped viewport toolbar wired to live App state (not mock UI). */
@@ -42,9 +43,14 @@ export function ContextualToothToolbar({
   onApply,
   onCancel,
   onClearSelection,
+  embedded = false,
 }: ContextualToothToolbarProps): JSX.Element {
   return (
-    <div className="contextual-tooth-toolbar" aria-label="Selected tooth controls" data-testid="contextual-tooth-toolbar">
+    <div
+      className={embedded ? "contextual-tooth-toolbar is-embedded" : "contextual-tooth-toolbar"}
+      aria-label="Selected tooth controls"
+      data-testid="contextual-tooth-toolbar"
+    >
       <div className="contextual-tooth-meta">
         <strong>{label}</strong>
         {arch ? <span className="contextual-tooth-arch">{arch}</span> : null}

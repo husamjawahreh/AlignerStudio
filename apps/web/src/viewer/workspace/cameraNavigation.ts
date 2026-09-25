@@ -50,6 +50,8 @@ export interface FitRequest {
   target: FitTarget;
   arch?: "upper" | "lower";
   selectedKey?: string | null;
+  /** Semantic keys. Fit selection uses these instead of a mesh index. */
+  selectedKeys?: readonly string[];
 }
 
 export function describeFitRequest(request: FitRequest): string {

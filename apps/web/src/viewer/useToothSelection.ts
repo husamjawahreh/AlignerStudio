@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ToothSelectionState } from "@alignerstudio/types";
 import type { ReviewToothMesh } from "../review/types";
 import { findToothByKey, reviewToothKey } from "./toothKey";
@@ -23,6 +23,8 @@ const EMPTY_SELECTION: ToothSelectionState = {
 export function useToothSelection(teeth: readonly ReviewToothMesh[]) {
   const [selection, setSelection] = useState<ToothSelectionState>(EMPTY_SELECTION);
   const [multiSelectedKeys, setMultiSelectedKeys] = useState<readonly string[]>([]);
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
 
   const selectTooth = useCallback(
     (toothRef: string, options?: { additive?: boolean }) => {
@@ -38,13 +40,17 @@ export function useToothSelection(teeth: readonly ReviewToothMesh[]) {
       if (options?.additive) {
         setMultiSelectedKeys((current) => {
           const key = identity.key;
-          if (current.includes(key)) return current.filter((item) => item !== key);
-          return [...current, key];
+          const seeded =
+            current.length === 0 && selectionRef.current.selectedToothRef
+              ? [selectionRef.current.selectedToothRef]
+              : [...current];
+          if (seeded.includes(key)) return seeded.filter((item) => item !== key);
+          return [...seeded, key];
         });
         setSelection(next);
         return;
       }
-      setMultiSelectedKeys([]);
+      setMultiSelectedKeys([identity.key]);
       setSelection(next);
     },
     [teeth],

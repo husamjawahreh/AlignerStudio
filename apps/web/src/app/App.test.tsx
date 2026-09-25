@@ -23,6 +23,19 @@ vi.mock("../viewer/StageViewer", () => ({
 
 afterEach(() => vi.clearAllMocks());
 
+describe("Wave 3 workspace composition", () => {
+  it("keeps a single primary status surface and explains a blocked analysis step", () => {
+    render(<App />);
+    expect(screen.getAllByTestId("primary-status")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-status-surface='primary']")).toHaveLength(1);
+    expect(document.querySelector("[data-testid='case-status-compact']")).toBeNull();
+    expect(document.querySelectorAll("[data-readiness-surface='primary']")).toHaveLength(1);
+    const analysis = screen.getByRole("button", { name: /Analysis/ });
+    expect(analysis).toBeDisabled();
+    expect(analysis).toHaveAttribute("title", expect.stringMatching(/Create a case/i));
+  });
+});
+
 describe("App engineering demo", () => {
   it("loads the API fixture demo with visible non-clinical labeling", async () => {
     vi.mocked(api.createEngineeringDemo).mockResolvedValue({
@@ -261,7 +274,7 @@ describe("App engineering demo", () => {
     expect(screen.getByRole("button", { name: "FDI 11" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "FDI 31" })).toBeInTheDocument();
     expect(screen.getByText(/Duplicate FDI: 11/)).toBeInTheDocument();
-    expect(screen.getByText(/Missing FDI: 12/)).toBeInTheDocument();
+    expect(screen.getByText(/Identity\/data not established \(reported FDI gap: 12/)).toBeInTheDocument();
     expect(screen.getByTestId("toothinstancenet-summary")).toHaveTextContent("Validated real-case fixture");
   });
 

@@ -232,7 +232,17 @@ REAL_CASE stays on the uploaded mesh. Missing ONNX weights or a missing ToothIns
 
 Regression confirmed in this command: Wave 2 + Wave 1 + WP-01 + WP-12 + WP-13, 40 passed; WP-02, 12 passed; web vitest 125 passed; `tsc --noEmit`, eslint, and `npm run build` passed (existing chunk-size warning only). Ruff on the Wave 2 Python files passed.
 
-Next safe step is a measured ToothInstanceNet run on a host that already has the documented CUDA, PyTorch, and `pointops` stack. Do not install ad hoc versions on this machine. Do not start the UI redesign, the segmentation review workspace, WP-14, or WP-15. Waves 3–12 are **not** complete.
+Next safe step is a measured ToothInstanceNet run on a host that already has the documented CUDA, PyTorch, and `pointops` stack. Do not install ad hoc versions on this machine. Do not start WP-14 or WP-15 until the product owner accepts the remaining gate. Wave 2 itself did not build the review workspace.
+
+## Wave 3 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The clinical segmentation review workspace and the interaction model are implemented. The viewport is the dominant surface. One header status replaces the repeated status bar. Segmentation that is blocked, failed, or unavailable is labeled that way and is not shown as zero teeth. FDI is rendered only from authoritative persisted identity. Fixture output stays fixture/test-only. Synthetic gingiva stays presentation-only. Undo/redo still uses the durable WP-04/WP-05/WP-13 edit stack. Selection and camera changes are not clinical undo.
+
+WP-14 and WP-15 were not started. Waves 4–12 of this gate are not complete. The interaction contract is `docs/PRE_FIRST_VERSION_INTERACTION_MODEL.md`. The review contract is `docs/WAVE3_CLINICAL_SEGMENTATION_REVIEW.md`.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

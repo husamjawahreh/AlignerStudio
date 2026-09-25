@@ -32,6 +32,8 @@ interface CaseIntakePanelProps {
   onAnalyzeCase: () => void;
   onReviewTreatmentProposal: () => void;
   onRequestNewCase?: () => void;
+  /** When tooth instances already exist, the plan action becomes the primary next step. */
+  segmentationReviewed?: boolean;
 }
 
 /** Case Intake — creation flow before case; active-case workspace after creation. */
@@ -39,28 +41,21 @@ export function CaseIntakePanel({
   patientReference,
   onPatientReferenceChange,
   caseId,
-  caseStatus,
   archUploads,
   fileInputKeys,
   scanImportDisabled,
   isBusy,
   bothArchesValid,
   backendTreatment,
-  processingStatus,
   onCreateCase,
   onUpload,
   onRemoveMesh,
   onAnalyzeCase,
   onReviewTreatmentProposal,
   onRequestNewCase,
+  segmentationReviewed = false,
 }: CaseIntakePanelProps): JSX.Element {
   const arches = buildArchStatuses(archUploads);
-  const readiness = buildCaseIntakeReadiness({
-    hasCase: caseId !== null,
-    upperState: archUploads.upper.state,
-    lowerState: archUploads.lower.state,
-  });
-  const processing = formatIntakeProcessingState(processingStatus);
   const hasCase = caseId !== null;
 
   return (
@@ -105,15 +100,6 @@ export function CaseIntakePanel({
             <span>Case</span>
             <strong data-testid="active-case-id">{caseId}</strong>
           </div>
-          <div className="cad-stat-row">
-            <span>Status</span>
-            <strong>{formatCaseStatus(caseStatus)}</strong>
-          </div>
-          <div className="cad-stat-row">
-            <span>Processing</span>
-            <strong>{processing.label}</strong>
-          </div>
-          {processing.detail ? <small className="cad-review-note">{processing.detail}</small> : null}
           {onRequestNewCase ? (
             <button
               className="text-button"
@@ -165,10 +151,6 @@ export function CaseIntakePanel({
             </div>
           );
         })}
-        <div className="cad-stat-row">
-          <span>Data readiness</span>
-          <strong>{readiness.completenessLabel}</strong>
-        </div>
       </section>
 
       {hasCase && (
@@ -178,19 +160,27 @@ export function CaseIntakePanel({
           </h3>
           <button
             aria-label="Review segmentation"
-            className="secondary-button"
+            className={segmentationReviewed ? "secondary-button" : "primary-button"}
             onClick={onAnalyzeCase}
             disabled={!bothArchesValid}
+            data-testid={segmentationReviewed ? undefined : "primary-next-action"}
+            title="Run segmentation review for the imported scans."
           >
             Analyze case
           </button>
           <button
             aria-label="Generate Treatment Setup"
-            className="primary-button"
+            className={segmentationReviewed ? "primary-button" : "secondary-button"}
             onClick={onReviewTreatmentProposal}
             disabled={!bothArchesValid || backendTreatment}
+            data-testid={segmentationReviewed ? "primary-next-action" : undefined}
+            title={
+              segmentationReviewed
+                ? "Open or create the treatment plan."
+                : "Plan action. Segmentation review is the next clinical step. This does not invent tooth numbers."
+            }
           >
-            Review Treatment Setup
+            {segmentationReviewed ? "Open Treatment Plan" : "Create Treatment Plan"}
           </button>
         </section>
       )}
@@ -246,9 +236,17 @@ export function CaseIntakeInspector({
         <span>Lower</span>
         <strong>{formatIntakeUploadState(archUploads.lower.state)}</strong>
       </div>
-      <div className="cad-stat-row">
+      <div className="cad-stat-row" data-readiness-surface="primary" data-testid="case-readiness-home">
         <span>Readiness</span>
         <strong>{readiness.completenessLabel}</strong>
+      </div>
+      <div className="cad-stat-row">
+        <span>Status</span>
+        <strong>{formatCaseStatus(caseStatus)}</strong>
+      </div>
+      <div className="cad-stat-row">
+        <span>Processing</span>
+        <strong>{processing.label}</strong>
       </div>
       <div className="cad-stat-row">
         <span>Status</span>

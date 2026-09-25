@@ -66,7 +66,7 @@ export function TreatmentSetupPanel({
           onClick={onGeneratePlan}
           disabled={!bothArchesValid || backendTreatment}
         >
-          Review Treatment Setup
+          {treatmentAvailable ? "Open Treatment Plan" : "Create Treatment Plan"}
         </button>
         <div className="cad-stat-row">
           <span>Target setup</span>

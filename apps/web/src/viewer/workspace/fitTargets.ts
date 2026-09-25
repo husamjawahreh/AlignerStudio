@@ -37,10 +37,15 @@ export function resolveFitBounds(input: {
   const { request, meshes, fallbackGroup } = input;
   let targets: THREE.Object3D[] = [];
 
-  if (request.target === "selected" && request.selectedKey) {
-    targets = meshes
-      .filter((item) => item.toothKey === request.selectedKey)
-      .map((item) => item.object);
+  if (request.target === "selected") {
+    const keys = new Set(
+      request.selectedKeys && request.selectedKeys.length > 0
+        ? request.selectedKeys
+        : request.selectedKey
+          ? [request.selectedKey]
+          : [],
+    );
+    targets = meshes.filter((item) => keys.has(item.toothKey)).map((item) => item.object);
   } else if (request.target === "arch") {
     const arch = request.arch;
     if (!arch) return null;

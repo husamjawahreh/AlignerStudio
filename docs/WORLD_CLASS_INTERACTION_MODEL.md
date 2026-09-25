@@ -1,9 +1,9 @@
 # World-Class Interaction Model
 
-**Status:** PLANNED. Not implemented in this command.  
+**Status:** Wave 3 implemented the interaction model described here. See `docs/PRE_FIRST_VERSION_INTERACTION_MODEL.md`. Live ToothInstanceNet inference remains blocked.  
 **Date:** 2026-09-26  
-**Gate:** `PRE_FIRST_VERSION_WORLD_CLASS_GATE.md` Wave 2 documentation.  
-**Current product:** functional CAD shell. Not accepted as world-class.
+**Gate:** `PRE_FIRST_VERSION_WORLD_CLASS_GATE.md` Wave 3.  
+**Current product:** clinical-CAD workspace with a truthful segmentation-review state. Not a completed real-model segmentation.
 
 This document defines the future interaction system. It is one model, not a list of visual polish items. A doctor must be able to answer these questions without opening a technical panel:
 
@@ -313,10 +313,10 @@ Identity rule, unchanged: if FDI is not established, the label is `tooth_ref` an
 **Feedback.** Copy is exact. It does not change clinical truth.  
 **Next.** Close Advanced and return to the tooth.
 
-## Segmentation review, when that screen is built (PLANNED)
+## Segmentation review
 
-The first clinical screen still has to provide separated teeth, upper and lower, labels, trustworthy numbering only when FDI exists, missing and uncertain teeth, selection, a map synchronized with the 3D view, fit and isolate, camera presets, and a review workflow. This command does not build that screen. `tooth_ref` remains the identity when FDI is absent.
+Wave 3 builds the review workspace. `tooth_ref` remains the identity when FDI is not authoritative. See `docs/WAVE3_CLINICAL_SEGMENTATION_REVIEW.md`.
 
-## What this command did not do
+## What Wave 2 did not do
 
-No layout change, no StageViewer rewrite, no new toolbar, no WP-14, no WP-15.
+Wave 2 did not change layout. Wave 3 did. WP-14 and WP-15 were not started.

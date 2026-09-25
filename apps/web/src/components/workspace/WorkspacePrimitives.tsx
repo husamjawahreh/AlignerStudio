@@ -36,8 +36,8 @@ export function BottomTimeline({ children }: PanelProps): JSX.Element {
   return <div className="cad-timeline">{children}</div>;
 }
 
-export function WorkspaceContainer({ children }: PanelProps): JSX.Element {
-  return <main className="cad-workspace as-workspace">{children}</main>;
+export function WorkspaceContainer({ children, className = "" }: PanelProps): JSX.Element {
+  return <main className={`cad-workspace as-workspace ${className}`}>{children}</main>;
 }
 
 export function ViewerOverlay({ children }: PanelProps): JSX.Element {

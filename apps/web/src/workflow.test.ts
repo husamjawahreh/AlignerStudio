@@ -93,6 +93,6 @@ describe("P2 clinical-CAD workflow", () => {
       hasTreatment: false,
       isBusy: false,
     });
-    expect(setupActions.some((action) => action.label === "Review Treatment Setup")).toBe(true);
+    expect(setupActions.some((action) => action.label === "Create Treatment Plan")).toBe(true);
   });
 });

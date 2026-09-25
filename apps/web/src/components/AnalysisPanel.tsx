@@ -7,10 +7,10 @@ import {
   formatAvailability,
   formatMeshMeasurement,
   formatOcclusionAvailability,
-  formatToothIdentity,
   formatTruthState,
 } from "../analysisPresentation";
 import { AdvancedDetails } from "../design-system";
+import { toothReviewLabel } from "../interaction/model";
 
 interface AnalysisPanelProps {
   bothArchesValid: boolean;
@@ -48,27 +48,13 @@ export function AnalysisPanel({
           className="primary-button"
           onClick={onAnalyzeCase}
           disabled={!bothArchesValid}
+          data-testid="primary-next-action"
         >
           Analyze case
         </button>
-        <div className="cad-stat-row">
-          <span>Detected</span>
-          <strong data-testid="analysis-tooth-count">
-            {overview.countsAvailable ? teeth.length || overview.identifiedTeeth || 0 : "Not available"}
-          </strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Upper</span>
-          <strong>{overview.countsAvailable ? overview.upperCount : "Not available"}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>Lower</span>
-          <strong>{overview.countsAvailable ? overview.lowerCount : "Not available"}</strong>
-        </div>
-        <div className="cad-stat-row">
-          <span>State</span>
-          <strong data-testid="analysis-segmentation-state">{overview.stateLabel}</strong>
-        </div>
+        <p className="cad-review-note">
+          Segmentation status, counts, and provenance are on the review strip. Identity/data that is not established is not numbered.
+        </p>
         {overview.overallTruthState && (
           <div className="cad-stat-row">
             <span>Review</span>
@@ -94,26 +80,32 @@ export function AnalysisPanel({
         <div className="cad-stat-row">
           <span>Identified</span>
           <strong>
-            {overview.identifiedTeeth === null ? "Not Available" : overview.identifiedTeeth}
+            {overview.countsAvailable && overview.identifiedTeeth !== null
+              ? overview.identifiedTeeth
+              : "Not available"}
           </strong>
         </div>
         <div className="cad-stat-row">
           <span>Uncertain</span>
           <strong>
-            {overview.uncertainTeeth === null ? "Not Available" : overview.uncertainTeeth}
+            {overview.countsAvailable && overview.uncertainTeeth !== null
+              ? overview.uncertainTeeth
+              : "Not available"}
           </strong>
         </div>
         <div className="cad-stat-row">
           <span>Unresolved</span>
           <strong>
-            {overview.unidentifiedTeeth === null ? "Not Available" : overview.unidentifiedTeeth}
+            {overview.countsAvailable && overview.unidentifiedTeeth !== null
+              ? overview.unidentifiedTeeth
+              : "Not available"}
           </strong>
         </div>
         {teeth.length > 0 ? (
           <AdvancedDetails summary="Tooth visibility">
             <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
               <strong>{teeth.length} meshes</strong>
-              <small>FDI shown only when provided by analysis</small>
+              <small>FDI only when persisted identity is authoritative. Otherwise tooth_ref.</small>
               {diagnostic?.fixture && import.meta.env.MODE === "test" && (
                 <span className="production-test-metadata">
                   Validated real-case fixture FIXTURE · not clinically valid
@@ -132,8 +124,9 @@ export function AnalysisPanel({
                       onChange={() => onToggleToothVisibility(tooth.instanceId)}
                     />
                     <span>
-                      {formatToothIdentity(tooth)}
+                      {toothReviewLabel(tooth).text}
                       {fdiState ? ` · ${formatTruthState(fdiState)}` : ""}
+                      {toothReviewLabel(tooth).unresolved ? " · unresolved" : ""}
                     </span>
                   </label>
                 );
@@ -145,6 +138,7 @@ export function AnalysisPanel({
         )}
       </section>
 
+      <AdvancedDetails summary="Advanced details">
       <section className="analysis-section" aria-labelledby="analysis-arch">
         <h3 id="analysis-arch" className="eyebrow">
           Arch Analysis
@@ -431,6 +425,7 @@ export function AnalysisPanel({
           </strong>
         </div>
       </section>
+      </AdvancedDetails>
 
       <section className="analysis-section" aria-labelledby="analysis-review-findings">
         <h3 id="analysis-review-findings" className="eyebrow">
@@ -473,6 +468,7 @@ export function AnalysisInspector({
 
   return (
     <div className="cad-inspector-section" data-testid="analysis-inspector">
+      <AdvancedDetails summary="Advanced details">
       <span className="eyebrow">Analysis</span>
       <h2>Data Quality</h2>
       <p>
@@ -550,6 +546,7 @@ export function AnalysisInspector({
         <span>Review Findings</span>
         <strong>{findings.length}</strong>
       </div>
+      </AdvancedDetails>
     </div>
   );
 }

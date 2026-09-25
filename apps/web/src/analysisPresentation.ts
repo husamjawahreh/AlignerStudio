@@ -353,7 +353,7 @@ export function buildAnalysisFindings(input: {
   if ((diagnostic?.missing_fdi_numbers?.length ?? 0) > 0) {
     findings.push({
       kind: "gap",
-      text: `Missing FDI: ${diagnostic?.missing_fdi_numbers?.join(", ")}`,
+      text: `Identity/data not established (reported FDI gap: ${diagnostic?.missing_fdi_numbers?.join(", ")})`,
     });
   }
   if ((diagnostic?.excluded_fragment_count ?? 0) > 0) {

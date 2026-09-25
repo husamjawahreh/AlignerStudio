@@ -33,7 +33,7 @@ describe("P2 Final Integration QA", () => {
       hasTreatment: false,
       isBusy: false,
     });
-    expect(setup.map((action) => action.label)).toContain("Review Treatment Setup");
+    expect(setup.map((action) => action.label)).toContain("Create Treatment Plan");
     expect(setup.every((action) => !/proposal|Generate Plan$/i.test(action.label))).toBe(true);
 
     const production = buildWorkflowActions({

@@ -155,7 +155,7 @@ export function buildWorkflowActions(input: {
     case "treatment-setup":
       return [
         {
-          label: "Review Treatment Setup",
+          label: input.hasTreatment ? "Open Treatment Plan" : "Create Treatment Plan",
           step: "treatment-setup",
           disabled: !input.bothArchesValid || input.isBusy,
         },

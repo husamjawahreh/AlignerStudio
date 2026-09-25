@@ -20,8 +20,7 @@ import {
 } from "../components/ValidationWorkflowPanel";
 import { ContextualToothToolbar } from "../components/ContextualToothToolbar";
 import { InspectionPanel } from "../components/InspectionPanel";
-import { WorkspaceViewportChrome, type ArchIsolationMode } from "../components/WorkspaceViewportChrome";
-import { formatToothIdentity } from "../analysisPresentation";
+import { type ArchIsolationMode } from "../components/WorkspaceViewportChrome";
 import { ProposalPanels } from "../components/ProposalPanels";
 import { StageTimeline } from "../components/StageTimeline";
 import { ValidationPanel } from "../components/ValidationPanel";
@@ -54,6 +53,28 @@ import { createDentalSceneGraph } from "../viewer/sceneGraph";
 import { findToothByKey } from "../viewer/toothKey";
 import { useToothSelection } from "../viewer/useToothSelection";
 import {
+  AdaptiveInspector,
+  ContextualWorkspaceToolbar,
+  DentalArchMap,
+  PrimaryStatus,
+  SegmentationReviewStrip,
+  SelectionWidget,
+} from "../components/workspace/ClinicalChrome";
+import {
+  buildContextualTools,
+  buildDentalMapEntries,
+  buildFeedbackModel,
+  buildInspectorModel,
+  buildSegmentationReviewModel,
+  deleteShortcutEffect,
+  headerNextAction,
+  isTextEntryTarget,
+  matchWorkspaceShortcut,
+  toothReviewLabel,
+  workflowBlockReason,
+  type CameraCommand,
+} from "../interaction/model";
+import {
   beginTransformTransaction,
   buildToothInteractionState,
   canTransformTooth,
@@ -67,13 +88,12 @@ import {
   BottomTimeline,
   LeftToolPanel,
   RightInspector,
-  StatusBar,
   ViewerOverlay,
   WorkflowHeader,
   WorkspaceContainer,
 } from "../components/workspace/WorkspacePrimitives";
-import { buildWorkflowActions, buildWorkflowSteps, workflowLabel, workflowStepIndex, type WorkflowStepId } from "../workflow";
-import { CaseLoadingOverlay, ProductionEmptyState, StatusPill } from "../components/production/ProductionPrimitives";
+import { buildWorkflowSteps, workflowLabel, workflowStepIndex, type WorkflowStepId } from "../workflow";
+import { CaseLoadingOverlay, ProductionEmptyState } from "../components/production/ProductionPrimitives";
 import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
 import {
   readRememberedActiveCaseId,
@@ -164,7 +184,9 @@ function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | nul
     contactCount: 0,
     warnings: [
       ...(diagnostic.duplicate_fdi_numbers?.length ? [`Duplicate FDI: ${diagnostic.duplicate_fdi_numbers.join(", ")}`] : []),
-      ...(diagnostic.missing_fdi_numbers?.length ? [`Missing FDI: ${diagnostic.missing_fdi_numbers.join(", ")}`] : []),
+      ...(diagnostic.missing_fdi_numbers?.length
+        ? [`Identity/data not established (reported FDI gap: ${diagnostic.missing_fdi_numbers.join(", ")})`]
+        : []),
       ...(diagnostic.excluded_fragment_count ? [`Excluded zero-face fragments: ${diagnostic.excluded_fragment_count}`] : []),
     ],
     provenance: diagnostic.provenance ?? "experimental",
@@ -263,6 +285,10 @@ export function App(): JSX.Element {
   const [showLower, setShowLower] = useState(true);
   const [archMode, setArchMode] = useState<ArchIsolationMode>("both");
   const [isolateSelectedTooth, setIsolateSelectedTooth] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
+  const [hoveredToothKey, setHoveredToothKey] = useState<string | null>(null);
+  const [cameraCommand, setCameraCommand] = useState<{ nonce: number; command: CameraCommand } | null>(null);
+  const [inspectorMinimized, setInspectorMinimized] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showGingiva, setShowGingiva] = useState(true);
   const [showTargetGhost, setShowTargetGhost] = useState(true);
@@ -274,7 +300,6 @@ export function App(): JSX.Element {
   const [originalOpacity, setOriginalOpacity] = useState(0.3);
   const [wireframe, setWireframe] = useState(false);
   const [confirmNewCaseOpen, setConfirmNewCaseOpen] = useState(false);
-  const [layersExpanded, setLayersExpanded] = useState(false);
   const [hiddenToothIds, setHiddenToothIds] = useState<ReadonlySet<number>>(new Set());
   const [reviewBundle, setReviewBundle] = useState<ReviewBundle>(() =>
     unavailableReviewBundle(
@@ -348,7 +373,7 @@ export function App(): JSX.Element {
             ? "Target / proposed setup ghost overlay."
             : "Requires a treatment proposal.",
         },
-        "tooth-labels": { visible: true, available: activeReviewStage !== null },
+        "tooth-labels": { visible: showLabels, available: activeReviewStage !== null },
         "movement-vectors": {
           visible: showMovementVectors,
           available: treatmentAvailable,
@@ -357,7 +382,7 @@ export function App(): JSX.Element {
             : "Requires a treatment proposal.",
         },
       }),
-    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showGingiva, showLower, showMovementVectors, showOriginal, showSegmentation, showTargetGhost, showUpper, treatmentAvailable],
+    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showGingiva, showLabels, showLower, showMovementVectors, showOriginal, showSegmentation, showTargetGhost, showUpper, treatmentAvailable],
   );
   const targetStage = useMemo(
     () => (treatmentAvailable ? reviewBundle.stages.at(-1) ?? null : null),
@@ -591,8 +616,8 @@ export function App(): JSX.Element {
     };
   }, [activeCase, processingStatus?.stage_status]);
 
-  function handleSelectTooth(toothNumber: string): void {
-    selectTooth(toothNumber);
+  function handleSelectTooth(toothNumber: string, options?: { additive?: boolean }): void {
+    selectTooth(toothNumber, options);
     const tooth =
       findToothByKey(reviewBundle.stages.at(-1)?.teeth, toothNumber) ??
       findToothByKey(activeReviewStage?.teeth, toothNumber);
@@ -1254,20 +1279,6 @@ export function App(): JSX.Element {
   const canShowScene = activeReviewStage !== null;
   const showStageTimeline =
     (workspace === "staging" || workspace === "refinement") && treatmentAvailable;
-  const showSceneLayers =
-    workspace !== "case-intake" || canShowScene;
-  const contextualActions = useMemo(
-    () =>
-      buildWorkflowActions({
-        activeStep: workspace,
-        hasCase: activeCase !== null,
-        bothArchesValid,
-        hasSegmentation: pipelineReviewStage !== null,
-        hasTreatment: treatmentAvailable,
-        isBusy,
-      }),
-    [activeCase, bothArchesValid, isBusy, pipelineReviewStage, treatmentAvailable, workspace],
-  );
 
   function requestNewCase(): void {
     if (activeCase) {
@@ -1286,11 +1297,15 @@ export function App(): JSX.Element {
       setWorkspace("case-intake");
       return;
     }
-    if (label === "Analyze case") {
+    if (label === "Analyze case" || label === "Review segmentation") {
       void handleReviewSegmentation();
       return;
     }
-    if (label === "Review Treatment Setup") {
+    if (
+      label === "Review Treatment Setup" ||
+      label === "Create Treatment Plan" ||
+      label === "Open Treatment Plan"
+    ) {
       void handleGeneratePlan();
       return;
     }
@@ -1310,6 +1325,115 @@ export function App(): JSX.Element {
       void handleExportRequest();
     }
   }
+
+  function issueCamera(command: CameraCommand): void {
+    setCameraCommand({ nonce: Date.now(), command });
+  }
+
+  function handleTool(id: string): void {
+    if (id === "fit-case") issueCamera({ type: "fit-case" });
+    else if (id === "fit-arch") {
+      issueCamera({ type: "fit-arch", arch: archMode === "lower" ? "lower" : "upper" });
+    } else if (id === "fit-selection") {
+      const keys = [
+        ...(selectedTooth ? [selectedTooth] : []),
+        ...multiSelectedKeys.filter((key) => key !== selectedTooth),
+      ];
+      if (keys.length > 0) issueCamera({ type: "fit-selection", keys });
+    } else if (id === "view-occlusal") issueCamera({ type: "preset", preset: "occlusal" });
+    else if (id === "view-front") issueCamera({ type: "preset", preset: "front" });
+    else if (id === "view-lateral") issueCamera({ type: "preset", preset: "right" });
+    else if (id === "reset-view") issueCamera({ type: "reset" });
+    else if (id === "arch-upper") setArchMode("upper");
+    else if (id === "arch-lower") setArchMode("lower");
+    else if (id === "arch-both") setArchMode("both");
+    else if (id === "labels") setShowLabels((value) => !value);
+    else if (id === "gingiva") setShowGingiva((value) => !value);
+    else if (id === "segmentation") setShowSegmentation((value) => !value);
+    else if (id === "wireframe") setWireframe((value) => !value);
+    else if (id === "movement") setShowMovementVectors((value) => !value);
+    else if (id === "target") setShowTargetGhost((value) => !value);
+    else if (id === "isolate") setIsolateSelectedTooth((value) => !value);
+  }
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (isTextEntryTarget(event.target)) return;
+      const shortcut = matchWorkspaceShortcut(event);
+      if (!shortcut) return;
+      if (shortcut === "delete") {
+        deleteShortcutEffect();
+        return;
+      }
+      event.preventDefault();
+      if (shortcut === "clear") handleClearSelection();
+      else if (shortcut === "fit-selection" || shortcut === "fit-case") handleTool(shortcut === "fit-case" ? "fit-case" : "fit-selection");
+      else if (shortcut === "arch-upper") setArchMode("upper");
+      else if (shortcut === "arch-lower") setArchMode("lower");
+      else if (shortcut === "arch-both") setArchMode("both");
+      else if (shortcut === "undo") void handleUndo();
+      else if (shortcut === "redo") void handleRedo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const reviewTeeth = pipelineReviewStage?.teeth ?? activeReviewStage?.teeth ?? [];
+  const segmentationReview = buildSegmentationReviewModel({
+    diagnostic: pipelineDiagnostic,
+    teeth: reviewTeeth,
+    patientReference: activeCase?.patient_reference ?? patientReference,
+  });
+  const dentalEntries = buildDentalMapEntries(reviewTeeth);
+  const selectedMapKeys = [
+    ...(selectedTooth ? [selectedTooth] : []),
+    ...multiSelectedKeys.filter((key) => key !== selectedTooth),
+  ];
+  const selectedReviewTooth = reviewTeeth.find((tooth) => toothReviewLabel(tooth).toothRef === selectedTooth) ?? null;
+  const selectedReviewLabel = selectedReviewTooth ? toothReviewLabel(selectedReviewTooth) : null;
+  const feedback = buildFeedbackModel({
+    stageStatus: processingStatus?.stage_status ?? null,
+    userMessage: processingStatus?.user_message ?? null,
+    elapsedSeconds: processingStatus?.elapsed_seconds ?? null,
+    errorCode: processingStatus?.error_code ?? null,
+    segmentation: segmentationReview,
+  });
+  const toolbar = buildContextualTools({
+    workspace,
+    sceneAvailable: canShowScene,
+    segmentationKind: segmentationReview.kind,
+    selectionCount: selectedMapKeys.length,
+    archMode,
+    isolateActive: isolateSelectedTooth,
+    labelsVisible: showLabels,
+    gingivaVisible: showGingiva,
+    segmentationVisible: showSegmentation,
+    wireframe,
+    movementVisible: showMovementVectors,
+    targetVisible: showTargetGhost,
+    treatmentAvailable,
+    validationAvailable: validation != null || Boolean(reviewBundle.validationSummary),
+    canTransform: treatmentAvailable && canTransformTooth(draftMovement),
+  });
+  const inspectorModel = buildInspectorModel({
+    minimized: inspectorMinimized || (!activeCase && !selectedTooth),
+    patientReference: activeCase?.patient_reference ?? patientReference,
+    caseId: activeCase?.id ?? null,
+    segmentation: segmentationReview,
+    selected: selectedReviewLabel,
+    selectionCount: selectedMapKeys.length,
+    confidence: selectedReviewTooth?.confidence ?? null,
+    treatmentAvailable,
+  });
+  const nextAction = headerNextAction({
+    workspace,
+    hasCase: Boolean(activeCase),
+    bothArchesValid,
+    hasSegmentation: pipelineReviewStage !== null,
+    hasTreatment: treatmentAvailable,
+    isBusy,
+  });
+  const inspectorIsMinimized = inspectorMinimized || (!activeCase && !selectedTooth);
 
   return (
     <AppShell>
@@ -1335,7 +1459,15 @@ export function App(): JSX.Element {
                 }}
                 disabled={blocked}
                 aria-current={workspace === id ? "step" : undefined}
-                title={blocked ? `${step.label} — complete prior steps first` : step.label}
+                title={
+                  workflowBlockReason(id, {
+                    hasCase: Boolean(activeCase),
+                    bothArchesValid,
+                    hasSegmentation: pipelineReviewStage !== null,
+                    segmentationKind: segmentationReview.kind,
+                    hasTreatment: treatmentAvailable,
+                  }) ?? step.label
+                }
               >
                 <span>{step.status === "complete" ? "✓" : String(index + 1).padStart(2, "0")}</span>
                 {step.label}
@@ -1344,13 +1476,23 @@ export function App(): JSX.Element {
           })}
         </nav>
         <div className="cad-environment">
-          <StatusPill tone={activeCase ? "success" : "neutral"}>
-            {activeCase ? "Workspace ready" : "Start a case"}
-          </StatusPill>
+          {nextAction ? (
+            <button
+              type="button"
+              className="primary-button"
+              data-testid="header-next-action"
+              title={nextAction.reason}
+              onClick={() => handleContextualAction(nextAction.label)}
+            >
+              {nextAction.label}
+            </button>
+          ) : null}
+          <PrimaryStatus feedback={feedback} />
+          {exportMessage ? <span>{exportMessage}</span> : null}
         </div>
       </WorkflowHeader>
 
-      <WorkspaceContainer>
+      <WorkspaceContainer className={inspectorIsMinimized ? "is-inspector-minimized" : ""}>
         <LeftToolPanel>
           <div className="cad-panel-heading">
             <div>
@@ -1370,20 +1512,6 @@ export function App(): JSX.Element {
               </button>
             </div>
           )}
-          {contextualActions.length > 0 && (
-            <div className="cad-contextual-actions" aria-label="Contextual actions">
-              {contextualActions.map((action) => (
-                <button
-                  key={`${action.step}-${action.label}`}
-                  className="secondary-button"
-                  disabled={action.disabled}
-                  onClick={() => handleContextualAction(action.label)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {workspace === "case-intake" && (
             <CaseIntakePanel
@@ -1398,6 +1526,7 @@ export function App(): JSX.Element {
               bothArchesValid={bothArchesValid}
               backendTreatment={backendTreatment}
               processingStatus={processingStatus}
+              segmentationReviewed={pipelineReviewStage !== null}
               onCreateCase={() => void handleCreateCase()}
               onRequestNewCase={requestNewCase}
               onUpload={(arch, file) => void handleUploadAndValidate(arch, file)}
@@ -1513,124 +1642,6 @@ export function App(): JSX.Element {
             />
           )}
 
-          {showSceneLayers && (
-            <WorkspaceViewportChrome
-              archMode={archMode}
-              onArchMode={setArchMode}
-              isolateSelected={isolateSelectedTooth}
-              onIsolateSelected={setIsolateSelectedTooth}
-              selectedToothKey={selectedTooth}
-              dentalIntelligence={dentalIntelligence}
-            />
-          )}
-
-          {showSceneLayers && (
-            <details
-              className="cad-layers-disclosure"
-              open={layersExpanded}
-              onToggle={(event) => setLayersExpanded((event.target as HTMLDetailsElement).open)}
-              data-testid="scene-layers"
-            >
-              <summary>Scene layers</summary>
-              <div className="cad-layer-controls">
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showUpper}
-                    onChange={(event) => {
-                      setShowUpper(event.target.checked);
-                      if (event.target.checked && showLower) setArchMode("both");
-                      else if (event.target.checked) setArchMode("upper");
-                    }}
-                  />
-                  <span>Upper</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showLower}
-                    onChange={(event) => {
-                      setShowLower(event.target.checked);
-                      if (event.target.checked && showUpper) setArchMode("both");
-                      else if (event.target.checked) setArchMode("lower");
-                    }}
-                  />
-                  <span>Lower</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showGingiva}
-                    onChange={(event) => setShowGingiva(event.target.checked)}
-                  />
-                  <span>Gingiva (presentation)</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showTargetGhost}
-                    onChange={(event) => setShowTargetGhost(event.target.checked)}
-                    disabled={!treatmentAvailable}
-                  />
-                  <span>Target</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showOriginal}
-                    onChange={(event) => setShowOriginal(event.target.checked)}
-                  />
-                  <span>Current scan</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showMovementVectors}
-                    onChange={(event) => setShowMovementVectors(event.target.checked)}
-                    disabled={!treatmentAvailable}
-                  />
-                  <span>Movement</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={showSegmentation}
-                    onChange={(event) => setShowSegmentation(event.target.checked)}
-                  />
-                  <span>Segmentation</span>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={wireframe}
-                    onChange={(event) => setWireframe(event.target.checked)}
-                  />
-                  <span>Wireframe</span>
-                </label>
-                {showOriginal && (
-                  <label className="range-row">
-                    <span>Scan opacity</span>
-                    <input
-                      type="range"
-                      min="0.08"
-                      max="0.75"
-                      step="0.01"
-                      value={originalOpacity}
-                      onChange={(event) => setOriginalOpacity(Number(event.target.value))}
-                    />
-                  </label>
-                )}
-              </div>
-            </details>
-          )}
-
-          {activeCase && (
-            <div className="cad-case-status" data-testid="case-status-compact">
-              <span className="eyebrow">Case</span>
-              <strong>{activeCase.patient_reference || activeCase.id}</strong>
-              <small>{activeCase.status.replaceAll("_", " ")}</small>
-            </div>
-          )}
           {error && (
             <div className="error-message">
               We could not complete this step. {error}
@@ -1639,19 +1650,34 @@ export function App(): JSX.Element {
           )}
         </LeftToolPanel>
 
-        <section className="cad-viewport-column">
+        <section className="cad-viewport-column" data-testid="layout-viewport">
           <div className="cad-viewport-header">
             <div>
-              <span className="eyebrow">Workflow · {workspaceLabel}</span>
-              <h1>{workspaceLabel}</h1>
+              <span className="eyebrow">{workspace === "analysis" ? "Analysis" : workspaceLabel}</span>
+              <h1>{workspace === "analysis" ? "Segmentation Review" : workspaceLabel}</h1>
             </div>
-            <div className="cad-viewport-meta">
-              {canShowScene
-                ? `${activeReviewStage.teeth.length} tooth surfaces`
-                : "Awaiting case data"}
-            </div>
+            <SelectionWidget
+              count={selectedMapKeys.length}
+              label={selectedReviewLabel?.text ?? null}
+            />
           </div>
+          {workspace === "analysis" || pipelineDiagnostic ? (
+            <SegmentationReviewStrip
+              model={segmentationReview}
+              patientReference={activeCase?.patient_reference ?? patientReference}
+            />
+          ) : null}
           <div className="cad-viewport-frame">
+            {(workspace === "analysis" || dentalEntries.length > 0 || segmentationReview.kind !== "not_run") ? (
+            <DentalArchMap
+              entries={dentalEntries}
+              kind={segmentationReview.kind}
+              selectedKeys={selectedMapKeys}
+              hoveredKey={hoveredToothKey}
+              onSelect={(toothRef, additive) => handleSelectTooth(toothRef, { additive })}
+              onHover={setHoveredToothKey}
+            />
+            ) : null}
             {canShowScene && sceneGraph ? (
               <StageViewer
                 stage={activeReviewStage}
@@ -1674,56 +1700,79 @@ export function App(): JSX.Element {
                 }
                 onSelectTooth={handleSelectTooth}
                 onClearSelection={handleClearSelection}
+                onHoverTooth={setHoveredToothKey}
+                hoveredToothKey={hoveredToothKey}
+                cameraCommand={cameraCommand}
+                showBuiltinCameraTools={false}
                 onFit={() => undefined}
                 onReset={() => undefined}
                 contextualToolbar={
-                  selectedTooth && workspace === "refinement" ? (
-                    <ContextualToothToolbar
-                      label={
-                        selectedFixtureTooth?.fdiNumber
-                          ? `FDI ${selectedFixtureTooth.fdiNumber}`
-                          : selectedTooth
-                      }
-                      arch={selection.arch}
-                      gizmoMode={gizmoMode}
-                      onGizmoMode={setGizmoMode}
-                      canEdit={treatmentAvailable && draftMovement !== null}
-                      canTransform={canTransformTooth(draftMovement)}
-                      isDirty={
-                        draftMovement !== null &&
-                        currentProposalTooth !== null &&
-                        hasMovementChanges(draftMovement, currentProposalTooth.movement)
-                      }
-                      locked={Boolean(draftMovement?.locked)}
-                      excluded={Boolean(draftMovement?.excluded)}
-                      showTargetGhost={showTargetGhost}
-                      targetGhostAvailable={treatmentAvailable}
-                      showMovementVectors={showMovementVectors}
-                      onToggleTargetGhost={() => setShowTargetGhost((value) => !value)}
-                      onToggleMovementVectors={() => setShowMovementVectors((value) => !value)}
-                      onToggleLocked={() =>
-                        setDraftMovement((current) =>
-                          current ? { ...current, locked: !current.locked } : current,
-                        )
-                      }
-                      onToggleExcluded={() =>
-                        setDraftMovement((current) =>
-                          current ? { ...current, excluded: !current.excluded } : current,
-                        )
-                      }
-                      onApply={() => void handleApplyEdit()}
-                      onCancel={handleCancelEdit}
-                      onClearSelection={handleClearSelection}
-                    />
-                  ) : null
+                  <ContextualWorkspaceToolbar
+                    tools={toolbar.tools}
+                    unavailable={toolbar.unavailable}
+                    selectionCount={selectedMapKeys.length}
+                    onTool={handleTool}
+                    extra={
+                      selectedTooth && workspace === "refinement" ? (
+                        <ContextualToothToolbar
+                          embedded
+                          label={selectedReviewLabel?.text ?? selectedTooth}
+                          arch={selection.arch}
+                          gizmoMode={gizmoMode}
+                          onGizmoMode={setGizmoMode}
+                          canEdit={treatmentAvailable && draftMovement !== null}
+                          canTransform={canTransformTooth(draftMovement)}
+                          isDirty={
+                            draftMovement !== null &&
+                            currentProposalTooth !== null &&
+                            hasMovementChanges(draftMovement, currentProposalTooth.movement)
+                          }
+                          locked={Boolean(draftMovement?.locked)}
+                          excluded={Boolean(draftMovement?.excluded)}
+                          showTargetGhost={showTargetGhost}
+                          targetGhostAvailable={treatmentAvailable}
+                          showMovementVectors={showMovementVectors}
+                          onToggleTargetGhost={() => setShowTargetGhost((value) => !value)}
+                          onToggleMovementVectors={() => setShowMovementVectors((value) => !value)}
+                          onToggleLocked={() =>
+                            setDraftMovement((current) =>
+                              current ? { ...current, locked: !current.locked } : current,
+                            )
+                          }
+                          onToggleExcluded={() =>
+                            setDraftMovement((current) =>
+                              current ? { ...current, excluded: !current.excluded } : current,
+                            )
+                          }
+                          onApply={() => void handleApplyEdit()}
+                          onCancel={handleCancelEdit}
+                          onClearSelection={handleClearSelection}
+                        />
+                      ) : null
+                    }
+                  />
                 }
               />
             ) : (
               <ProductionEmptyState
-                title="Prepare a case to begin"
+                title={
+                  segmentationReview.kind === "blocked_by_environment"
+                    ? "Segmentation blocked"
+                    : segmentationReview.kind === "failed"
+                      ? "Segmentation failed"
+                      : segmentationReview.kind === "not_available"
+                        ? "Segmentation not available"
+                        : segmentationReview.kind === "fixture_test_only"
+                          ? "Fixture geometry only"
+                          : activeCase
+                            ? "No tooth surfaces yet"
+                            : "Prepare a case to begin"
+                }
                 detail={
-                  reviewBundle.unavailableReason ??
-                  "Import upper and lower scans to establish the dental workspace."
+                  segmentationReview.kind === "not_run"
+                    ? (reviewBundle.unavailableReason ??
+                      "Import upper and lower scans to establish the dental workspace.")
+                    : segmentationReview.whatHappened
                 }
                 action={
                   workspace !== "case-intake" ? (
@@ -1764,6 +1813,11 @@ export function App(): JSX.Element {
         </section>
 
         <RightInspector>
+          <AdaptiveInspector
+            model={inspectorModel}
+            minimized={inspectorIsMinimized}
+            onToggle={() => setInspectorMinimized((value) => !value)}
+          />
           {workspace === "case-intake" && (
             <CaseIntakeInspector
               caseId={activeCase?.id ?? null}
@@ -1780,11 +1834,15 @@ export function App(): JSX.Element {
               teeth={pipelineReviewStage?.teeth ?? []}
               validation={validation}
               selectedLabel={
-                selectedFixtureTooth
-                  ? formatToothIdentity(selectedFixtureTooth)
-                  : selection.selectedToothRef ?? "Select a mesh"
+                selectedReviewLabel?.text ??
+                selection.selectedToothRef ??
+                "Select a tooth"
               }
-              selectedConfidence={selection.confidence}
+              selectedConfidence={
+                segmentationReview.kind === "real_model_inference"
+                  ? selection.confidence
+                  : null
+              }
               selectedArch={selection.arch}
             />
           )}
@@ -1880,12 +1938,6 @@ export function App(): JSX.Element {
           )}
         </RightInspector>
       </WorkspaceContainer>
-      <StatusBar>
-        <span>{activeCase ? `Case ${activeCase.patient_reference}` : "No active case"}</span>
-        <span>{workspaceLabel}</span>
-        <span>{activeCase ? "Local workspace" : "Ready"}</span>
-        {exportMessage && <span>{exportMessage}</span>}
-      </StatusBar>
       {import.meta.env.MODE === "test" && (
         <>
           <span className="production-test-metadata">
