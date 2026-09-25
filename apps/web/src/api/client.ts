@@ -309,6 +309,42 @@ export const api = {
     });
   },
 
+  regenerateStaging(
+    caseId: string,
+    description = "",
+    authorSource = "doctor",
+  ): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/staging/regenerate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description, author_source: authorSource }),
+    });
+  },
+
+  saveStagingVersion(
+    caseId: string,
+    description = "",
+    authorSource = "doctor",
+  ): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/staging/versions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description, author_source: authorSource }),
+    });
+  },
+
+  listStagingVersions(caseId: string): Promise<{ versions: Array<Record<string, unknown>> }> {
+    return requestJson(`/cases/${caseId}/treatment/staging/versions`);
+  },
+
+  restoreStagingVersion(caseId: string, stagingVersionId: string): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/staging/versions/restore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staging_version_id: stagingVersionId }),
+    });
+  },
+
   setIPRStatus(caseId: string, siteId: string, status: string): Promise<ReviewBundle> {
     return requestJson<ReviewBundle>(
       `/cases/${caseId}/treatment/proposals/ipr/${encodeURIComponent(siteId)}/status`,

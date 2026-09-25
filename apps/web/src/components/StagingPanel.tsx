@@ -1,4 +1,4 @@
-import type { ReviewStage } from "../review/types";
+import type { ReviewStage, SmartStagingPayload } from "../review/types";
 import {
   buildPerToothMovementReview,
   buildStageGoals,
@@ -15,15 +15,18 @@ interface StagingPanelProps {
   showMovementVectors: boolean;
   treatmentAvailable: boolean;
   recalculationState: "idle" | "recalculating" | "complete";
+  smartStaging?: SmartStagingPayload | null;
   onSelectStage: (index: number) => void;
   onTogglePlay: () => void;
   onShowUpper: (value: boolean) => void;
   onShowLower: (value: boolean) => void;
   onShowMovementVectors: (value: boolean) => void;
   onRecalculate: () => void;
+  onRegenerateStaging?: () => void;
+  onSaveStagingVersion?: () => void;
 }
 
-/** Staging left tools — timeline/sequence/parameters from existing stages only. */
+/** Staging left tools — timeline/sequence/parameters + WP-06 smart staging honesty. */
 export function StagingPanel({
   stages,
   selectedIndex,
@@ -33,21 +36,88 @@ export function StagingPanel({
   showMovementVectors,
   treatmentAvailable,
   recalculationState,
+  smartStaging = null,
   onSelectStage,
   onTogglePlay,
   onShowUpper,
   onShowLower,
   onShowMovementVectors,
   onRecalculate,
+  onRegenerateStaging,
+  onSaveStagingVersion,
 }: StagingPanelProps): JSX.Element {
   const sequence = buildStagingSequence(stages);
   const current = stages[selectedIndex] ?? null;
   const goals = buildStageGoals(current);
   const parameters = buildStageParameters(current);
   const toothReview = buildPerToothMovementReview(current?.teeth ?? []);
+  const freshness = smartStaging?.meta?.freshness ?? smartStaging?.freshness ?? "unavailable";
+  const isStale = freshness === "stale";
 
   return (
     <div className="staging-panel case-form" data-testid="staging-panel">
+      <section className="analysis-section" aria-labelledby="smart-staging" data-testid="smart-staging-status">
+        <h3 id="smart-staging" className="eyebrow">
+          Smart Staging
+        </h3>
+        <div className="cad-stat-row">
+          <span>Freshness</span>
+          <strong data-testid="staging-freshness">{freshness}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Truth state</span>
+          <strong>{(smartStaging?.meta?.truth_state ?? "unavailable").replaceAll("_", " ")}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Final equals target</span>
+          <strong>
+            {smartStaging?.final_equals_target == null
+              ? "Unavailable"
+              : smartStaging.final_equals_target
+                ? "Yes"
+                : "No"}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Algorithm</span>
+          <strong>
+            {smartStaging?.meta
+              ? `${smartStaging.meta.algorithm_name} @ ${smartStaging.meta.algorithm_version}`
+              : "Unavailable"}
+          </strong>
+        </div>
+        <small className="cad-review-note">
+          Computational staging proposal — not clinically optimized or approved.
+        </small>
+        {isStale && (
+          <small className="diagnostic-warning" data-testid="staging-stale-warning">
+            Staging is stale relative to the current Treatment Setup version. Regenerate explicitly.
+          </small>
+        )}
+        {onRegenerateStaging && (
+          <button
+            className="primary-button"
+            type="button"
+            onClick={onRegenerateStaging}
+            disabled={!treatmentAvailable || recalculationState === "recalculating"}
+            data-testid="staging-regenerate"
+          >
+            {recalculationState === "recalculating" ? "Regenerating..." : "Generate / Regenerate Staging"}
+          </button>
+        )}
+        {onSaveStagingVersion && (
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onSaveStagingVersion}
+            disabled={!treatmentAvailable || isStale}
+            data-testid="staging-save-version"
+          >
+            Save staging version
+          </button>
+        )}
+      </section>
+
       <section className="analysis-section" aria-labelledby="stage-timeline">
         <h3 id="stage-timeline" className="eyebrow">
           Stage Timeline

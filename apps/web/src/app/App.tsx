@@ -840,6 +840,41 @@ export function App(): JSX.Element {
     }, 250);
   }
 
+  async function handleRegenerateStaging(): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Staging regenerate requires an active treatment session.");
+      return;
+    }
+    setRecalculationState("recalculating");
+    try {
+      setReviewBundle(
+        await api.regenerateStaging(activeCase.id, "Doctor-requested staging regenerate", "doctor"),
+      );
+      setStageIndex(0);
+      setRecalculationState("complete");
+    } catch (err) {
+      setError((err as Error).message);
+      setRecalculationState("idle");
+    }
+  }
+
+  async function handleSaveStagingVersion(): Promise<void> {
+    if (!backendTreatment || !activeCase) {
+      setError("Saving a staging version requires an active treatment session.");
+      return;
+    }
+    startBusy("Saving staging version");
+    try {
+      setReviewBundle(
+        await api.saveStagingVersion(activeCase.id, "Doctor-saved staging version", "doctor"),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      stopBusy();
+    }
+  }
+
   async function handleExportRequest(): Promise<void> {
     if (!backendTreatment || !activeCase) {
       setExportMessage(
@@ -1383,6 +1418,7 @@ export function App(): JSX.Element {
               showMovementVectors={showMovementVectors}
               treatmentAvailable={treatmentAvailable}
               recalculationState={recalculationState}
+              smartStaging={reviewBundle.smartStaging}
               onSelectStage={(index) => {
                 setStageIndex(index);
                 setIsPlaying(false);
@@ -1392,6 +1428,8 @@ export function App(): JSX.Element {
               onShowLower={setShowLower}
               onShowMovementVectors={setShowMovementVectors}
               onRecalculate={() => void handleRecalculate()}
+              onRegenerateStaging={() => void handleRegenerateStaging()}
+              onSaveStagingVersion={() => void handleSaveStagingVersion()}
             />
           )}
 

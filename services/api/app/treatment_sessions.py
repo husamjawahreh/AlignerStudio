@@ -36,6 +36,16 @@ from engines.planning.setup_versioning import (
     snapshot_from_session_parts,
 )
 from engines.planning.staging_engine import TreatmentStagingEngine
+from engines.planning.smart_staging_engine import (
+    SmartStagingEngine,
+    SmartStagingPlan,
+    SmartStagingVersionSnapshot,
+    append_staging_version,
+    build_smart_staging_review_payload,
+    evaluate_freshness,
+    find_staging_version,
+    with_freshness,
+)
 from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
     GeometricValidationEngine,
@@ -45,6 +55,7 @@ from engines.validation.review_summary import build_validation_review_summary
 from app.engineering_fixture import demo_objectives, synthetic_upper_arch
 from app.session_persistence import delete_session, load_session, save_session
 from domain.treatment_plan.setup_v2 import stable_setup_plan_id
+from domain.treatment_plan.smart_staging import StagingFreshness
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +77,9 @@ class TreatmentSession:
     # WP-05 Treatment Setup 2.0 lineage (defaults keep pickle-compat with older sessions).
     parent_version_id: str | None = None
     version_history: tuple = ()
+    # WP-06 Smart Staging lineage.
+    smart_staging: Any = None
+    staging_history: tuple = ()
 
 
 class TreatmentSessionStore:
@@ -75,6 +89,7 @@ class TreatmentSessionStore:
         self._sessions: dict[str, TreatmentSession] = {}
         self._planner = TreatmentPlanningEngine()
         self._stager = TreatmentStagingEngine()
+        self._smart_stager = SmartStagingEngine(stager=self._stager)
         self._validator = GeometricValidationEngine()
         self._proposals = TreatmentProposalEngine()
         self._editing = TreatmentEditingApplication()
@@ -134,21 +149,146 @@ class TreatmentSessionStore:
         movement: dict[str, float],
         *,
         reason: str | None = None,
+        restage: bool = True,
     ) -> TreatmentSession:
-        """P4: Doctor Edit → Target Update → Staging Rebuild → Validation → Updated Review."""
+        """P4: Doctor Edit → Target Update → (optional) Staging Rebuild → Validation.
+
+        When ``restage=False``, the target setup updates and existing staging is marked
+        stale until an explicit regenerate (WP-06). Default ``restage=True`` preserves
+        P4/WP-05 coupled restage behavior.
+        """
         from domain.movement.interaction import normalize_edit_reason
 
-        session = self.get(case_id)
-        result = self._editing.apply_edit_and_recalculate(
+        session = self._normalize_session(self.get(case_id))
+        reason_value = normalize_edit_reason(reason)
+        if restage:
+            result = self._editing.apply_edit_and_recalculate(
+                session.proposal,
+                tooth_number,
+                ToothMovement(**{k: v for k, v in movement.items() if k != "reason"}),
+                self._staging_configuration(),
+                GeometricValidationConfiguration(1.0, 0.001, 0.0),
+                reason=reason_value,
+            )
+            session = self._session_from_result(session, result)
+            session = self._attach_intelligence(session)
+            return self._remember(case_id, session)
+
+        edited = self._editing.apply_edit(
             session.proposal,
             tooth_number,
             ToothMovement(**{k: v for k, v in movement.items() if k != "reason"}),
+            reason=reason_value,
+        )
+        parent_staging = None
+        if getattr(session, "smart_staging", None) is not None:
+            parent_staging = session.smart_staging.meta.staging_version_id
+            stale_plan = with_freshness(session.smart_staging, edited.version_id)
+        else:
+            stale_plan = None
+        session = TreatmentSession(
+            proposal=edited,
+            staging=session.staging,
+            validation=session.validation,
+            adjuncts=self._proposals.generate(edited, previous=session.adjuncts),
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+            parent_version_id=session.proposal.version_id,
+            version_history=session.version_history,
+            smart_staging=stale_plan,
+            staging_history=getattr(session, "staging_history", ()) or (),
+        )
+        del parent_staging  # lineage retained on stale plan meta
+        session = self._attach_intelligence(session)
+        return self._remember(case_id, session)
+
+    def regenerate_staging(
+        self,
+        case_id: str,
+        *,
+        description: str = "",
+        author_source: str = "doctor",
+    ) -> TreatmentSession:
+        """Explicit WP-06 regenerate: restage + validate against current setup version."""
+        session = self._normalize_session(self.get(case_id))
+        parent_id = (
+            session.smart_staging.meta.staging_version_id
+            if session.smart_staging is not None
+            else None
+        )
+        result = self._editing.recalculate(
+            session.proposal,
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
-            reason=normalize_edit_reason(reason),
         )
-        session = self._session_from_result(session, result)
+        session = self._session_from_result(
+            session,
+            result,
+            staging_author_source=author_source,
+            staging_description=description or "Explicit staging regenerate",
+            parent_staging_version_id=parent_id,
+        )
         session = self._attach_intelligence(session)
+        return self._remember(case_id, session)
+
+    def save_staging_version(
+        self,
+        case_id: str,
+        *,
+        description: str = "",
+        author_source: str = "doctor",
+    ) -> TreatmentSession:
+        """Freeze the current smart staging plan as an immutable staging version."""
+        session = self._normalize_session(self.get(case_id))
+        if session.smart_staging is None:
+            session = self.regenerate_staging(
+                case_id, description=description or "Initial staging save", author_source=author_source
+            )
+            session = self._normalize_session(session)
+        plan = session.smart_staging
+        if plan is None:
+            raise TreatmentSessionError("Smart staging plan is unavailable")
+        freshness = evaluate_freshness(
+            source_setup_version_id=plan.meta.source_setup_version_id,
+            current_setup_version_id=session.proposal.version_id,
+            has_staging=True,
+        )
+        if freshness is StagingFreshness.STALE:
+            raise TreatmentSessionError(
+                "Staging is stale relative to the current Treatment Setup version; regenerate first"
+            )
+        snapshot = SmartStagingVersionSnapshot(plan=plan, validation=session.validation)
+        history = append_staging_version(tuple(session.staging_history), snapshot)
+        session = dataclass_replace(session, staging_history=history)
+        return self._remember(case_id, session)
+
+    def list_staging_versions(self, case_id: str) -> list[dict]:
+        session = self._normalize_session(self.get(case_id))
+        return [item.plan.meta.payload() for item in session.staging_history]
+
+    def restore_staging_version(self, case_id: str, staging_version_id: str) -> TreatmentSession:
+        """Restore an immutable staging snapshot into the working session."""
+        session = self._normalize_session(self.get(case_id))
+        snapshot = find_staging_version(tuple(session.staging_history), staging_version_id)
+        if snapshot is None:
+            raise TreatmentSessionError(f"Unknown staging version: {staging_version_id}")
+        plan = with_freshness(snapshot.plan, session.proposal.version_id)
+        validation = snapshot.validation or session.validation
+        session = TreatmentSession(
+            proposal=session.proposal,
+            staging=snapshot.plan.staging,
+            validation=validation,
+            adjuncts=session.adjuncts,
+            source_kind=session.source_kind,
+            experimental=session.experimental,
+            planning_mode=session.planning_mode,
+            intelligence=session.intelligence,
+            parent_version_id=session.parent_version_id,
+            version_history=session.version_history,
+            smart_staging=plan,
+            staging_history=session.staging_history,
+        )
         return self._remember(case_id, session)
 
     def apply_edits(
@@ -222,7 +362,19 @@ class TreatmentSessionStore:
             intelligence=session.intelligence,
             parent_version_id=snapshot.meta.version_id,
             version_history=session.version_history,
+            staging_history=getattr(session, "staging_history", ()) or (),
         )
+        # Rebuild smart staging binding for the restored setup version (no silent rebase).
+        plan = self._smart_stager.wrap(
+            snapshot.proposal,
+            snapshot.staging,
+            self._staging_configuration(),
+            validation=snapshot.validation,
+            author_source="system_restore",
+            description="Restored with Treatment Setup version",
+        )
+        plan = with_freshness(plan, snapshot.proposal.version_id)
+        restored = dataclass_replace(restored, smart_staging=plan)
         restored = self._attach_intelligence(restored)
         return self._remember(case_id, restored)
 
@@ -260,8 +412,33 @@ class TreatmentSessionStore:
             "validation_status": snapshot.validation.status.value,
         }
 
-    def _session_from_result(self, session: TreatmentSession, result) -> TreatmentSession:
+    def _session_from_result(
+        self,
+        session: TreatmentSession,
+        result,
+        *,
+        staging_author_source: str = "system",
+        staging_description: str = "",
+        parent_staging_version_id: str | None = None,
+    ) -> TreatmentSession:
         session = self._normalize_session(session)
+        parent_staging = parent_staging_version_id
+        if parent_staging is None and session.smart_staging is not None:
+            parent_staging = session.smart_staging.meta.staging_version_id
+        plan = self._smart_stager.wrap(
+            result.proposal,
+            result.staging,
+            self._staging_configuration(),
+            validation=result.validation,
+            parent_staging_version_id=parent_staging,
+            author_source=staging_author_source,
+            description=staging_description
+            or "Staging coupled to Treatment Setup edit/recalculate",
+        )
+        history = append_staging_version(
+            tuple(session.staging_history),
+            SmartStagingVersionSnapshot(plan=plan, validation=result.validation),
+        )
         return TreatmentSession(
             proposal=result.proposal,
             staging=result.staging,
@@ -272,6 +449,8 @@ class TreatmentSessionStore:
             planning_mode=session.planning_mode,
             parent_version_id=session.proposal.version_id,
             version_history=session.version_history,
+            smart_staging=plan,
+            staging_history=history,
         )
 
     @staticmethod
@@ -280,12 +459,23 @@ class TreatmentSessionStore:
         history = getattr(session, "version_history", ()) or ()
         if not isinstance(history, tuple):
             history = tuple(history)
-        if parent is session.parent_version_id and history is session.version_history:
+        staging_history = getattr(session, "staging_history", ()) or ()
+        if not isinstance(staging_history, tuple):
+            staging_history = tuple(staging_history)
+        smart_staging = getattr(session, "smart_staging", None)
+        if (
+            parent is session.parent_version_id
+            and history is session.version_history
+            and staging_history is getattr(session, "staging_history", ())
+            and smart_staging is getattr(session, "smart_staging", None)
+        ):
             return session
         return dataclass_replace(
             session,
             parent_version_id=parent,
             version_history=history,
+            staging_history=staging_history,
+            smart_staging=smart_staging,
         )
 
     def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
@@ -423,6 +613,14 @@ class TreatmentSessionStore:
         intelligence = AdvancedPlanningIntelligenceResult(
             report=report, candidates=tuple(updated_candidates)
         )
+        plan = self._smart_stager.wrap(
+            match.proposal,
+            match.staging,
+            self._staging_configuration(),
+            validation=match.validation,
+            author_source="doctor",
+            description=f"Activated setup alternative {alternative_id}",
+        )
         session = TreatmentSession(
             proposal=match.proposal,
             staging=match.staging,
@@ -434,6 +632,11 @@ class TreatmentSessionStore:
             intelligence=intelligence,
             parent_version_id=session.proposal.version_id,
             version_history=getattr(session, "version_history", ()) or (),
+            smart_staging=plan,
+            staging_history=append_staging_version(
+                tuple(getattr(session, "staging_history", ()) or ()),
+                SmartStagingVersionSnapshot(plan=plan, validation=match.validation),
+            ),
         )
         return self._remember(case_id, session)
 
@@ -505,6 +708,8 @@ class TreatmentSessionStore:
             planning_mode=proposal.planning_mode,
             parent_version_id=None,
             version_history=(),
+            smart_staging=None,
+            staging_history=(),
         )
         # Seed immutable baseline version for Treatment Setup 2.0 lineage.
         baseline = snapshot_from_session_parts(
@@ -515,9 +720,20 @@ class TreatmentSessionStore:
             description="Initial treatment setup",
             author_source="deterministic_planner",
         )
+        plan = self._smart_stager.wrap(
+            proposal,
+            staging,
+            self._staging_configuration(),
+            validation=validation,
+            author_source="deterministic_planner",
+            description="Initial smart staging",
+        )
+        staging_snapshot = SmartStagingVersionSnapshot(plan=plan, validation=validation)
         session = dataclass_replace(
             session,
             version_history=append_immutable_version((), baseline),
+            smart_staging=plan,
+            staging_history=append_staging_version((), staging_snapshot),
         )
         return self._attach_intelligence(session)
 
@@ -685,6 +901,12 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             version_history=tuple(getattr(session, "version_history", ()) or ()),
             source_kind=session.source_kind,
         ),
+        "smartStaging": build_smart_staging_review_payload(
+            getattr(session, "smart_staging", None),
+            current_setup_version_id=session.proposal.version_id,
+            staging_history=tuple(getattr(session, "staging_history", ()) or ()),
+        ),
+        "stagingId": session.staging.staging_id,
         "editHistory": [
             {
                 "editId": item.edit_id,

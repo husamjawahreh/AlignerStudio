@@ -89,6 +89,8 @@ class MovementEditRequest(BaseModel):
     excluded: bool = False
     # WP-04 provenance — gizmo_edit / numeric_edit / doctor_edit / doctor_reset / system_restore
     reason: str | None = None
+    # WP-06: when false, mark staging stale instead of coupled restage
+    restage: bool = True
 
 
 class ToothResetRequest(BaseModel):
@@ -115,6 +117,20 @@ class SetupVersionRestoreRequest(BaseModel):
 class SetupVersionCompareRequest(BaseModel):
     left_version_id: str
     right_version_id: str
+
+
+class StagingRegenerateRequest(BaseModel):
+    description: str = ""
+    author_source: str = "doctor"
+
+
+class StagingVersionSaveRequest(BaseModel):
+    description: str = ""
+    author_source: str = "doctor"
+
+
+class StagingVersionRestoreRequest(BaseModel):
+    staging_version_id: str
 
 
 def _to_case_response(case: Case) -> CaseResponse:
@@ -398,13 +414,14 @@ def apply_treatment_edit(case_id: str, request: MovementEditRequest) -> dict:
         tooth_key = request.tooth_ref if request.tooth_ref is not None else request.tooth_number
         if tooth_key is None:
             raise ValueError("Either tooth_number or tooth_ref is required")
-        payload = request.model_dump(exclude={"tooth_number", "tooth_ref", "reason"})
+        payload = request.model_dump(exclude={"tooth_number", "tooth_ref", "reason", "restage"})
         return review_bundle(
             treatment_sessions.apply_edit(
                 case_id,
                 tooth_key,
                 payload,
                 reason=request.reason,
+                restage=request.restage,
             )
         )
     except (TreatmentSessionError, ValueError) as error:
@@ -493,6 +510,53 @@ def compare_treatment_versions(case_id: str, request: SetupVersionCompareRequest
     try:
         return treatment_sessions.compare_versions(
             case_id, request.left_version_id, request.right_version_id
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/staging/regenerate")
+def regenerate_treatment_staging(case_id: str, request: StagingRegenerateRequest) -> dict:
+    """WP-06 explicit staging regenerate — does not silently rebase a stale plan."""
+    try:
+        return review_bundle(
+            treatment_sessions.regenerate_staging(
+                case_id,
+                description=request.description,
+                author_source=request.author_source or "doctor",
+            )
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/{case_id}/treatment/staging/versions")
+def list_staging_versions(case_id: str) -> dict:
+    try:
+        return {"versions": treatment_sessions.list_staging_versions(case_id)}
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/staging/versions")
+def save_staging_version(case_id: str, request: StagingVersionSaveRequest) -> dict:
+    try:
+        return review_bundle(
+            treatment_sessions.save_staging_version(
+                case_id,
+                description=request.description,
+                author_source=request.author_source or "doctor",
+            )
+        )
+    except TreatmentSessionError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/treatment/staging/versions/restore")
+def restore_staging_version(case_id: str, request: StagingVersionRestoreRequest) -> dict:
+    try:
+        return review_bundle(
+            treatment_sessions.restore_staging_version(case_id, request.staging_version_id)
         )
     except TreatmentSessionError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

@@ -181,6 +181,8 @@ export interface ReviewBundle {
   parentVersionId?: string | null;
   setupPlanId?: string;
   treatmentSetup?: TreatmentSetup2Payload;
+  smartStaging?: SmartStagingPayload;
+  stagingId?: string;
 }
 
 export type ReadinessState =
@@ -262,6 +264,39 @@ export interface TreatmentSetup2Payload {
   versions: readonly TreatmentSetupVersionMeta[];
   clinically_approved: false;
   notes: readonly string[];
+}
+
+export type StagingFreshness = "current" | "stale" | "unavailable";
+
+export interface SmartStagingPayload {
+  contract_version: "smart_staging_1.0";
+  meta?: {
+    staging_plan_id: string;
+    staging_version_id: string;
+    parent_staging_version_id: string | null;
+    source_setup_version_id: string;
+    algorithm_name: string;
+    algorithm_version: string;
+    stage_count: number;
+    affected_tooth_count: number;
+    truth_state: string;
+    freshness: StagingFreshness;
+    limitations: readonly string[];
+    clinically_approved: false;
+    clinically_optimal: false;
+  };
+  staging_id?: string;
+  stage_count?: number;
+  final_equals_target?: boolean;
+  reconstruction_max_error?: number;
+  technical_numerical_tolerance?: number;
+  readiness?: Record<string, unknown>;
+  freshness?: StagingFreshness;
+  versions?: readonly Record<string, unknown>[];
+  clinically_approved: false;
+  clinically_optimal: false;
+  notes: readonly string[];
+  limitations?: readonly string[];
 }
 
 export interface ModelOutputContract {
