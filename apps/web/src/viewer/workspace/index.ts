@@ -26,6 +26,7 @@ export type { OverlayCapability, OverlayKind } from "./overlayArchitecture";
 export {
   pickToothFromPointer,
   prepareMeshForPicking,
+  disposeMeshBoundsTree,
   enableBvhAcceleration,
   tryEnableBvhAcceleration,
   isBvhAccelerationEnabled,
@@ -41,3 +42,26 @@ export type {
   GeometryWorkerRequest,
   GeometryWorkerResponse,
 } from "./geometryWorkers";
+
+export { createCaseSceneHierarchy, setArchGroupVisibility } from "./sceneHierarchy";
+export type { CaseSceneHierarchy } from "./sceneHierarchy";
+
+export { resolveToothVisualRole, toothVisualStyle } from "./selectionVisuals";
+export type { ToothVisualInput, ToothVisualRole, ToothVisualStyle } from "./selectionVisuals";
+
+export {
+  resolveFitBounds,
+  computeObjectBounds,
+  cameraPositionForSphere,
+  nearFarForSphere,
+} from "./fitTargets";
+export type { FitBoundsResult } from "./fitTargets";
+
+export {
+  createOverlayRegistry,
+  capabilityOverlays,
+  isClinicalGeometryOverlay,
+} from "./overlayRegistry";
+export type { OverlayRegistration, OverlayRegistry, OverlaySource } from "./overlayRegistry";
+
+export { disposeObjectTree, disposeMeshResources, rendererResourceSnapshot } from "./resourceDisposal";

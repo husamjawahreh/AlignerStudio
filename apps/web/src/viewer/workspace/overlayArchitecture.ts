@@ -59,8 +59,8 @@ export const WORKSPACE_OVERLAY_CAPABILITIES: readonly OverlayCapability[] = [
   {
     kind: "orientation_cube",
     label: "Orientation cube",
-    available: false,
-    reason: "Orientation-cube architecture is defined; interactive cube chrome is not wired yet.",
+    available: true,
+    reason: "Standard view presets are available from the viewport toolbar (orientation-cube chrome is optional).",
   },
 ] as const;
 

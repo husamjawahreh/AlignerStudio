@@ -19,6 +19,7 @@ import {
 } from "../components/ValidationWorkflowPanel";
 import { ContextualToothToolbar } from "../components/ContextualToothToolbar";
 import { InspectionPanel } from "../components/InspectionPanel";
+import { WorkspaceViewportChrome, type ArchIsolationMode } from "../components/WorkspaceViewportChrome";
 import { formatToothIdentity } from "../analysisPresentation";
 import { ProposalPanels } from "../components/ProposalPanels";
 import { StageTimeline } from "../components/StageTimeline";
@@ -246,6 +247,8 @@ export function App(): JSX.Element {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showUpper, setShowUpper] = useState(true);
   const [showLower, setShowLower] = useState(true);
+  const [archMode, setArchMode] = useState<ArchIsolationMode>("both");
+  const [isolateSelectedTooth, setIsolateSelectedTooth] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showGingiva, setShowGingiva] = useState(true);
   const [showTargetGhost, setShowTargetGhost] = useState(true);
@@ -276,10 +279,29 @@ export function App(): JSX.Element {
   const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
   const pipelineReviewStage = useMemo(() => pipelineStage(pipelineDiagnostic), [pipelineDiagnostic]);
   const activeReviewStage = treatmentAvailable ? fixtureStage : pipelineReviewStage;
-  const { selection, selectTooth, clearSelection } = useToothSelection(
-    activeReviewStage?.teeth ?? [],
-  );
+  const { selection, selectTooth, clearSelection, multiSelectedKeys, preserveAcrossTeeth } =
+    useToothSelection(activeReviewStage?.teeth ?? []);
   const selectedTooth = selection.selectedToothRef;
+
+  useEffect(() => {
+    preserveAcrossTeeth(activeReviewStage?.teeth ?? []);
+  }, [activeReviewStage, preserveAcrossTeeth]);
+
+  useEffect(() => {
+    if (archMode === "both") {
+      setShowUpper(true);
+      setShowLower(true);
+    } else if (archMode === "upper") {
+      setShowUpper(true);
+      setShowLower(false);
+    } else {
+      setShowUpper(false);
+      setShowLower(true);
+    }
+  }, [archMode]);
+
+  const isolatedArch = archMode === "both" ? null : archMode;
+  const isolatedToothKey = isolateSelectedTooth ? selectedTooth : null;
   const sceneLayers = useMemo(
     () =>
       createSceneLayerRegistry({
@@ -1222,13 +1244,28 @@ export function App(): JSX.Element {
           )}
 
           {showSceneLayers && (
+            <WorkspaceViewportChrome
+              archMode={archMode}
+              onArchMode={setArchMode}
+              isolateSelected={isolateSelectedTooth}
+              onIsolateSelected={setIsolateSelectedTooth}
+              selectedToothKey={selectedTooth}
+              dentalIntelligence={dentalIntelligence}
+            />
+          )}
+
+          {showSceneLayers && (
             <div className="cad-layer-controls">
               <span className="eyebrow">Layers</span>
               <label className="toggle-row">
                 <input
                   type="checkbox"
                   checked={showUpper}
-                  onChange={(event) => setShowUpper(event.target.checked)}
+                  onChange={(event) => {
+                    setShowUpper(event.target.checked);
+                    if (event.target.checked && showLower) setArchMode("both");
+                    else if (event.target.checked) setArchMode("upper");
+                  }}
                 />
                 <span>Upper teeth</span>
               </label>
@@ -1236,7 +1273,11 @@ export function App(): JSX.Element {
                 <input
                   type="checkbox"
                   checked={showLower}
-                  onChange={(event) => setShowLower(event.target.checked)}
+                  onChange={(event) => {
+                    setShowLower(event.target.checked);
+                    if (event.target.checked && showUpper) setArchMode("both");
+                    else if (event.target.checked) setArchMode("lower");
+                  }}
                 />
                 <span>Lower teeth</span>
               </label>
@@ -1246,7 +1287,7 @@ export function App(): JSX.Element {
                   checked={showGingiva}
                   onChange={(event) => setShowGingiva(event.target.checked)}
                 />
-                <span>Gingiva</span>
+                <span>Gingiva (presentation)</span>
               </label>
               <label className="toggle-row">
                 <input
@@ -1348,8 +1389,11 @@ export function App(): JSX.Element {
                 sceneGraph={sceneGraph}
                 targetStage={targetStage}
                 selectedTooth={selectedTooth}
+                multiSelectedTeeth={multiSelectedKeys}
                 showUpper={showUpper}
                 showLower={showLower}
+                isolatedArch={isolatedArch}
+                isolatedToothKey={isolatedToothKey}
                 showOriginal={showOriginal}
                 originalOpacity={originalOpacity}
                 wireframe={wireframe}
@@ -1357,6 +1401,7 @@ export function App(): JSX.Element {
                 gizmoMode={gizmoMode}
                 onGizmoMovement={handleGizmoMovement}
                 onSelectTooth={handleSelectTooth}
+                onClearSelection={handleClearSelection}
                 onFit={() => undefined}
                 onReset={() => undefined}
                 contextualToolbar={
@@ -1514,6 +1559,7 @@ export function App(): JSX.Element {
               />
               <InspectionPanel
                 tooth={selectedFixtureTooth}
+                dentalIntelligence={dentalIntelligence}
                 draftMovement={treatmentAvailable ? draftMovement : null}
                 originalMovement={originalTooth?.movement ?? null}
                 isDirty={

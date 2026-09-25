@@ -84,3 +84,11 @@ export function prepareMeshForPicking(mesh: THREE.Mesh): void {
     geometry.computeBoundsTree();
   }
 }
+
+/** Dispose BVH tree on a mesh geometry when present. */
+export function disposeMeshBoundsTree(mesh: THREE.Mesh): void {
+  const geometry = mesh.geometry as BoundsTreeGeometry;
+  if (geometry?.boundsTree && typeof geometry.disposeBoundsTree === "function") {
+    geometry.disposeBoundsTree();
+  }
+}

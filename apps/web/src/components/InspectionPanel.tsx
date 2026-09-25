@@ -1,8 +1,11 @@
+import type { CaseDentalIntelligencePayload, IntelligenceTruthState } from "@alignerstudio/contracts";
 import type { MovementSummary, ReviewToothMesh } from "../review/types";
 import { FixtureBadge } from "./FixtureBadge";
+import { formatTruthState } from "../analysisPresentation";
 
 interface InspectionPanelProps {
   tooth: ReviewToothMesh | null;
+  dentalIntelligence?: CaseDentalIntelligencePayload | null;
   draftMovement?: MovementSummary | null;
   originalMovement?: MovementSummary | null;
   isDirty?: boolean;
@@ -41,8 +44,20 @@ const movementRows: readonly [NumericMovementKey, string, string][] = [
   ["extrusion", "Extrusion", "mm"],
 ];
 
+function findToothIntelligence(
+  dentalIntelligence: CaseDentalIntelligencePayload | null | undefined,
+  tooth: ReviewToothMesh,
+) {
+  return dentalIntelligence?.teeth.find(
+    (item) =>
+      (tooth.toothRef != null && item.tooth_ref === tooth.toothRef) ||
+      (item.instance_id === tooth.instanceId && item.arch === tooth.arch),
+  );
+}
+
 export function InspectionPanel({
   tooth,
+  dentalIntelligence = null,
   draftMovement,
   originalMovement,
   isDirty = false,
@@ -59,7 +74,7 @@ export function InspectionPanel({
 }: InspectionPanelProps): JSX.Element {
   if (!tooth) {
     return (
-      <aside className="inspection-panel empty-panel">
+      <aside className="inspection-panel empty-panel" data-testid="inspection-panel">
         <span className="eyebrow">Tooth inspection</span>
         <h2>Select a tooth</h2>
         <p>
@@ -70,8 +85,16 @@ export function InspectionPanel({
     );
   }
 
+  const toothIntel = findToothIntelligence(dentalIntelligence, tooth);
+  const fdiState: IntelligenceTruthState | null = toothIntel?.fdi_number.state ?? null;
+  const geometryState = toothIntel?.geometry.state ?? null;
+  const axesState = toothIntel?.clinical_dental_axes.state ?? null;
+  const landmarksState = toothIntel?.landmarks.state ?? null;
+  const rootsState = toothIntel?.root_geometry.state ?? null;
+  const overallState = toothIntel?.overall_truth_state ?? null;
+
   return (
-    <aside className="inspection-panel">
+    <aside className="inspection-panel" data-testid="inspection-panel">
       <div className="panel-heading">
         <div>
           <span className="eyebrow">Tooth inspection</span>
@@ -84,21 +107,50 @@ export function InspectionPanel({
       </div>
       <FixtureBadge fixture={tooth.fixture} provenance={tooth.provenance} />
       <div className="inspection-meta">
+        <span data-testid="inspection-tooth-ref">
+          Ref {tooth.toothRef ?? `instance:${tooth.instanceId}`}
+        </span>
         <span>{tooth.arch} arch</span>
         {tooth.semanticLabel !== null && tooth.semanticLabel !== undefined && (
           <span>Semantic label {tooth.semanticLabel}</span>
         )}
-        {!tooth.fdiNumber && (
-          <span>Clinical tooth numbering: Not Available — confirm identity before treatment use</span>
-        )}
+        <span data-testid="inspection-fdi-truth">
+          FDI:{" "}
+          {tooth.fdiNumber != null
+            ? `${tooth.fdiNumber} · ${formatTruthState(fdiState ?? "requires_review")}`
+            : formatTruthState("not_available")}
+        </span>
         {tooth.confidence > 0 && (
           <span>Identification confidence {(tooth.confidence * 100).toFixed(0)}%</span>
         )}
+        {tooth.confidence === 0 && (
+          <span>Identification confidence: Not Available</span>
+        )}
       </div>
+
+      {(overallState || geometryState || axesState || landmarksState || rootsState) && (
+        <div className="inspection-status" data-testid="inspection-intelligence">
+          <span>Intelligence</span>
+          {overallState && <strong>Overall · {formatTruthState(overallState)}</strong>}
+          {geometryState && <p>Geometry · {formatTruthState(geometryState)}</p>}
+          {landmarksState && <p>Landmarks · {formatTruthState(landmarksState)}</p>}
+          {axesState && (
+            <p>
+              Clinical dental axes · {formatTruthState(axesState)}
+              {axesState === "not_available" ? " (mesh PCA is not a clinical axis)" : ""}
+            </p>
+          )}
+          {rootsState && <p>Root geometry · {formatTruthState(rootsState)}</p>}
+          {toothIntel?.source_mesh_sha256 && (
+            <p>Source mesh · {toothIntel.source_mesh_sha256.slice(0, 12)}…</p>
+          )}
+        </div>
+      )}
+
       <div className="inspection-status">
         <span>Validation</span>
         <strong>{tooth.validationStatus}</strong>
-        <p>{tooth.validationMessage}</p>
+        <p>{tooth.validationMessage || "No validation message for this tooth."}</p>
       </div>
       <div className="movement-list">
         <div className="section-label">Proposed movement</div>
@@ -131,7 +183,9 @@ export function InspectionPanel({
         <span>Stage rate</span>
         <strong>{tooth.rate ? formatMovement(tooth.rate) : "Unavailable"}</strong>
         <span>Accumulated</span>
-        <strong>{tooth.accumulated ? formatMovement(tooth.accumulated) : formatMovement(tooth.movement)}</strong>
+        <strong>
+          {tooth.accumulated ? formatMovement(tooth.accumulated) : formatMovement(tooth.movement)}
+        </strong>
         <span>Constraints</span>
         <strong>{tooth.limitStatus?.replaceAll("_", " ") ?? "not configured"}</strong>
       </div>
@@ -158,12 +212,15 @@ export function InspectionPanel({
             <button className="secondary-button" onClick={onToggleExcluded}>
               {draftMovement.excluded ? "Include" : "Exclude"}
             </button>
-            <button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label="Undo doctor edit">Undo</button>
-            <button className="icon-button" onClick={onRedo} disabled={!canRedo} aria-label="Redo doctor edit">Redo</button>
+            <button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label="Undo doctor edit">
+              Undo
+            </button>
+            <button className="icon-button" onClick={onRedo} disabled={!canRedo} aria-label="Redo doctor edit">
+              Redo
+            </button>
           </div>
           <div className="readonly-note">
-            Doctor editing is explicit and read-only until Apply. No clinical correction is
-            automatic.
+            Doctor editing is explicit and read-only until Apply. No clinical correction is automatic.
           </div>
         </>
       ) : (

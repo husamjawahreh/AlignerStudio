@@ -68,7 +68,7 @@ describe("camera / overlay / worker architecture", () => {
   it("exposes camera presets and honest overlay availability", () => {
     expect(CAMERA_PRESETS.length).toBeGreaterThanOrEqual(6);
     expect(overlayCapability("gizmo").available).toBe(true);
-    expect(overlayCapability("orientation_cube").available).toBe(false);
+    expect(overlayCapability("orientation_cube").available).toBe(true);
     expect(overlayCapability("local_frames").available).toBe(false);
   });
 

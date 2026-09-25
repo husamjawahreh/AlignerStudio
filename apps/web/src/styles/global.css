@@ -1641,3 +1641,26 @@ body,
     gap: 17px;
   }
 }
+
+/* WP-03 workspace chrome */
+.workspace-viewport-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--as-border);
+}
+.workspace-viewport-chrome .chrome-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.workspace-viewport-chrome .chrome-overlay-toggle small,
+.workspace-viewport-chrome .chrome-readiness {
+  color: var(--as-text-muted);
+  font-size: var(--as-font-size-xs);
+}
+.stage-tooth-label.is-hovered {
+  outline: 1px solid rgba(244, 208, 138, 0.7);
+}

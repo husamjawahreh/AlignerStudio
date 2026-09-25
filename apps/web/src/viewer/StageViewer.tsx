@@ -21,6 +21,21 @@ import {
 import { resolveGingivaPresentation } from "./syntheticGingiva";
 import { reviewToothKey, toothMatchesKey } from "./toothKey";
 import { float32PositionsFromVertices, uint32IndicesFromFaces } from "./geometryBuffers";
+import {
+  CAMERA_PRESETS,
+  type CameraPresetId,
+  type FitRequest,
+  createCaseSceneHierarchy,
+  enableBvhAcceleration,
+  prepareMeshForPicking,
+  pickToothFromPointer,
+  resolveFitBounds,
+  cameraPositionForSphere,
+  nearFarForSphere,
+  disposeObjectTree,
+  toothVisualStyle,
+  setArchGroupVisibility,
+} from "./workspace";
 
 interface StageViewerProps {
   stage?: ReviewStage;
@@ -28,13 +43,20 @@ interface StageViewerProps {
   /** Final/target stage for ghost overlay and remaining-movement vectors. */
   targetStage?: ReviewStage | null;
   selectedTooth: string | null;
+  /** Multi-selection foundation — additional semantic keys. */
+  multiSelectedTeeth?: readonly string[];
   showUpper: boolean;
   showLower: boolean;
+  /** Semantic arch isolation — null means use showUpper/showLower. */
+  isolatedArch?: "upper" | "lower" | null;
+  /** Isolate a single tooth by semantic key. */
+  isolatedToothKey?: string | null;
   showOriginal: boolean;
   originalOpacity: number;
   wireframe: boolean;
   hiddenToothIds: ReadonlySet<number>;
   onSelectTooth: (toothRef: string) => void;
+  onClearSelection?: () => void;
   onFit: () => void;
   onReset: () => void;
   gizmoMode?: "translate" | "rotate";
@@ -48,38 +70,39 @@ interface ToothRecord {
   material: THREE.MeshStandardMaterial;
   label: HTMLDivElement;
   tooth: ReviewToothMesh;
+  toothKey: string;
   colorTarget: THREE.Color;
   emissiveTarget: THREE.Color;
   emissiveIntensityTarget: number;
+  opacityTarget: number;
 }
-
-type ViewDirection = "occlusal" | "front" | "back" | "left" | "right" | "upper" | "lower";
-
-const VIEW_DIRECTIONS: Record<ViewDirection, THREE.Vector3> = {
-  occlusal: new THREE.Vector3(0, 1, 0.01),
-  front: new THREE.Vector3(0, 0.08, 1),
-  back: new THREE.Vector3(0, 0.08, -1),
-  left: new THREE.Vector3(-1, 0.08, 0),
-  right: new THREE.Vector3(1, 0.08, 0),
-  upper: new THREE.Vector3(0, 1, 0),
-  lower: new THREE.Vector3(0, -1, 0),
-};
 
 const SCENE_BG = 0x06090d;
 const CAMERA_TRANSITION_MS = 480;
 const SELECTION_LERP = 0.18;
 
+const PRESET_DIRECTIONS: Record<CameraPresetId, THREE.Vector3> = Object.fromEntries(
+  CAMERA_PRESETS.map((preset) => [
+    preset.id,
+    new THREE.Vector3(...preset.direction),
+  ]),
+) as Record<CameraPresetId, THREE.Vector3>;
+
 export function StageViewer({
   sceneGraph,
   targetStage = null,
   selectedTooth,
+  multiSelectedTeeth = [],
   showUpper,
   showLower,
+  isolatedArch = null,
+  isolatedToothKey = null,
   showOriginal,
   originalOpacity,
   wireframe,
   hiddenToothIds,
   onSelectTooth,
+  onClearSelection,
   onFit,
   onReset,
   gizmoMode = "translate",
@@ -87,27 +110,41 @@ export function StageViewer({
   contextualToolbar,
 }: StageViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const fitRef = useRef<(() => void) | null>(null);
+  const fitRef = useRef<((request?: FitRequest) => void) | null>(null);
   const resetRef = useRef<(() => void) | null>(null);
-  const viewRef = useRef<((view: ViewDirection) => void) | null>(null);
+  const viewRef = useRef<((view: CameraPresetId) => void) | null>(null);
   const recordsRef = useRef<ToothRecord[]>([]);
   const selectRef = useRef(onSelectTooth);
+  const clearSelectRef = useRef(onClearSelection);
   const gizmoRef = useRef<TransformControls | null>(null);
   const gizmoCallbackRef = useRef(onGizmoMovement);
   const ghostHighlightRef = useRef<((key: string | null) => void) | null>(null);
   const selectedToothRef = useRef(selectedTooth);
+  const multiSelectedRef = useRef(multiSelectedTeeth);
+  const hoveredKeyRef = useRef<string | null>(null);
+  const applyVisualsRef = useRef<(() => void) | null>(null);
   selectRef.current = onSelectTooth;
+  clearSelectRef.current = onClearSelection;
   gizmoCallbackRef.current = onGizmoMovement;
   selectedToothRef.current = selectedTooth;
+  multiSelectedRef.current = multiSelectedTeeth;
+
+  const effectiveShowUpper =
+    isolatedArch === "upper" || (isolatedArch === null && showUpper);
+  const effectiveShowLower =
+    isolatedArch === "lower" || (isolatedArch === null && showLower);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    enableBvhAcceleration();
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BG);
     scene.fog = new THREE.Fog(SCENE_BG, 40, 120);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -172,26 +209,41 @@ export function StageViewer({
     bounceLight.position.set(0, -10, 4);
     scene.add(bounceLight);
 
-    const allObjects = new THREE.Group();
+    const hierarchy = createCaseSceneHierarchy();
+    scene.add(hierarchy.allContent);
+    setArchGroupVisibility(hierarchy, "upper", effectiveShowUpper);
+    setArchGroupVisibility(hierarchy, "lower", effectiveShowLower);
+
     const originalObjects = new THREE.Group();
-    const toothObjects = new THREE.Group();
-    const ghostObjects = new THREE.Group();
-    const gingivaObjects = new THREE.Group();
-    const vectorObjects = new THREE.Group();
+    originalObjects.name = "OriginalScans";
+    hierarchy.referenceLayer.add(originalObjects);
+
     const presentationObjects = new THREE.Group();
-    allObjects.add(originalObjects, gingivaObjects, ghostObjects, toothObjects, vectorObjects);
-    scene.add(allObjects, presentationObjects);
+    presentationObjects.name = "PresentationDepth";
+    scene.add(presentationObjects);
+
     const raycastMeshes: THREE.Mesh[] = [];
     const labels: HTMLDivElement[] = [];
     const records: ToothRecord[] = [];
     recordsRef.current = records;
+    const fitMeshIndex: Array<{ object: THREE.Object3D; toothKey: string; arch: "upper" | "lower" }> =
+      [];
     const layers: SceneLayerRegistry = sceneGraph.layers;
     const stage = sceneGraph.segmentedStage;
     const targetTeeth = targetStage?.teeth ?? [];
 
+    const toothAllowed = (tooth: ReviewToothMesh): boolean => {
+      const archVisible = tooth.arch === "upper" ? effectiveShowUpper : effectiveShowLower;
+      if (!archVisible) return false;
+      if (hiddenToothIds.has(tooth.instanceId)) return false;
+      if (isolatedToothKey && reviewToothKey(tooth) !== isolatedToothKey) return false;
+      return true;
+    };
+
     if (showOriginal && layers["original-scan"].visible) {
       const loader = new STLLoader();
       for (const arch of ["upper", "lower"] as const) {
+        if (arch === "upper" ? !effectiveShowUpper : !effectiveShowLower) continue;
         const buffer = sceneGraph.originalScans[arch];
         if (!buffer) continue;
         const geometry = loader.parse(buffer.slice(0));
@@ -207,6 +259,8 @@ export function StageViewer({
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        mesh.userData.presentationOnly = true;
+        mesh.userData.arch = arch;
         originalObjects.add(mesh);
       }
     }
@@ -214,10 +268,7 @@ export function StageViewer({
     // Target / proposed-setup ghost overlay (presentation only, not raycast).
     if (layers["proposed-setup"].visible && targetTeeth.length > 0) {
       for (const tooth of targetTeeth) {
-        const archVisible = tooth.arch === "upper"
-          ? layers["upper-teeth"].visible && showUpper
-          : layers["lower-teeth"].visible && showLower;
-        if (!archVisible || hiddenToothIds.has(tooth.instanceId)) continue;
+        if (!toothAllowed(tooth)) continue;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           "position",
@@ -229,18 +280,17 @@ export function StageViewer({
           ...dentalMaterialProfiles.enamelGhost,
         });
         const mesh = new THREE.Mesh(geometry, material);
+        const key = reviewToothKey(tooth);
         mesh.userData.presentationOnly = true;
         mesh.userData.role = "target-ghost";
-        mesh.userData.toothRef = reviewToothKey(tooth);
-        ghostObjects.add(mesh);
+        mesh.userData.toothRef = key;
+        mesh.userData.toothKey = key;
+        hierarchy.treatmentLayer.add(mesh);
       }
     }
 
     for (const tooth of stage.teeth) {
-      const archVisible = tooth.arch === "upper"
-        ? layers["upper-teeth"].visible && showUpper
-        : layers["lower-teeth"].visible && showLower;
-      if (!archVisible || !layers.segmentation.visible || hiddenToothIds.has(tooth.instanceId)) continue;
+      if (!toothAllowed(tooth) || !layers.segmentation.visible) continue;
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute(
         "position",
@@ -257,15 +307,22 @@ export function StageViewer({
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       const key = reviewToothKey(tooth);
+      // Stable semantic identity on the mesh — never array index as source of truth.
       mesh.userData.toothRef = key;
+      mesh.userData.toothKey = key;
       mesh.userData.instanceId = tooth.instanceId;
       mesh.userData.arch = tooth.arch;
-      toothObjects.add(mesh);
+      mesh.userData.validationStatus = tooth.validationStatus;
+      prepareMeshForPicking(mesh);
+      if (tooth.arch === "upper") hierarchy.upperTeeth.add(mesh);
+      else hierarchy.lowerTeeth.add(mesh);
       raycastMeshes.push(mesh);
+      fitMeshIndex.push({ object: mesh, toothKey: key, arch: tooth.arch });
       const label = document.createElement("div");
       label.className = `stage-tooth-label is-${tooth.arch}`;
       label.textContent = tooth.fdiNumber ? `FDI ${tooth.fdiNumber}` : `${key} · semantic`;
       label.setAttribute("data-testid", `tooth-label-${tooth.instanceId}`);
+      label.setAttribute("data-tooth-key", key);
       container.appendChild(label);
       labels.push(label);
       records.push({
@@ -273,9 +330,11 @@ export function StageViewer({
         material,
         label,
         tooth,
+        toothKey: key,
         colorTarget: new THREE.Color(profileColor(baseProfile.color, 0xf2e8d4)),
         emissiveTarget: new THREE.Color(0x000000),
         emissiveIntensityTarget: 0,
+        opacityTarget: 1,
       });
 
       if (layers["movement-vectors"].visible) {
@@ -294,15 +353,15 @@ export function StageViewer({
             }),
           );
           vector.userData.presentationOnly = true;
-          vectorObjects.add(vector);
+          hierarchy.treatmentLayer.add(vector);
         }
       }
     }
 
     if (layers["gingiva-base"].visible) {
       const gingivaMeshes = resolveGingivaPresentation(stage.teeth, sceneGraph.realGingiva, {
-        includeUpper: showUpper && layers["upper-teeth"].visible,
-        includeLower: showLower && layers["lower-teeth"].visible,
+        includeUpper: effectiveShowUpper && layers["upper-teeth"].visible,
+        includeLower: effectiveShowLower && layers["lower-teeth"].visible,
         hiddenToothIds,
       });
       for (const gingiva of gingivaMeshes) {
@@ -324,17 +383,19 @@ export function StageViewer({
         mesh.userData.presentationOnly = true;
         mesh.userData.gingivaSource = gingiva.source;
         mesh.userData.arch = gingiva.arch;
-        gingivaObjects.add(mesh);
+        mesh.userData.clinicalGeometry = false;
+        if (gingiva.arch === "upper") hierarchy.upperGingiva.add(mesh);
+        else hierarchy.lowerGingiva.add(mesh);
       }
     }
 
-    // Emphasize selected tooth's target ghost with enamelTarget profile.
     const refreshGhostHighlight = (selectedKey: string | null) => {
-      ghostObjects.traverse((object) => {
+      hierarchy.treatmentLayer.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
+        if (object.userData.role !== "target-ghost") return;
         const material = object.material;
         if (!(material instanceof THREE.MeshStandardMaterial)) return;
-        const selected = selectedKey != null && object.userData.toothRef === selectedKey;
+        const selected = selectedKey != null && object.userData.toothKey === selectedKey;
         const profile = selected ? dentalMaterialProfiles.enamelTarget : dentalMaterialProfiles.enamelGhost;
         material.color.set(profileColor(profile.color, selected ? 0xf7f1e6 : 0xd5ddd9));
         material.opacity = Number(profile.opacity ?? (selected ? 0.7 : 0.2));
@@ -424,34 +485,41 @@ export function StageViewer({
       cameraTween.toFar = far;
     };
 
-    const fit = () => {
-      const bounds = new THREE.Box3().setFromObject(allObjects);
+    const applyFitResult = (request: FitRequest) => {
+      const result = resolveFitBounds({
+        request,
+        meshes: fitMeshIndex,
+        fallbackGroup: hierarchy.allContent,
+      });
+      if (!result) return;
+      configurePresentationDepth(result.sphere, result.bounds);
+      const direction =
+        request.target === "arch" && request.arch === "lower"
+          ? PRESET_DIRECTIONS.lower
+          : request.target === "arch" && request.arch === "upper"
+            ? PRESET_DIRECTIONS.upper
+            : new THREE.Vector3(0, 0.75, 2.35);
+      const position = cameraPositionForSphere(result.sphere, direction, request.target === "selected" ? 2.1 : 2.5);
+      const { near, far } = nearFarForSphere(result.sphere);
+      smoothCameraTo(position, result.sphere.center.clone(), near, far);
+    };
+
+    const fit = (request: FitRequest = { target: "case" }) => applyFitResult(request);
+    const setView = (view: CameraPresetId) => {
+      const bounds = new THREE.Box3().setFromObject(hierarchy.allContent);
       if (bounds.isEmpty()) return;
       const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-      configurePresentationDepth(sphere, bounds);
-      const position = new THREE.Vector3(
-        sphere.center.x,
-        sphere.center.y + sphere.radius * 0.75,
-        sphere.center.z + sphere.radius * 2.35,
-      );
-      const near = Math.max(0.01, sphere.radius / 100);
-      const far = Math.max(100, sphere.radius * 20);
+      const position = cameraPositionForSphere(sphere, PRESET_DIRECTIONS[view], 2.5);
+      const { near, far } = nearFarForSphere(sphere);
       smoothCameraTo(position, sphere.center.clone(), near, far);
     };
-    const setView = (view: ViewDirection) => {
-      const bounds = new THREE.Box3().setFromObject(allObjects);
-      if (bounds.isEmpty()) return;
-      const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-      const position = sphere.center.clone().addScaledVector(VIEW_DIRECTIONS[view], sphere.radius * 2.5);
-      smoothCameraTo(position, sphere.center.clone());
-    };
     const reset = () => {
-      smoothCameraTo(new THREE.Vector3(0, 10, 17), new THREE.Vector3(0, 0, 0));
+      smoothCameraTo(new THREE.Vector3(0, 10, 17), new THREE.Vector3(0, 0, 0), 0.1, 1000);
     };
 
     // Instant first fit so the case is framed before transitions run.
     {
-      const bounds = new THREE.Box3().setFromObject(allObjects);
+      const bounds = new THREE.Box3().setFromObject(hierarchy.allContent);
       if (!bounds.isEmpty()) {
         const sphere = bounds.getBoundingSphere(new THREE.Sphere());
         configurePresentationDepth(sphere, bounds);
@@ -461,8 +529,9 @@ export function StageViewer({
           sphere.center.z + sphere.radius * 2.35,
         );
         controls.target.copy(sphere.center);
-        camera.near = Math.max(0.01, sphere.radius / 100);
-        camera.far = Math.max(100, sphere.radius * 20);
+        const depth = nearFarForSphere(sphere);
+        camera.near = depth.near;
+        camera.far = depth.far;
         camera.updateProjectionMatrix();
         controls.update();
       }
@@ -472,17 +541,75 @@ export function StageViewer({
     resetRef.current = reset;
     viewRef.current = setView;
 
+    const applyVisuals = () => {
+      const liveSelected = selectedToothRef.current;
+      const multi = new Set(multiSelectedRef.current);
+      const hovered = hoveredKeyRef.current;
+      records.forEach((record) => {
+        const selected = liveSelected != null && toothMatchesKey(record.tooth, liveSelected);
+        const multiSelected = !selected && multi.has(record.toothKey);
+        const hoveredTooth = !selected && hovered === record.toothKey;
+        const style = toothVisualStyle({
+          arch: record.tooth.arch,
+          selected,
+          hovered: hoveredTooth,
+          multiSelected,
+          validationStatus: record.tooth.validationStatus,
+        });
+        record.colorTarget.set(style.color);
+        record.emissiveTarget.set(style.emissive);
+        record.emissiveIntensityTarget = style.emissiveIntensity;
+        record.opacityTarget = style.opacity;
+        record.material.roughness = style.roughness;
+        record.material.envMapIntensity = style.envMapIntensity;
+        record.material.transparent = style.transparent || wireframe;
+        record.label.classList.toggle("is-selected", selected);
+        record.label.classList.toggle("is-hovered", hoveredTooth);
+      });
+      refreshGhostHighlight(liveSelected);
+    };
+    applyVisualsRef.current = applyVisuals;
+
     const pointer = new THREE.Vector2();
     const raycaster = new THREE.Raycaster();
-    const handlePointer = (event: PointerEvent) => {
+    let pointerDown: { x: number; y: number } | null = null;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerDown = { x: event.clientX, y: event.clientY };
+    };
+    const handlePointerMove = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(raycastMeshes, false)[0];
-      if (hit?.object.userData.toothRef) selectRef.current(hit.object.userData.toothRef as string);
+      const hit = pickToothFromPointer(raycaster, camera, pointer, raycastMeshes, {
+        preferBvh: true,
+      });
+      const nextHover = hit?.toothKey ?? null;
+      if (nextHover !== hoveredKeyRef.current) {
+        hoveredKeyRef.current = nextHover;
+        applyVisuals();
+      }
     };
-    renderer.domElement.addEventListener("pointerup", handlePointer);
+    const handlePointerUp = (event: PointerEvent) => {
+      if (!pointerDown) return;
+      const dx = event.clientX - pointerDown.x;
+      const dy = event.clientY - pointerDown.y;
+      pointerDown = null;
+      // Ignore drag-orbits as clicks.
+      if (dx * dx + dy * dy > 25) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const hit = pickToothFromPointer(raycaster, camera, pointer, raycastMeshes, {
+        preferBvh: true,
+      });
+      if (hit?.toothKey) selectRef.current(hit.toothKey);
+      else clearSelectRef.current?.();
+    };
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
+
     let animationFrame = 0;
     const animate = () => {
       if (cameraTween.active) {
@@ -504,6 +631,11 @@ export function StageViewer({
           record.emissiveIntensityTarget,
           SELECTION_LERP,
         );
+        record.material.opacity = THREE.MathUtils.lerp(
+          record.material.opacity,
+          record.opacityTarget,
+          SELECTION_LERP,
+        );
         const point = new THREE.Vector3(...toothDisplayCentroid(record.tooth)).project(camera);
         record.label.style.transform = `translate(-50%, -50%) translate(${(point.x * 0.5 + 0.5) * container.clientWidth}px, ${(-point.y * 0.5 + 0.5) * container.clientHeight}px)`;
         record.label.style.display = point.z < 1 && layers["tooth-labels"].visible ? "block" : "none";
@@ -513,30 +645,9 @@ export function StageViewer({
     };
     animate();
 
-    // Stash ghost highlight updater for the selection effect.
     ghostHighlightRef.current = refreshGhostHighlight;
-
-    // Re-apply live selection after a scene rebuild (selection effect may not re-run).
+    applyVisuals();
     const liveSelected = selectedToothRef.current;
-    refreshGhostHighlight(liveSelected);
-    records.forEach((record) => {
-      const selected = liveSelected != null && toothMatchesKey(record.tooth, liveSelected);
-      const base = enamelProfileForArch(record.tooth.arch);
-      const selectedProfile = dentalMaterialProfiles.enamelSelected;
-      record.colorTarget.set(
-        selected
-          ? profileColor(selectedProfile.color, 0xf4d08a)
-          : profileColor(base.color, record.tooth.arch === "upper" ? 0xf2e8d4 : 0xddd4c2),
-      );
-      record.emissiveTarget.set(selected ? 0x5a3c12 : 0x000000);
-      record.emissiveIntensityTarget = selected ? 0.32 : 0;
-      if (selected) {
-        record.material.color.copy(record.colorTarget);
-        record.material.emissive.copy(record.emissiveTarget);
-        record.material.emissiveIntensity = record.emissiveIntensityTarget;
-      }
-      record.label.classList.toggle("is-selected", selected);
-    });
     const liveSelectedRecord = records.find(({ tooth }) =>
       liveSelected != null ? toothMatchesKey(tooth, liveSelected) : false,
     );
@@ -544,29 +655,50 @@ export function StageViewer({
     else transformControls.detach();
 
     const handleResize = () => {
-      camera.aspect = container.clientWidth / Math.max(1, container.clientHeight);
+      const width = Math.max(1, container.clientWidth);
+      const height = Math.max(1, container.clientHeight);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setSize(width, height);
     };
     window.addEventListener("resize", handleResize);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleResize) : null;
+    resizeObserver?.observe(container);
+
     return () => {
       cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("pointerup", handlePointer);
+      resizeObserver?.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       controls.dispose();
       transformControls.removeEventListener("objectChange", handleGizmoChange);
       transformControls.removeEventListener("dragging-changed", handleDragging);
       transformControls.dispose();
       gizmoRef.current = null;
       ghostHighlightRef.current = null;
+      applyVisualsRef.current = null;
       environment.dispose();
+      disposeObjectTree(hierarchy.allContent);
+      disposeObjectTree(presentationObjects);
       renderer.dispose();
-      geometryCleanup(allObjects);
-      geometryCleanup(presentationObjects);
       labels.forEach((label) => label.remove());
       recordsRef.current = [];
     };
-  }, [sceneGraph, targetStage, showLower, showOriginal, showUpper, originalOpacity, wireframe, hiddenToothIds]);
+  }, [
+    sceneGraph,
+    targetStage,
+    effectiveShowLower,
+    effectiveShowUpper,
+    showOriginal,
+    originalOpacity,
+    wireframe,
+    hiddenToothIds,
+    isolatedArch,
+    isolatedToothKey,
+  ]);
 
   useEffect(() => {
     const selectedRecord = recordsRef.current.find(({ tooth }) =>
@@ -575,50 +707,75 @@ export function StageViewer({
     if (selectedRecord) gizmoRef.current?.attach(selectedRecord.mesh);
     else gizmoRef.current?.detach();
     gizmoRef.current?.setMode(gizmoMode);
-    ghostHighlightRef.current?.(selectedTooth);
-    recordsRef.current.forEach((record) => {
-      const selected = selectedTooth != null && toothMatchesKey(record.tooth, selectedTooth);
-      const base = enamelProfileForArch(record.tooth.arch);
-      const selectedProfile = dentalMaterialProfiles.enamelSelected;
-      record.colorTarget.set(
-        selected
-          ? profileColor(selectedProfile.color, 0xf4d08a)
-          : profileColor(base.color, record.tooth.arch === "upper" ? 0xf2e8d4 : 0xddd4c2),
-      );
-      record.emissiveTarget.set(selected ? 0x5a3c12 : 0x000000);
-      record.emissiveIntensityTarget = selected ? 0.32 : 0;
-      record.material.roughness = selected
-        ? Number(selectedProfile.roughness ?? 0.22)
-        : Number(base.roughness ?? 0.28);
-      record.material.envMapIntensity = selected
-        ? Number(selectedProfile.envMapIntensity ?? 1.2)
-        : Number(base.envMapIntensity ?? 1);
-      record.label.classList.toggle("is-selected", selected);
-    });
-  }, [gizmoMode, selectedTooth]);
+    applyVisualsRef.current?.();
+  }, [gizmoMode, selectedTooth, multiSelectedTeeth]);
 
   return (
-    <div className="viewport-shell">
+    <div className="viewport-shell" data-testid="viewport-shell">
       <div ref={containerRef} className="stage-viewport" data-testid="stage-viewer" />
       {contextualToolbar}
       <div className="viewport-toolbar" aria-label="3D camera controls">
-        {(["occlusal", "front", "back", "left", "right", "upper", "lower"] as ViewDirection[]).map((view) => (
-          <button className="viewer-tool" key={view} onClick={() => viewRef.current?.(view)} title={`${view} view`}>{view}</button>
+        {CAMERA_PRESETS.map((preset) => (
+          <button
+            className="viewer-tool"
+            key={preset.id}
+            onClick={() => viewRef.current?.(preset.id)}
+            title={`${preset.label} view`}
+            data-testid={`camera-view-${preset.id}`}
+          >
+            {preset.label}
+          </button>
         ))}
-        <button className="viewer-tool" onClick={() => { fitRef.current?.(); onFit(); }} title="Fit complete case">Fit</button>
-        <button className="viewer-tool" onClick={() => { resetRef.current?.(); onReset(); }} title="Reset camera">Reset</button>
-        <span className="viewport-hint">Orbit · Pan · Zoom</span>
+        <button
+          className="viewer-tool"
+          onClick={() => {
+            fitRef.current?.({ target: "case" });
+            onFit();
+          }}
+          title="Fit complete case"
+          data-testid="camera-fit-case"
+        >
+          Fit case
+        </button>
+        <button
+          className="viewer-tool"
+          onClick={() =>
+            fitRef.current?.({
+              target: "selected",
+              selectedKey: selectedTooth,
+            })
+          }
+          title="Fit selected tooth"
+          disabled={!selectedTooth}
+          data-testid="camera-fit-selected"
+        >
+          Fit tooth
+        </button>
+        <button
+          className="viewer-tool"
+          onClick={() =>
+            fitRef.current?.({
+              target: "arch",
+              arch: isolatedArch ?? (showUpper && !showLower ? "upper" : "lower"),
+            })
+          }
+          title="Fit selected arch"
+          data-testid="camera-fit-arch"
+        >
+          Fit arch
+        </button>
+        <button
+          className="viewer-tool"
+          onClick={() => {
+            resetRef.current?.();
+            onReset();
+          }}
+          title="Reset camera"
+        >
+          Reset
+        </button>
+        <span className="viewport-hint">Orbit · Pan · Zoom · Click empty to deselect</span>
       </div>
     </div>
   );
-}
-
-function geometryCleanup(group: THREE.Group): void {
-  group.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Line)) return;
-    object.geometry.dispose();
-    const material = object.material;
-    if (Array.isArray(material)) material.forEach((item) => item.dispose());
-    else material.dispose();
-  });
 }

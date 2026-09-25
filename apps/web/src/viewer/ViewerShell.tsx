@@ -2,6 +2,9 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 /**
+ * Deprecated stub viewer — StageViewer is the sole live Three.js owner (WP-03).
+ * Do not mount ViewerShell in the clinical workspace; dual renderers are forbidden.
+ *
  * Minimal 3D viewer shell: renders an empty grid scene the treatment-plan
  * review step can later populate with segmented tooth meshes/stages.
  */

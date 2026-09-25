@@ -389,5 +389,26 @@
       }
     ],
     "processing_status": null
+  },
+  {
+    "id": "f7b5dbfc-c39c-4f60-9261-6639f0449e47",
+    "patient_reference": "",
+    "status": "mesh_validated",
+    "created_at": "2026-09-25T03:12:01.614965+00:00",
+    "meshes": [
+      {
+        "arch": "upper",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/f7b5dbfc-c39c-4f60-9261-6639f0449e47-upper-7b6bfa2098544a0790452e7104d7debf.stl",
+        "original_filename": "upper.stl",
+        "uploaded_at": "2026-09-25T03:24:12.300144+00:00"
+      },
+      {
+        "arch": "lower",
+        "file_path": "/home/hjawahreh/Desktop/Projects/AlignerStudio/data/uploads/f7b5dbfc-c39c-4f60-9261-6639f0449e47-lower-d3aa4cd5af8e44ceab03f698b02388d1.stl",
+        "original_filename": "lower.stl",
+        "uploaded_at": "2026-09-25T03:24:15.447940+00:00"
+      }
+    ],
+    "processing_status": null
   }
 ]
