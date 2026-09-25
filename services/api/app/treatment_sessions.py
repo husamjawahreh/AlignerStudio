@@ -116,16 +116,24 @@ class TreatmentSessionStore:
         self._sessions.clear()
 
     def apply_edit(
-        self, case_id: str, tooth_number: int | str, movement: dict[str, float]
+        self,
+        case_id: str,
+        tooth_number: int | str,
+        movement: dict[str, float],
+        *,
+        reason: str | None = None,
     ) -> TreatmentSession:
         """P4: Doctor Edit → Target Update → Staging Rebuild → Validation → Updated Review."""
+        from domain.movement.interaction import normalize_edit_reason
+
         session = self.get(case_id)
         result = self._editing.apply_edit_and_recalculate(
             session.proposal,
             tooth_number,
-            ToothMovement(**movement),
+            ToothMovement(**{k: v for k, v in movement.items() if k != "reason"}),
             self._staging_configuration(),
             GeometricValidationConfiguration(1.0, 0.001, 0.0),
+            reason=normalize_edit_reason(reason),
         )
         session = TreatmentSession(
             proposal=result.proposal,

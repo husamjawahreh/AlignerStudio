@@ -2,6 +2,8 @@ import type { CaseDentalIntelligencePayload, IntelligenceTruthState } from "@ali
 import type { MovementSummary, ReviewToothMesh } from "../review/types";
 import { FixtureBadge } from "./FixtureBadge";
 import { formatTruthState } from "../analysisPresentation";
+import type { ToothInteractionState } from "../viewer/toothInteraction";
+import { canTransformTooth } from "../viewer/toothInteraction";
 
 interface InspectionPanelProps {
   tooth: ReviewToothMesh | null;
@@ -9,6 +11,7 @@ interface InspectionPanelProps {
   draftMovement?: MovementSummary | null;
   originalMovement?: MovementSummary | null;
   isDirty?: boolean;
+  interactionState?: ToothInteractionState | null;
   onDraftChange?: (movement: MovementSummary) => void;
   onApply?: () => void;
   onCancel?: () => void;
@@ -61,6 +64,7 @@ export function InspectionPanel({
   draftMovement,
   originalMovement,
   isDirty = false,
+  interactionState = null,
   onDraftChange,
   onApply,
   onCancel,
@@ -92,6 +96,7 @@ export function InspectionPanel({
   const landmarksState = toothIntel?.landmarks.state ?? null;
   const rootsState = toothIntel?.root_geometry.state ?? null;
   const overallState = toothIntel?.overall_truth_state ?? null;
+  const transformAllowed = canTransformTooth(draftMovement);
 
   return (
     <aside className="inspection-panel" data-testid="inspection-panel">
@@ -127,6 +132,22 @@ export function InspectionPanel({
           <span>Identification confidence: Not Available</span>
         )}
       </div>
+      {interactionState && (
+        <div className="inspection-status" data-testid="inspection-interaction">
+          <span>Interaction</span>
+          <strong data-testid="interaction-phase">{interactionState.phase.replaceAll("_", " ")}</strong>
+          <p data-testid="interaction-coordinate-space">
+            Coordinate space · {interactionState.coordinateSpace.replaceAll("_", " ")}
+          </p>
+          <p data-testid="interaction-constraints">
+            Constraints · {interactionState.constraintAvailability.replaceAll("_", " ")}
+          </p>
+          <p>Transform · {transformAllowed ? "geometrically editable" : "blocked (lock/exclude)"}</p>
+          {interactionState.notes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+        </div>
+      )}
 
       {(overallState || geometryState || axesState || landmarksState || rootsState) && (
         <div className="inspection-status" data-testid="inspection-intelligence">
@@ -164,7 +185,7 @@ export function InspectionPanel({
                   type="number"
                   step="0.01"
                   value={draftMovement[key] ?? 0}
-                  disabled={Boolean(draftMovement.locked)}
+                  disabled={!transformAllowed}
                   onChange={(event) =>
                     onDraftChange({ ...draftMovement, [key]: Number(event.target.value) })
                   }
@@ -220,7 +241,8 @@ export function InspectionPanel({
             </button>
           </div>
           <div className="readonly-note">
-            Doctor editing is explicit and read-only until Apply. No clinical correction is automatic.
+            Doctor editing is explicit and read-only until Apply. Geometric executability is not
+            clinical approval. No doctor-approved state is exposed from this interaction engine.
           </div>
         </>
       ) : (

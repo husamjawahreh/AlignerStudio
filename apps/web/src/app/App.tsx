@@ -52,6 +52,15 @@ import { createDentalSceneGraph } from "../viewer/sceneGraph";
 import { findToothByKey } from "../viewer/toothKey";
 import { useToothSelection } from "../viewer/useToothSelection";
 import {
+  beginTransformTransaction,
+  buildToothInteractionState,
+  canTransformTooth,
+  normalizeClientEditReason,
+  updateTransformTransaction,
+  type EditProvenanceReason,
+  type InteractionTransaction,
+} from "../viewer/toothInteraction";
+import {
   AppShell,
   BottomTimeline,
   LeftToolPanel,
@@ -274,6 +283,10 @@ export function App(): JSX.Element {
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([]);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
+  const [editReason, setEditReason] = useState<EditProvenanceReason>("doctor_edit");
+  const [transformTransaction, setTransformTransaction] = useState<InteractionTransaction | null>(
+    null,
+  );
 
   const fixtureStage = reviewBundle.stages[stageIndex] ?? null;
   const treatmentAvailable = reviewBundle.realDataAvailable && fixtureStage !== null;
@@ -360,6 +373,23 @@ export function App(): JSX.Element {
     selectedTooth === null
       ? null
       : findToothByKey(reviewBundle.stages.at(-1)?.teeth, selectedTooth);
+  const toothInteractionState = useMemo(() => {
+    if (!selectedFixtureTooth || !draftMovement || !currentProposalTooth) return null;
+    return buildToothInteractionState({
+      caseId: activeCase?.id ?? null,
+      tooth: selectedFixtureTooth,
+      draft: draftMovement,
+      base: currentProposalTooth.movement,
+      selected: true,
+      transforming: transformTransaction != null,
+    });
+  }, [
+    activeCase?.id,
+    currentProposalTooth,
+    draftMovement,
+    selectedFixtureTooth,
+    transformTransaction,
+  ]);
   const bothArchesValid =
     archUploads.upper.state === "valid" && archUploads.lower.state === "valid";
   const workflowSteps = useMemo(() => buildWorkflowSteps({
@@ -383,6 +413,13 @@ export function App(): JSX.Element {
     setProcessingStatus(null);
     setBusyActivity(null);
     setIsBusy(false);
+    // WP-04: dispose interaction/undo state on case change — prevent stale transforms.
+    setUndoStack([]);
+    setRedoStack([]);
+    setTransformTransaction(null);
+    setEditReason("doctor_edit");
+    setIsolateSelectedTooth(false);
+    setArchMode("both");
   }
 
   function startBusy(activity: string): void {
@@ -525,15 +562,19 @@ export function App(): JSX.Element {
       findToothByKey(reviewBundle.stages.at(-1)?.teeth, toothNumber) ??
       findToothByKey(activeReviewStage?.teeth, toothNumber);
     setDraftMovement(tooth ? cloneMovement(tooth.movement) : null);
+    setTransformTransaction(null);
+    setEditReason("doctor_edit");
   }
 
   function handleClearSelection(): void {
     clearSelection();
     setDraftMovement(null);
+    setTransformTransaction(null);
+    setEditReason("doctor_edit");
   }
 
   function handleGizmoMovement(movement: MovementSummary): void {
-    if (!draftMovement || draftMovement.locked) return;
+    if (!draftMovement || !canTransformTooth(draftMovement)) return;
     const frame = selectedFixtureTooth?.coordinateSystem ?? selectedFixtureTooth?.movementReferenceFrame;
     let next: MovementSummary = {
       ...draftMovement,
@@ -560,12 +601,58 @@ export function App(): JSX.Element {
         rotation: movement.rotation,
       };
     }
+    setEditReason("gizmo_edit");
+    setTransformTransaction((current) => {
+      if (!selectedTooth) return current;
+      if (!current || current.toothKey !== selectedTooth) {
+        return updateTransformTransaction(
+          beginTransformTransaction(selectedTooth, draftMovement, "gizmo_edit"),
+          next,
+        );
+      }
+      return updateTransformTransaction(current, next);
+    });
     setDraftMovement(next);
+  }
+
+  function handleDraftChange(movement: MovementSummary): void {
+    if (!draftMovement) {
+      setDraftMovement(movement);
+      setEditReason("numeric_edit");
+      return;
+    }
+    const lockedOrExcluded = Boolean(draftMovement.locked || draftMovement.excluded);
+    if (lockedOrExcluded && !canTransformTooth(movement)) {
+      // Only lock/exclude flag changes are allowed while blocked.
+      const flagsOnly =
+        !hasMovementChanges(
+          { ...draftMovement, locked: false, excluded: false },
+          { ...movement, locked: false, excluded: false },
+        );
+      if (!flagsOnly) return;
+    }
+    setEditReason("numeric_edit");
+    setDraftMovement(movement);
   }
 
   async function handleApplyEdit(): Promise<void> {
     if (selectedTooth === null || !draftMovement) return;
     const beforeMovement = currentProposalTooth?.movement ?? draftMovement;
+    if (
+      !canTransformTooth(beforeMovement) &&
+      hasMovementChanges(
+        { ...beforeMovement, locked: false, excluded: false },
+        { ...draftMovement, locked: false, excluded: false },
+      )
+    ) {
+      setError(
+        beforeMovement.locked
+          ? `Tooth ${selectedTooth} is locked; unlock before changing movement`
+          : `Tooth ${selectedTooth} is excluded; include before changing movement`,
+      );
+      return;
+    }
+    const reason = normalizeClientEditReason(editReason);
     const snapshot: EditSnapshot = {
       before: reviewBundle,
       tooth: selectedTooth,
@@ -577,9 +664,13 @@ export function App(): JSX.Element {
       setRecalculationState("recalculating");
       try {
         // API apply_edit runs Target → Staging → Validation before returning.
-        setReviewBundle(await api.applyTreatmentEdit(activeCase.id, selectedTooth, draftMovement));
+        setReviewBundle(
+          await api.applyTreatmentEdit(activeCase.id, selectedTooth, draftMovement, reason),
+        );
         setUndoStack((current) => [...current, snapshot]);
         setRedoStack([]);
+        setTransformTransaction(null);
+        setEditReason("doctor_edit");
         setRecalculationState("complete");
         setStageIndex(0);
       } catch (err) {
@@ -592,11 +683,19 @@ export function App(): JSX.Element {
     }
     setReviewBundle((current) =>
       recalculateFixtureBundle(
-        applyFixtureMovementEdit(current, selectedTooth, draftMovement, new Date().toISOString()),
+        applyFixtureMovementEdit(
+          current,
+          selectedTooth,
+          draftMovement,
+          new Date().toISOString(),
+          reason,
+        ),
       ),
     );
     setUndoStack((current) => [...current, snapshot]);
     setRedoStack([]);
+    setTransformTransaction(null);
+    setEditReason("doctor_edit");
     setRecalculationState("complete");
   }
 
@@ -663,12 +762,20 @@ export function App(): JSX.Element {
     setRedoStack((current) => [...current, snapshot]);
     if (backendTreatment && activeCase) {
       setRecalculationState("recalculating");
-      setReviewBundle(await api.applyTreatmentEdit(activeCase.id, snapshot.tooth, snapshot.beforeMovement));
+      setReviewBundle(
+        await api.applyTreatmentEdit(
+          activeCase.id,
+          snapshot.tooth,
+          snapshot.beforeMovement,
+          "system_restore",
+        ),
+      );
       setRecalculationState("complete");
     } else {
       setReviewBundle(snapshot.before);
     }
     setDraftMovement(cloneMovement(snapshot.beforeMovement));
+    setEditReason("system_restore");
   }
 
   async function handleRedo(): Promise<void> {
@@ -678,16 +785,30 @@ export function App(): JSX.Element {
     setUndoStack((current) => [...current, snapshot]);
     if (backendTreatment && activeCase) {
       setRecalculationState("recalculating");
-      setReviewBundle(await api.applyTreatmentEdit(activeCase.id, snapshot.tooth, snapshot.afterMovement));
+      setReviewBundle(
+        await api.applyTreatmentEdit(
+          activeCase.id,
+          snapshot.tooth,
+          snapshot.afterMovement,
+          "system_restore",
+        ),
+      );
       setRecalculationState("complete");
     } else {
       setReviewBundle((current) =>
         recalculateFixtureBundle(
-          applyFixtureMovementEdit(current, snapshot.tooth, snapshot.afterMovement, new Date().toISOString()),
+          applyFixtureMovementEdit(
+            current,
+            snapshot.tooth,
+            snapshot.afterMovement,
+            new Date().toISOString(),
+            "system_restore",
+          ),
         ),
       );
     }
     setDraftMovement(cloneMovement(snapshot.afterMovement));
+    setEditReason("system_restore");
   }
 
   function handleCancelEdit(): void {
@@ -1400,6 +1521,9 @@ export function App(): JSX.Element {
                 hiddenToothIds={hiddenToothIds}
                 gizmoMode={gizmoMode}
                 onGizmoMovement={handleGizmoMovement}
+                transformEnabled={
+                  treatmentAvailable && canTransformTooth(draftMovement)
+                }
                 onSelectTooth={handleSelectTooth}
                 onClearSelection={handleClearSelection}
                 onFit={() => undefined}
@@ -1416,6 +1540,7 @@ export function App(): JSX.Element {
                       gizmoMode={gizmoMode}
                       onGizmoMode={setGizmoMode}
                       canEdit={treatmentAvailable && draftMovement !== null}
+                      canTransform={canTransformTooth(draftMovement)}
                       isDirty={
                         draftMovement !== null &&
                         currentProposalTooth !== null &&
@@ -1567,7 +1692,8 @@ export function App(): JSX.Element {
                   currentProposalTooth !== null &&
                   hasMovementChanges(draftMovement, currentProposalTooth.movement)
                 }
-                onDraftChange={setDraftMovement}
+                onDraftChange={handleDraftChange}
+                interactionState={toothInteractionState}
                 onApply={() => void handleApplyEdit()}
                 onCancel={handleCancelEdit}
                 onReset={handleResetTooth}

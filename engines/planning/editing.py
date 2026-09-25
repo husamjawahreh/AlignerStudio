@@ -59,7 +59,7 @@ class TreatmentEditingApplication:
         self._validate_movement(new_movement)
         current = self._movement_for(proposal, tooth_number)
         if (
-            reason != "doctor_reset"
+            reason not in ("doctor_reset", "reset", "system_restore")
             and current.locked
             and new_movement.locked
             and not current.pose_equal(new_movement)
@@ -67,6 +67,18 @@ class TreatmentEditingApplication:
             raise TreatmentEditingError(
                 f"Tooth {tooth_number} is locked; unlock before changing movement"
             )
+        if (
+            reason not in ("doctor_reset", "reset", "system_restore")
+            and current.excluded
+            and new_movement.excluded
+            and not current.pose_equal(new_movement)
+        ):
+            raise TreatmentEditingError(
+                f"Tooth {tooth_number} is excluded; include before changing movement"
+            )
+        # Normalize reset alias into persisted provenance vocabulary.
+        if reason == "reset":
+            reason = "doctor_reset"
         timestamp_value = timestamp or datetime.now(timezone.utc).isoformat()
         edit_seed = json.dumps(
             {

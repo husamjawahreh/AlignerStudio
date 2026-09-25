@@ -4,6 +4,8 @@ interface ContextualToothToolbarProps {
   gizmoMode: "translate" | "rotate";
   onGizmoMode: (mode: "translate" | "rotate") => void;
   canEdit: boolean;
+  /** Geometric transform allowed — false when locked/excluded. */
+  canTransform?: boolean;
   isDirty: boolean;
   locked: boolean;
   excluded: boolean;
@@ -26,6 +28,7 @@ export function ContextualToothToolbar({
   gizmoMode,
   onGizmoMode,
   canEdit,
+  canTransform = true,
   isDirty,
   locked,
   excluded,
@@ -51,7 +54,7 @@ export function ContextualToothToolbar({
           type="button"
           className={gizmoMode === "translate" ? "viewer-tool is-active" : "viewer-tool"}
           onClick={() => onGizmoMode("translate")}
-          disabled={!canEdit}
+          disabled={!canEdit || !canTransform}
           title="Translate gizmo"
         >
           Move
@@ -60,7 +63,7 @@ export function ContextualToothToolbar({
           type="button"
           className={gizmoMode === "rotate" ? "viewer-tool is-active" : "viewer-tool"}
           onClick={() => onGizmoMode("rotate")}
-          disabled={!canEdit}
+          disabled={!canEdit || !canTransform}
           title="Rotate gizmo"
         >
           Rotate

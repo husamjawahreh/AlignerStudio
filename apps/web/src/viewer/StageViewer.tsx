@@ -61,6 +61,8 @@ interface StageViewerProps {
   onReset: () => void;
   gizmoMode?: "translate" | "rotate";
   onGizmoMovement?: (movement: MovementSummary) => void;
+  /** When false, gizmo detaches — locked/excluded/unavailable teeth stay inspectable. */
+  transformEnabled?: boolean;
   /** Selection-scoped controls rendered above the camera toolbar. */
   contextualToolbar?: ReactNode;
 }
@@ -107,6 +109,7 @@ export function StageViewer({
   onReset,
   gizmoMode = "translate",
   onGizmoMovement,
+  transformEnabled = true,
   contextualToolbar,
 }: StageViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -704,11 +707,13 @@ export function StageViewer({
     const selectedRecord = recordsRef.current.find(({ tooth }) =>
       selectedTooth != null ? toothMatchesKey(tooth, selectedTooth) : false,
     );
-    if (selectedRecord) gizmoRef.current?.attach(selectedRecord.mesh);
+    const allowTransform = transformEnabled && selectedRecord != null;
+    if (allowTransform) gizmoRef.current?.attach(selectedRecord.mesh);
     else gizmoRef.current?.detach();
     gizmoRef.current?.setMode(gizmoMode);
+    if (gizmoRef.current) gizmoRef.current.enabled = allowTransform;
     applyVisualsRef.current?.();
-  }, [gizmoMode, selectedTooth, multiSelectedTeeth]);
+  }, [gizmoMode, selectedTooth, multiSelectedTeeth, transformEnabled]);
 
   return (
     <div className="viewport-shell" data-testid="viewport-shell">

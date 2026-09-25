@@ -191,6 +191,7 @@ export const api = {
     caseId: string,
     toothNumber: number | string,
     movement: MovementSummary,
+    reason?: string,
   ): Promise<ReviewBundle> {
     return requestJson<ReviewBundle>(`/cases/${caseId}/treatment/edits`, {
       method: "POST",
@@ -210,6 +211,7 @@ export const api = {
         extrusion: movement.extrusion,
         locked: movement.locked ?? false,
         excluded: movement.excluded ?? false,
+        ...(reason ? { reason } : {}),
       }),
     });
   },

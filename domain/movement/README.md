@@ -1,5 +1,12 @@
-# Movement domain package (placeholder)
+# Movement / Tooth Interaction Engine (WP-04)
 
-This package will hold tooth-movement value objects (translation/rotation
-transforms between stages) once `engines/staging` is implemented. Empty in
-Phase 1 — see [TREATMENT_PLAN.md](../../TREATMENT_PLAN.md).
+This package formalizes interaction contracts over the existing P4
+``ToothMovement`` / ``DoctorMovementEdit`` pipeline.
+
+- `interaction.py` — interaction phases, transform snapshots, constraint
+  availability, edit reason normalization.
+- Live transforms continue to flow through
+  `engines.planning.editing.TreatmentEditingApplication` and
+  `TreatmentPlanningEngine.rebuild_proposal` (source geometry never mutated).
+
+Do **not** introduce a second transform/staging/validation system here.

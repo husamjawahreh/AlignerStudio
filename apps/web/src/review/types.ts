@@ -73,6 +73,14 @@ export interface ReviewStage {
   metadata?: Readonly<Record<string, string>>;
 }
 
+export type EditProvenanceReason =
+  | "doctor_edit"
+  | "doctor_reset"
+  | "gizmo_edit"
+  | "numeric_edit"
+  | "reset"
+  | "system_restore";
+
 export interface ReviewEditRecord {
   editId: string;
   toothNumber: number | string;
@@ -81,7 +89,7 @@ export interface ReviewEditRecord {
   timestamp: string;
   versionId: string;
   provenance: DataProvenance;
-  reason: "doctor_edit" | "doctor_reset";
+  reason: EditProvenanceReason;
   source?: "doctor";
 }
 

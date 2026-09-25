@@ -87,6 +87,8 @@ class MovementEditRequest(BaseModel):
     extrusion: float = 0.0
     locked: bool = False
     excluded: bool = False
+    # WP-04 provenance — gizmo_edit / numeric_edit / doctor_edit / doctor_reset / system_restore
+    reason: str | None = None
 
 
 class ToothResetRequest(BaseModel):
@@ -375,11 +377,13 @@ def apply_treatment_edit(case_id: str, request: MovementEditRequest) -> dict:
         tooth_key = request.tooth_ref if request.tooth_ref is not None else request.tooth_number
         if tooth_key is None:
             raise ValueError("Either tooth_number or tooth_ref is required")
+        payload = request.model_dump(exclude={"tooth_number", "tooth_ref", "reason"})
         return review_bundle(
             treatment_sessions.apply_edit(
                 case_id,
                 tooth_key,
-                request.model_dump(exclude={"tooth_number", "tooth_ref"}),
+                payload,
+                reason=request.reason,
             )
         )
     except (TreatmentSessionError, ValueError) as error:

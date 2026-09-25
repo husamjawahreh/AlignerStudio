@@ -42,25 +42,42 @@ export function applyFixtureMovementEdit(
   toothNumber: number | string,
   movement: MovementSummary,
   timestamp: string,
-  reason: "doctor_edit" | "doctor_reset" = "doctor_edit",
+  reason: ReviewEditRecord["reason"] = "doctor_edit",
 ): ReviewBundle {
   const current = findTooth(bundle.stages.at(-1) ?? bundle.stages[0], toothNumber)?.movement;
   if (!current) throw new Error(`Tooth ${toothNumber} is not editable`);
+  const poseChanged = MOVEMENT_FIELDS.some(
+    (field) => (current[field] ?? 0) !== (movement[field] ?? 0),
+  );
   if (
     reason !== "doctor_reset" &&
+    reason !== "reset" &&
+    reason !== "system_restore" &&
     current.locked &&
     movement.locked &&
-    MOVEMENT_FIELDS.some((field) => (current[field] ?? 0) !== (movement[field] ?? 0))
+    poseChanged
   ) {
     throw new Error(`Tooth ${toothNumber} is locked; unlock before changing movement`);
   }
+  if (
+    reason !== "doctor_reset" &&
+    reason !== "reset" &&
+    reason !== "system_restore" &&
+    current.excluded &&
+    movement.excluded &&
+    poseChanged
+  ) {
+    throw new Error(`Tooth ${toothNumber} is excluded; include before changing movement`);
+  }
+  const normalizedReason =
+    reason === "reset" ? "doctor_reset" : reason;
   const normalized = cloneMovement(movement);
   const editSeed = JSON.stringify({
     toothNumber,
     current,
     movement: normalized,
     timestamp,
-    reason,
+    reason: normalizedReason,
     version: bundle.proposalKind,
   });
   const editId = stableHash(editSeed);
@@ -72,7 +89,7 @@ export function applyFixtureMovementEdit(
     timestamp,
     versionId: stableHash(`${editSeed}:edit`),
     provenance: "generated",
-    reason,
+    reason: normalizedReason,
   };
   return rebuildFixtureBundle(bundle, toothNumber, normalized, [edit, ...bundle.editHistory]);
 }
