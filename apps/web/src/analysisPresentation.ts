@@ -15,6 +15,9 @@ export interface AnalysisFinding {
 export interface AnalysisOverview {
   ran: boolean;
   stateLabel: string;
+  /** False when segmentation did not run or failed. Counts must not read as a clinical zero. */
+  countsAvailable: boolean;
+  segmentationTruthState: string | null;
   instanceCount: number;
   upperCount: number;
   lowerCount: number;
@@ -118,6 +121,8 @@ export function buildAnalysisOverview(input: {
     return {
       ran: false,
       stateLabel: "Not run",
+      countsAvailable: false,
+      segmentationTruthState: null,
       instanceCount: input.teeth.length,
       upperCount,
       lowerCount,
@@ -224,12 +229,33 @@ export function buildAnalysisOverview(input: {
   const occlusionAvailability =
     intelFields.occlusionTruth ?? intel?.occlusion.availability ?? "unavailable";
 
+  const segmentationTruthState = diagnostic?.segmentation_truth_state ?? null;
+  const blocked =
+    diagnostic?.state === "blocked_by_environment" ||
+    segmentationTruthState === "blocked_by_environment";
+  const failed =
+    diagnostic?.state === "segmentation_failed" || segmentationTruthState === "failed";
+  const unavailable =
+    diagnostic?.state === "model_unavailable" || segmentationTruthState === "not_available";
+  const countsAvailable = Boolean(diagnostic) && !blocked && !failed && !unavailable;
+  let stateLabel = diagnostic
+    ? diagnostic.state.replaceAll("_", " ")
+    : (intelDoc?.overall_truth_state.replaceAll("_", " ") ?? "Available");
+  if (blocked) stateLabel = "Blocked by environment";
+  else if (failed) stateLabel = "Failed";
+  else if (unavailable) stateLabel = "Not available";
+  else if (segmentationTruthState === "requires_review") stateLabel = "Requires review";
+  else if (segmentationTruthState === "computed") stateLabel = "Computed";
+  else if (segmentationTruthState === "verified") stateLabel = "Verified";
+
   return {
     ran: true,
-    stateLabel: diagnostic
-      ? diagnostic.state.replaceAll("_", " ")
-      : (intelDoc?.overall_truth_state.replaceAll("_", " ") ?? "Available"),
-    instanceCount: diagnostic?.tooth_instance_count ?? intelDoc?.counts?.tooth_instances ?? input.teeth.length,
+    stateLabel,
+    countsAvailable,
+    segmentationTruthState,
+    instanceCount: countsAvailable
+      ? (diagnostic?.tooth_instance_count ?? intelDoc?.counts?.tooth_instances ?? input.teeth.length)
+      : 0,
     upperCount,
     lowerCount,
     identifiedTeeth: diagnostic?.identified_teeth ?? null,

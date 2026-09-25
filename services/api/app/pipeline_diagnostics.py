@@ -23,6 +23,7 @@ from app.toothinstancenet_configuration import (
 
 class PipelineState(StrEnum):
     MODEL_UNAVAILABLE = "model_unavailable"
+    BLOCKED_BY_ENVIRONMENT = "blocked_by_environment"
     SEGMENTATION_FAILED = "segmentation_failed"
     IDENTIFICATION_INCOMPLETE = "identification_incomplete"
     PLANNING_UNAVAILABLE = "planning_unavailable"
@@ -63,6 +64,14 @@ class CasePipelineDiagnostic:
     source_mesh_sha256: str | None = None
     model_name: str | None = None
     model_version: str | None = None
+    arch: str | None = None
+    backend: str | None = None
+    segmentation_truth_state: str | None = None
+    runtime_blocker: str | None = None
+    recoverable: bool | None = None
+    preprocessing: dict | None = None
+    runtime: dict | None = None
+    limitations: tuple[str, ...] = ()
 
     def payload(self) -> dict:
         return {**asdict(self), "state": self.state.value}
@@ -185,6 +194,14 @@ def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineD
         source_mesh_sha256=values.get("source_mesh_sha256"),
         model_name=values.get("model_name"),
         model_version=values.get("model_version"),
+        arch=values.get("arch"),
+        backend=values.get("backend"),
+        segmentation_truth_state=values.get("segmentation_truth_state"),
+        runtime_blocker=values.get("runtime_blocker"),
+        recoverable=values.get("recoverable"),
+        preprocessing=values.get("preprocessing"),
+        runtime=values.get("runtime"),
+        limitations=values.get("limitations", ()),
     )
 
 

@@ -27,6 +27,7 @@ from app.pipeline_diagnostics import (
 )
 from app.processing_modes import ProcessingMode, require_real_case_mode
 from app.segmentation_config import SegmentationConfigurationError, load_segmentation_configuration
+from app.segmentation_runtime import assess_segmentation_runtime, inspect_uploaded_mesh
 from app.toothinstancenet_configuration import (
     ToothInstanceNetConfigurationError,
     load_toothinstancenet_engine,
@@ -40,6 +41,33 @@ def _sha256_file(path: str | Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _source_context(
+    *,
+    binding: dict,
+    arch: ArchType,
+    mesh: Path,
+    source_sha: str | None,
+    assessment: dict,
+) -> dict:
+    preprocessing = None
+    if source_sha and mesh.is_file():
+        preprocessing = inspect_uploaded_mesh(mesh, arch=arch.value, source_sha256=source_sha)
+    return {
+        **binding,
+        "arch": arch.value,
+        "backend": assessment.get("backend"),
+        "runtime": assessment,
+        "runtime_blocker": assessment.get("blocker"),
+        "recoverable": assessment.get("recoverable"),
+        "preprocessing": preprocessing,
+        "limitations": (
+            "Segmentation did not produce clinical tooth instances.",
+        )
+        if assessment.get("capability") != "ready"
+        else (),
+    }
 
 
 def process_real_uploaded_arch(
@@ -68,26 +96,42 @@ def process_real_uploaded_arch(
             PipelineState.SEGMENTATION_FAILED,
             started,
             failures=(f"Uploaded mesh is missing: {mesh_path}",),
+            segmentation_truth_state="failed",
+            arch=arch.value,
             **binding,
         )
     source_sha = _sha256_file(mesh)
     binding["source_mesh_sha256"] = source_sha
     backend = selected_backend()
+    assessment = assess_segmentation_runtime()
+    context = _source_context(
+        binding=binding, arch=arch, mesh=mesh, source_sha=source_sha, assessment=assessment
+    )
 
     if backend == "toothinstancenet":
         try:
             result = load_toothinstancenet_engine(arch).segment(str(mesh))
         except ToothInstanceNetConfigurationError as error:
+            blocked = assessment.get("capability") == "blocked_by_environment"
+            blocker = assessment.get("blocker") or str(error)
+            state = (
+                PipelineState.BLOCKED_BY_ENVIRONMENT
+                if blocked
+                else PipelineState.MODEL_UNAVAILABLE
+            )
             return _diagnostic(
-                PipelineState.MODEL_UNAVAILABLE,
+                state,
                 started,
-                failures=(str(error),),
+                failures=(blocker, str(error)),
                 notes=(
                     "Real ToothInstanceNet is not configured or unavailable. "
                     "No fixture substitution was performed.",
                 ),
                 model_name="toothinstancenet",
-                **binding,
+                segmentation_truth_state=(
+                    "blocked_by_environment" if blocked else "not_available"
+                ),
+                **context,
             )
         except Exception as error:  # noqa: BLE001 - runtime boundary
             return _diagnostic(
@@ -96,14 +140,25 @@ def process_real_uploaded_arch(
                 failures=(str(error),),
                 notes=("Real ToothInstanceNet inference failed. No fixture substitution.",),
                 model_name="toothinstancenet",
-                **binding,
+                segmentation_truth_state="failed",
+                **{
+                    **context,
+                    "limitations": (
+                        "Tooth instance counts are not clinical results for a failed run.",
+                    ),
+                },
             )
         diagnostic = _diagnostic_from_result(result, started, source_kind="uploaded_real_case")
         return CasePipelineDiagnostic(
             **{
                 **diagnostic.__dict__,
-                **binding,
+                **context,
                 "fixture": False,
+                "segmentation_truth_state": "requires_review",
+                "runtime_blocker": None,
+                "limitations": (
+                    "Model class labels are not verified clinical FDI.",
+                ),
                 "model_name": result.segmentation.metadata.model_name,
                 "model_version": result.segmentation.metadata.model_version,
             }
@@ -112,13 +167,20 @@ def process_real_uploaded_arch(
     try:
         configuration = load_segmentation_configuration()
     except SegmentationConfigurationError as error:
+        blocked = assessment.get("capability") == "blocked_by_environment"
+        failure = str(error)
+        if blocked and assessment.get("blocker"):
+            failure = str(assessment["blocker"])
+            if "No fixture fallback" not in failure:
+                failure = f"{failure} No fixture fallback is used."
         return _diagnostic(
             PipelineState.MODEL_UNAVAILABLE,
             started,
-            failures=(str(error),),
+            failures=(failure,),
             notes=("Real segmentation model unavailable. No fixture substitution.",),
-            model_name="onnx",
-            **binding,
+            model_name="onnx" if backend != "toothinstancenet" else backend,
+            segmentation_truth_state="blocked_by_environment" if blocked else "not_available",
+            **context,
         )
 
     try:
@@ -129,7 +191,13 @@ def process_real_uploaded_arch(
             started,
             failures=(str(error),),
             model_name="onnx",
-            **binding,
+            segmentation_truth_state="failed",
+            **{
+                **context,
+                "limitations": (
+                    "Tooth instance counts are not clinical results for a failed run.",
+                ),
+            },
         )
 
     segmentation_ms = (perf_counter() - started) * 1000
@@ -140,7 +208,10 @@ def process_real_uploaded_arch(
         for tooth in identification.teeth
     )
     base = {
-        **binding,
+        **context,
+        "segmentation_truth_state": "requires_review",
+        "runtime_blocker": None,
+        "limitations": ("ONNX class output is not verified clinical FDI.",),
         "segmentation_runtime_ms": segmentation_ms,
         "tooth_instance_count": len(segmented.instances),
         "identification_confidence": sum(scores) / len(scores) if scores else None,

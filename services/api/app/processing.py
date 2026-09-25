@@ -21,6 +21,16 @@ from app.pipeline_diagnostics import process_uploaded_case
 from app.store import case_store
 from domain.tooth.identification import ArchType
 
+# Segmentation outcomes that must become a durable FAILED job. Not COMPLETED.
+SEGMENTATION_FAILURE_STATES = frozenset(
+    {
+        "model_unavailable",
+        "blocked_by_environment",
+        "segmentation_failed",
+        "planning_unavailable",
+    }
+)
+
 STAGES = (
     "PREPARING",
     "VALIDATING_SCANS",
@@ -520,7 +530,7 @@ def _run(case_id: str, job_id: str) -> None:
             raise RuntimeError("Segmentation futures completed without results")
         if _is_cancelled(job_id):
             return
-        failed_states = {"model_unavailable", "segmentation_failed", "planning_unavailable"}
+        failed_states = SEGMENTATION_FAILURE_STATES
         reviewable = {"identification_incomplete", "planning_ready"}
         if upper.state.value in failed_states or lower.state.value in failed_states:
             complete_segmentation_record(

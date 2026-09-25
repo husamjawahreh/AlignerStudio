@@ -40,6 +40,34 @@ describe("Analysis presentation", () => {
     expect(formatToothIdentity({ instanceId: 11, fdiNumber: 11, toothRef: null })).toBe("FDI 11");
   });
 
+  it("does not present a runtime blocker as zero detected teeth", () => {
+    const diagnostic: PipelineDiagnostic = {
+      state: "model_unavailable",
+      source_kind: "uploaded_real_case",
+      segmentation_runtime_ms: null,
+      total_runtime_ms: 1,
+      tooth_instance_count: 0,
+      identification_confidence: null,
+      identified_teeth: 0,
+      uncertain_teeth: 0,
+      unidentified_teeth: 0,
+      validation_findings: [],
+      failures: ["ToothInstanceNet REAL_CASE inference is blocked by environment."],
+      arch_analysis_available: false,
+      notes: [],
+      fixture: false,
+      segmentation_truth_state: "blocked_by_environment",
+      runtime_blocker: "Missing: torch, pointops, NVIDIA driver",
+    };
+    const overview = buildAnalysisOverview({ diagnostic, teeth: [] });
+    expect(overview.stateLabel).toBe("Blocked by environment");
+    expect(overview.countsAvailable).toBe(false);
+    expect(overview.segmentationTruthState).toBe("blocked_by_environment");
+    expect(buildAnalysisFindings({ diagnostic, validation: null })[0]?.text).toContain(
+      "blocked by environment",
+    );
+  });
+
   it("reports unavailable anatomy fields when analysis has not run", () => {
     const overview = buildAnalysisOverview({ diagnostic: null, teeth: [] });
     expect(overview.ran).toBe(false);

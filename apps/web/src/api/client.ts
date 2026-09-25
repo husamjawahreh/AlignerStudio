@@ -76,6 +76,7 @@ export interface ProcessingStatus {
 export interface PipelineDiagnostic {
   state:
     | "model_unavailable"
+    | "blocked_by_environment"
     | "segmentation_failed"
     | "identification_incomplete"
     | "planning_unavailable"
@@ -103,6 +104,27 @@ export interface PipelineDiagnostic {
   arch_measurements?: ArchMeasurementsPayload | null;
   anatomical_intelligence?: AnatomicalIntelligencePayload | null;
   dental_intelligence?: CaseDentalIntelligencePayload | null;
+  arch?: "upper" | "lower" | null;
+  backend?: string | null;
+  segmentation_truth_state?:
+    | "verified"
+    | "computed"
+    | "requires_review"
+    | "not_available"
+    | "failed"
+    | "blocked_by_environment"
+    | null;
+  runtime_blocker?: string | null;
+  recoverable?: boolean | null;
+  preprocessing?: {
+    arch?: string;
+    source_mesh_sha256?: string;
+    source_bytes_modified?: boolean;
+    vertex_count?: number | null;
+    face_count?: number | null;
+    units?: string;
+    coordinate_system?: string;
+  } | null;
 }
 
 export interface PipelineToothInstance {

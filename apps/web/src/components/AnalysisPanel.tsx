@@ -53,19 +53,21 @@ export function AnalysisPanel({
         </button>
         <div className="cad-stat-row">
           <span>Detected</span>
-          <strong data-testid="analysis-tooth-count">{teeth.length || overview.identifiedTeeth || 0}</strong>
+          <strong data-testid="analysis-tooth-count">
+            {overview.countsAvailable ? teeth.length || overview.identifiedTeeth || 0 : "Not available"}
+          </strong>
         </div>
         <div className="cad-stat-row">
           <span>Upper</span>
-          <strong>{overview.upperCount}</strong>
+          <strong>{overview.countsAvailable ? overview.upperCount : "Not available"}</strong>
         </div>
         <div className="cad-stat-row">
           <span>Lower</span>
-          <strong>{overview.lowerCount}</strong>
+          <strong>{overview.countsAvailable ? overview.lowerCount : "Not available"}</strong>
         </div>
         <div className="cad-stat-row">
           <span>State</span>
-          <strong>{overview.stateLabel}</strong>
+          <strong data-testid="analysis-segmentation-state">{overview.stateLabel}</strong>
         </div>
         {overview.overallTruthState && (
           <div className="cad-stat-row">
