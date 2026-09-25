@@ -1,0 +1,132 @@
+{
+  "record_id": "wp10_production_cad_technology_evaluation_v1",
+  "work_package": "WP-10 remediation — Production CAD Technology Evaluation Gate",
+  "timestamp_note": "Filled by evaluation; see also .research/tmp/wp10_tech_evaluation_benchmark.json",
+  "rule": "No library added merely because popular; no superior tech rejected merely for being external; licensing not used as technical rejection reason in this gate.",
+  "technologies": [
+    {
+      "name": "current_integrity",
+      "version_evaluated": "production_cad_v1",
+      "source": "engines/export/production_cad_engine.py",
+      "capability": "finite/non-empty mesh integrity",
+      "decision": "ADOPT",
+      "evidence": "Existing WP-10 QC; measured on real tooth instances",
+      "benchmark_status": "measured",
+      "integration_status": "integrated",
+      "adapter_boundary": "ProductionGeometryAdapter.current",
+      "provenance_implications": "algorithm production_cad_honesty_layer",
+      "performance_result": "sub-ms integrity on tooth sample",
+      "known_limitations": ["Not manufacturing readiness"]
+    },
+    {
+      "name": "trimesh",
+      "version_evaluated": "5.1.0",
+      "source": "https://github.com/mikedh/trimesh ; already services/api dependency trimesh[easy]",
+      "capability": "mesh load, watertight/winding/volume inspection, collision support",
+      "decision": "ADOPT",
+      "evidence": "Already production dependency; expanded into Production QC topology inspection",
+      "benchmark_status": "measured",
+      "integration_status": "integrated",
+      "adapter_boundary": "ProductionGeometryAdapter.trimesh",
+      "provenance_implications": "backend version recorded on geometry_operations",
+      "performance_result": "~5ms tooth inspect; arch load ~140-190ms",
+      "known_limitations": ["Does not provide robust appliance shell kernel"]
+    },
+    {
+      "name": "manifold3d",
+      "version_evaluated": "3.5.3",
+      "source": "https://github.com/elalish/manifold ; transitive via trimesh[easy], now also explicit",
+      "capability": "guaranteed-manifold booleans; manifold validity gate",
+      "decision": "ADOPT",
+      "evidence": "Engineering boolean deterministic; real crown tooth import returns Error.NotManifold",
+      "benchmark_status": "measured",
+      "integration_status": "integrated",
+      "adapter_boundary": "ProductionGeometryAdapter.manifold",
+      "provenance_implications": "backend+version on QC manifold_validity",
+      "performance_result": "engineering boolean <1ms; tooth validity ~1.3ms reject",
+      "known_limitations": ["No general open-surface shell API", "Requires manifold solids"]
+    },
+    {
+      "name": "meshlib",
+      "version_evaluated": "3.1.4.297",
+      "source": "https://github.com/MeshInspector/MeshLib ; pip meshlib",
+      "capability": "engineering voxel offset/shell, self-intersection query, boolean",
+      "decision": "ADOPT",
+      "evidence": "Real tooth Unsigned offset → watertight volume, deterministic hashes; source immutable",
+      "benchmark_status": "measured",
+      "integration_status": "integrated",
+      "adapter_boundary": "ProductionGeometryAdapter.meshlib",
+      "provenance_implications": "engineering_offset operation + derived hash; truth REQUIRES_REVIEW",
+      "performance_result": "~80-170ms tooth offset depending on voxelSize",
+      "known_limitations": [
+        "Voxelized; not manufacturing certified",
+        "Not clinical thickness/material profile",
+        "Trimline not provided"
+      ]
+    },
+    {
+      "name": "Open3D",
+      "version_evaluated": "0.20.0 (index only; not installed in product venv for this gate)",
+      "source": "http://www.open3d.org/",
+      "capability": "general mesh processing / optional repair",
+      "decision": "REFERENCE",
+      "evidence": "Overlaps trimesh+MeshLib for inspection/offset needs; REUSE_MATRIX planned but unused; high install cost without unique measured gain vs MeshLib for Production CAD",
+      "benchmark_status": "not_installed_this_gate",
+      "integration_status": "not_integrated",
+      "adapter_boundary": "none",
+      "provenance_implications": "n/a",
+      "performance_result": null,
+      "known_limitations": ["Heavy dependency; no unique Production CAD gap vs MeshLib in this evaluation"]
+    },
+    {
+      "name": "CGAL",
+      "version_evaluated": "not installed",
+      "source": "https://www.cgal.org/",
+      "capability": "exact geometry, booleans, meshing",
+      "decision": "REFERENCE",
+      "evidence": "High integration complexity (C++/bindings); Manifold+MeshLib cover evaluated boolean/offset needs",
+      "benchmark_status": "not_run",
+      "integration_status": "not_integrated",
+      "adapter_boundary": "none",
+      "provenance_implications": "n/a",
+      "performance_result": null,
+      "known_limitations": ["Heavy native stack; not required given measured MeshLib/Manifold results"]
+    },
+    {
+      "name": "libigl",
+      "version_evaluated": "not installed",
+      "source": "https://libigl.github.io/",
+      "capability": "geometry processing toolkit",
+      "decision": "REFERENCE",
+      "evidence": "Research-oriented; no Python-first product path needed after MeshLib/Manifold/trimesh coverage",
+      "benchmark_status": "not_run",
+      "integration_status": "not_integrated",
+      "adapter_boundary": "none",
+      "provenance_implications": "n/a",
+      "performance_result": null,
+      "known_limitations": ["Primarily C++; duplicates covered capabilities"]
+    }
+  ],
+  "capability_decisions": {
+    "mesh_integrity": "ADOPT current_integrity",
+    "topology_watertight_winding": "ADOPT trimesh",
+    "manifold_validity_gate": "ADOPT manifold3d",
+    "boolean_engineering_solids": "ADOPT manifold3d (primary), meshlib (secondary)",
+    "self_intersection_query": "ADOPT meshlib",
+    "engineering_offset_shell_sample": "ADOPT meshlib (REQUIRES_REVIEW; not manufacturing certified)",
+    "trimline": "KEEP NOT_AVAILABLE",
+    "undercut": "KEEP NOT_AVAILABLE",
+    "manufacturing_certification": "KEEP NOT_AVAILABLE",
+    "open3d": "REFERENCE",
+    "cgal": "REFERENCE",
+    "libigl": "REFERENCE"
+  },
+  "statements": [
+    "No library was added merely because it is popular.",
+    "No technically superior technology was rejected merely because it was external.",
+    "Every adopted technology has measured evidence.",
+    "Unsupported manufacturing operations (trimline, undercut, certification) remain NOT_AVAILABLE.",
+    "Manufacturing certification is not claimed.",
+    "WP-11 and later work packages were NOT started."
+  ]
+}

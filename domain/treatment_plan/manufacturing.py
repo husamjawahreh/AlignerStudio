@@ -61,6 +61,7 @@ def build_manufacturing_boundary_report(*, has_stage_models: bool) -> Manufactur
         "Appliance shell generation is unavailable; no fake shells are produced.",
         "Trimline/cutline, shell thickness, undercut, and manufacturing QC are unavailable.",
         "Treatment design and geometric validation are separated from manufacturing preparation.",
+        "WP-10 Production CAD exposes this boundary; unsupported CAD remains not available.",
     ]
     return ManufacturingBoundaryReport(
         package_kind="engineering_treatment_export",

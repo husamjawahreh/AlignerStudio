@@ -203,7 +203,76 @@ export interface ReviewBundle {
   occlusionAnatomy?: Record<string, unknown> | null;
   /** WP-09 Validation 2.0 capability contract. */
   validationCapability?: ValidationCapabilityPayload | null;
+  /** WP-10 Production CAD boundary contract. */
+  productionCad?: ProductionCadPayload | null;
   stagingId?: string;
+}
+
+export interface ProductionCadPayload {
+  contract_version: string;
+  production_plan_id: string;
+  production_version_id: string;
+  parent_production_version_id: string | null;
+  case_id: string;
+  freshness: string;
+  overall_truth_state: string;
+  export_state: string;
+  clinically_approved: false;
+  manufacturing_certified: false;
+  manufacturing_ready: false;
+  shell_generated: false;
+  trimline_generated: false;
+  undercut_computed: false;
+  fake_export: false;
+  binding: {
+    case_id: string;
+    treatment_setup_version_id: string | null;
+    staging_version_id: string | null;
+    clinical_tools_setup_version_id: string | null;
+    clinical_tools_staging_version_id: string | null;
+    validation_run_id: string | null;
+    geometric_report_id: string | null;
+    selected_stage_id: string | null;
+    selected_stage_index: number | null;
+    source_kind: string;
+    upper_mesh_hash: string | null;
+    lower_mesh_hash: string | null;
+    input_hash: string | null;
+  };
+  readiness: {
+    source_treatment_state: string;
+    validation_current: string;
+    shell: string;
+    trimline: string;
+    thickness_defined: string;
+    undercut_analysis: string;
+    mesh_qc: string;
+    export_validation: string;
+    package_integrity: string;
+    stage_model_export: string;
+    printable_model_preparation: string;
+    manufacturing_ready: false;
+    manufacturing_certified: false;
+    clinically_approved: false;
+    notes: readonly string[];
+  };
+  qc_checks: readonly {
+    check_id: string;
+    label: string;
+    status: string;
+    severity: string;
+    truth_state: string;
+    message: string;
+    manufacturing_certified: false;
+    clinically_approved: false;
+  }[];
+  parameters?: readonly Record<string, unknown>[];
+  limitations?: readonly string[];
+  timings_ms?: Record<string, number | null>;
+  geometry_backends?: readonly Record<string, unknown>[];
+  geometry_operations?: readonly Record<string, unknown>[];
+  engineering_offset_distance?: number | null;
+  manufacturing_boundary?: ManufacturingBoundary | null;
 }
 
 export interface ValidationCapabilityPayload {

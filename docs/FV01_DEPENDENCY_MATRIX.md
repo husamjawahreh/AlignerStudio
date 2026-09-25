@@ -18,7 +18,7 @@
 | **ToothInstanceNet** | Tooth instance segmentation baseline | MIT source; checkpoint terms separate | Already adapted | High for live GPU | Adapter-swappable after benchmark | **KEEP BASELINE** | Do not replace without measured evidence |
 | **3DTeethSAM** | Segmentation benchmark candidate | Unverified | Research only | High | Benchmark adapter only | **REJECT (production)** | Benchmark candidate only; no production treatment integration |
 | **Slicer Automated Dental Tools** | Landmarks / orientation concepts | Per-component | Not in web/API stack | High external | Future adapter | **REFERENCE / FUTURE ADAPTER** | Concepts only in FV-01 |
-| **Manifold / manifold-3d** | Mesh booleans | Apache-2.0 | Not needed yet | High when used | Geometry adapter | **REJECT (now)** | No FV-01 boolean requirement |
+| **Manifold / manifold-3d** | Mesh booleans + manifold validity | Apache-2.0 | Compatible; already transitive via trimesh[easy] | High when used | Geometry adapter | **ADOPT (WP-10)** | Measured: engineering booleans deterministic; real crowns NotManifold — validity gate only, not shell |
 
 ## Technologies adopted in FV-01
 

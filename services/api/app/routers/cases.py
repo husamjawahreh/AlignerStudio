@@ -621,6 +621,11 @@ class SetupAlternativeRequest(BaseModel):
     alternative_id: str
 
 
+class ProductionSourceSelectRequest(BaseModel):
+    stage_index: int | None = None
+    source_kind: str = "selected_stage"
+
+
 @router.post("/{case_id}/treatment/setup-alternatives/select")
 def select_setup_alternative(case_id: str, body: SetupAlternativeRequest) -> dict:
     """Doctor accepts a validated assisted setup alternative."""
@@ -689,6 +694,30 @@ def export_treatment(case_id: str) -> FileResponse:
         filename=f"alignerstudio-{case_id}-export.zip",
         headers={"X-AlignerStudio-Manifest": manifest_header(package)},
     )
+
+
+@router.post("/{case_id}/production/source")
+def select_production_source(case_id: str, body: ProductionSourceSelectRequest) -> dict:
+    """WP-10: explicitly select the production source stage/target (never silent)."""
+    try:
+        session = treatment_sessions.select_production_source(
+            case_id,
+            stage_index=body.stage_index,
+            source_kind=body.source_kind,
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return review_bundle(session)
+
+
+@router.post("/{case_id}/production/source/clear")
+def clear_production_source(case_id: str) -> dict:
+    """WP-10: clear production source selection."""
+    try:
+        session = treatment_sessions.clear_production_source(case_id)
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return review_bundle(session)
 
 
 @router.post("/{case_id}/export/verify")

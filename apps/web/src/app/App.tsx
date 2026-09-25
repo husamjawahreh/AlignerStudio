@@ -1451,6 +1451,16 @@ export function App(): JSX.Element {
               bundle={reviewBundle}
               treatmentAvailable={treatmentAvailable}
               onExport={() => void handleExportRequest()}
+              onSelectProductionSource={(stageIndex, sourceKind) => {
+                if (!activeCase?.id) return;
+                void api
+                  .selectProductionSource(activeCase.id, {
+                    stage_index: stageIndex,
+                    source_kind: sourceKind,
+                  })
+                  .then((bundle) => setReviewBundle(bundle))
+                  .catch(() => undefined);
+              }}
             />
           )}
 

@@ -8,7 +8,7 @@ copied into AlignerStudio by this document.
 | React Three Fiber | React renderer for Three.js scenes | MIT | Could make scene composition more declarative, but the current `StageViewer` already owns the single Three.js scene and works without a second renderer model | Medium to high migration cost | Low to medium | Suitable, subject to preserving notices | **REFERENCE ONLY** | `apps/web/src/viewer/` only if the existing viewer is intentionally migrated later |
 | Drei | R3F helpers and controls | MIT | Useful helpers for camera controls, bounds, labels, and loaders if R3F is adopted | Medium; coupled to R3F | Low | Suitable, subject to preserving notices | **REFERENCE ONLY** | `apps/web/src/viewer/` after an R3F decision |
 | three-mesh-bvh | BVH raycasting and spatial queries for Three.js meshes | MIT | Faster picking and proximity queries for large segmented meshes; concrete future fit for tooth selection | Low to medium | Small build/runtime overhead; measurable memory overhead | Suitable | **ADAPTER** | `apps/web/src/infrastructure/geometry/` or a viewer geometry adapter, after profiling current raycasting |
-| Manifold / manifold-3d | Robust mesh booleans and repair operations | Apache-2.0 (library; verify exact package/version before adoption) | Reliable boolean operations for future attachments, cuts, and export repair | Medium to high | High for boolean workloads | Potentially suitable with NOTICE/license review | **REFERENCE ONLY** | `engines/geometry/` behind a geometry adapter when a concrete boolean operation is scheduled |
+| Manifold / manifold-3d | Robust mesh booleans and manifold validity | Apache-2.0 (library; verify exact package/version before adoption) | Guaranteed-manifold booleans for engineering solids; validity gate on imported meshes | Medium | High for boolean workloads | Potentially suitable with NOTICE/license review | **ADOPT (WP-10 adapter)** | `engines/geometry/production_geometry/` ManifoldBackend |
 | Dental-CAD-Designer | Dental CAD workflow and geometry reference | License and exact upstream scope require verification | Workflow ideas for case setup, dental layers, and operator tooling | High; product architecture and licensing are not established here | Unknown | Not approved without exact license review | **REFERENCE ONLY** | Architecture documentation only |
 | Slicer Automated Dental Tools / ALI-IOS | Dental segmentation, landmarks, and Slicer workflows | Exact extension/repository license must be verified per component | Potential landmark and dental-analysis adapter reference | High; Slicer runtime is not part of the web/API stack | High external runtime cost | Not approved until component licenses and data terms are verified | **ADAPTER** | `adapters/` plus a future `engines/arrangement/` port; not imported by the UI |
 | OpenSourceOrtho | Clear-aligner planning architecture and safety boundaries | Apache-2.0 core, exact commit must be re-verified | Provenance, fail-closed quality gates, stage/version concepts, and export manifest patterns | Medium if independently re-implemented | Low to medium | Suitable with attribution if exact version remains compatible | **REFERENCE ONLY** | `domain/`, `engines/`, and `docs/`; never the web runtime package |
@@ -23,8 +23,8 @@ copied into AlignerStudio by this document.
 - No new npm dependency is adopted in this command. Three.js already supplies
   the current renderer and raycaster, and there is no measured bottleneck that
   justifies BVH yet.
-- No Manifold dependency is adopted because no current P0 operation requires a
-  boolean or mesh repair kernel.
+- Manifold / MeshLib were later adopted behind `ProductionGeometryAdapter` in
+  WP-10 after measured real-case benchmarks (see `docs/WP10_PRODUCTION_CAD.md`).
 - ToothInstanceNet and its validated real artifact remain the segmentation
   path. The fixture backend is explicit, matching-artifact-only, and remains
   experimental in the UI/API.

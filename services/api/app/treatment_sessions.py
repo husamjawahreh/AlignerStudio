@@ -83,6 +83,15 @@ class TreatmentSession:
     # WP-07 Clinical tools binding (setup/staging versions that produced adjuncts).
     clinical_tools_setup_version_id: str | None = None
     clinical_tools_staging_version_id: str | None = None
+    # WP-10 Production CAD explicit source selection (None = unselected / requires review).
+    production_selected_stage_index: int | None = None
+    production_source_kind: str | None = None
+    production_version_id: str | None = None
+    production_parent_version_id: str | None = None
+    production_bound_setup_version_id: str | None = None
+    production_bound_staging_version_id: str | None = None
+    production_bound_clinical_tools_setup_version_id: str | None = None
+    production_bound_validation_run_id: str | None = None
 
 
 class TreatmentSessionStore:
@@ -503,6 +512,25 @@ class TreatmentSessionStore:
             staging_history=history,
             clinical_tools_setup_version_id=result.proposal.version_id,
             clinical_tools_staging_version_id=plan.meta.staging_version_id,
+            # Preserve committed Production CAD selection for stale detection.
+            production_selected_stage_index=getattr(
+                session, "production_selected_stage_index", None
+            ),
+            production_source_kind=getattr(session, "production_source_kind", None),
+            production_version_id=getattr(session, "production_version_id", None),
+            production_parent_version_id=getattr(session, "production_parent_version_id", None),
+            production_bound_setup_version_id=getattr(
+                session, "production_bound_setup_version_id", None
+            ),
+            production_bound_staging_version_id=getattr(
+                session, "production_bound_staging_version_id", None
+            ),
+            production_bound_clinical_tools_setup_version_id=getattr(
+                session, "production_bound_clinical_tools_setup_version_id", None
+            ),
+            production_bound_validation_run_id=getattr(
+                session, "production_bound_validation_run_id", None
+            ),
         )
 
     @staticmethod
@@ -517,6 +545,16 @@ class TreatmentSessionStore:
         smart_staging = getattr(session, "smart_staging", None)
         clinical_setup = getattr(session, "clinical_tools_setup_version_id", None)
         clinical_staging = getattr(session, "clinical_tools_staging_version_id", None)
+        production_stage = getattr(session, "production_selected_stage_index", None)
+        production_kind = getattr(session, "production_source_kind", None)
+        production_version = getattr(session, "production_version_id", None)
+        production_parent = getattr(session, "production_parent_version_id", None)
+        production_bound_setup = getattr(session, "production_bound_setup_version_id", None)
+        production_bound_staging = getattr(session, "production_bound_staging_version_id", None)
+        production_bound_clinical = getattr(
+            session, "production_bound_clinical_tools_setup_version_id", None
+        )
+        production_bound_validation = getattr(session, "production_bound_validation_run_id", None)
         # Older pickled sessions may lack clinical-tool binding — bind to adjuncts version.
         if clinical_setup is None and getattr(session, "adjuncts", None) is not None:
             clinical_setup = getattr(session.adjuncts, "version_id", None)
@@ -527,6 +565,17 @@ class TreatmentSessionStore:
             and smart_staging is getattr(session, "smart_staging", None)
             and clinical_setup is getattr(session, "clinical_tools_setup_version_id", None)
             and clinical_staging is getattr(session, "clinical_tools_staging_version_id", None)
+            and production_stage is getattr(session, "production_selected_stage_index", None)
+            and production_kind is getattr(session, "production_source_kind", None)
+            and production_version is getattr(session, "production_version_id", None)
+            and production_parent is getattr(session, "production_parent_version_id", None)
+            and production_bound_setup is getattr(session, "production_bound_setup_version_id", None)
+            and production_bound_staging
+            is getattr(session, "production_bound_staging_version_id", None)
+            and production_bound_clinical
+            is getattr(session, "production_bound_clinical_tools_setup_version_id", None)
+            and production_bound_validation
+            is getattr(session, "production_bound_validation_run_id", None)
         ):
             return session
         return dataclass_replace(
@@ -537,6 +586,14 @@ class TreatmentSessionStore:
             smart_staging=smart_staging,
             clinical_tools_setup_version_id=clinical_setup,
             clinical_tools_staging_version_id=clinical_staging,
+            production_selected_stage_index=production_stage,
+            production_source_kind=production_kind,
+            production_version_id=production_version,
+            production_parent_version_id=production_parent,
+            production_bound_setup_version_id=production_bound_setup,
+            production_bound_staging_version_id=production_bound_staging,
+            production_bound_clinical_tools_setup_version_id=production_bound_clinical,
+            production_bound_validation_run_id=production_bound_validation,
         )
 
     def reset_tooth(self, case_id: str, tooth_number: int | str) -> TreatmentSession:
@@ -618,6 +675,79 @@ class TreatmentSessionStore:
             adjuncts=adjuncts,
             clinical_tools_setup_version_id=session.proposal.version_id,
             clinical_tools_staging_version_id=staging_version_id,
+        )
+        return self._remember(case_id, session)
+
+    def select_production_source(
+        self,
+        case_id: str,
+        *,
+        stage_index: int | None = None,
+        source_kind: str = "selected_stage",
+    ) -> TreatmentSession:
+        """WP-10: doctor explicitly selects the production source stage/target."""
+        from domain.treatment_plan.production_cad import ProductionSourceKind
+        from engines.export.production_cad_engine import build_production_plan
+
+        session = self._normalize_session(self.get(case_id))
+        if not session.staging.stages:
+            raise TreatmentSessionError("No staged treatment state is available for production")
+        kind = ProductionSourceKind(source_kind)
+        if kind is ProductionSourceKind.FINAL_TARGET:
+            stage_index = session.staging.stages[-1].stage_index
+        if stage_index is None:
+            raise TreatmentSessionError("Production source stage_index must be selected explicitly")
+        if not any(stage.stage_index == stage_index for stage in session.staging.stages):
+            raise TreatmentSessionError(f"Stage index {stage_index} is not present in staging")
+        # Build plan to mint immutable production_version_id for the selection.
+        staging_version_id = None
+        if session.smart_staging is not None:
+            staging_version_id = session.smart_staging.meta.staging_version_id
+        if staging_version_id is None:
+            staging_version_id = session.staging.staging_id
+        plan = build_production_plan(
+            case_id=case_id,
+            proposal=session.proposal,
+            staging=session.staging,
+            validation=session.validation,
+            selected_stage_index=stage_index,
+            selected_source_kind=kind,
+            clinical_tools_setup_version_id=getattr(
+                session, "clinical_tools_setup_version_id", None
+            ),
+            clinical_tools_staging_version_id=getattr(
+                session, "clinical_tools_staging_version_id", None
+            ),
+            parent_production_version_id=getattr(session, "production_version_id", None),
+        )
+        session = dataclass_replace(
+            session,
+            production_selected_stage_index=stage_index,
+            production_source_kind=kind.value,
+            production_parent_version_id=getattr(session, "production_version_id", None),
+            production_version_id=plan.production_version_id,
+            production_bound_setup_version_id=session.proposal.version_id,
+            production_bound_staging_version_id=staging_version_id,
+            production_bound_clinical_tools_setup_version_id=getattr(
+                session, "clinical_tools_setup_version_id", None
+            ),
+            production_bound_validation_run_id=(
+                session.validation.report_id if session.validation else None
+            ),
+        )
+        return self._remember(case_id, session)
+
+    def clear_production_source(self, case_id: str) -> TreatmentSession:
+        """Clear explicit production source selection (returns to requires_review)."""
+        session = self._normalize_session(self.get(case_id))
+        session = dataclass_replace(
+            session,
+            production_selected_stage_index=None,
+            production_source_kind=None,
+            production_bound_setup_version_id=None,
+            production_bound_staging_version_id=None,
+            production_bound_clinical_tools_setup_version_id=None,
+            production_bound_validation_run_id=None,
         )
         return self._remember(case_id, session)
 
@@ -1086,6 +1216,49 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
     )
     validation_capability_payload = validation_run.payload()
 
+    from engines.export.production_cad_engine import build_production_plan
+    from domain.treatment_plan.production_cad import ProductionSourceKind
+
+    selected_kind_raw = getattr(session, "production_source_kind", None)
+    selected_kind = None
+    if selected_kind_raw:
+        try:
+            selected_kind = ProductionSourceKind(selected_kind_raw)
+        except ValueError:
+            selected_kind = None
+    production_plan = build_production_plan(
+        case_id=session.proposal.case_id,
+        proposal=session.proposal,
+        staging=session.staging,
+        validation=session.validation,
+        selected_stage_index=getattr(session, "production_selected_stage_index", None),
+        selected_source_kind=selected_kind,
+        clinical_tools_setup_version_id=getattr(
+            session, "clinical_tools_setup_version_id", None
+        ),
+        clinical_tools_staging_version_id=getattr(
+            session, "clinical_tools_staging_version_id", None
+        ),
+        validation_run_id=validation_run.validation_run_id,
+        validation_freshness=validation_run.freshness.value,
+        occlusion_capability_state=occ_capability,
+        current_setup_version_id=session.proposal.version_id,
+        current_staging_version_id=current_staging_version_id,
+        current_clinical_tools_setup_version_id=getattr(
+            session, "clinical_tools_setup_version_id", None
+        ),
+        current_validation_run_id=validation_run.validation_run_id,
+        parent_production_version_id=getattr(session, "production_parent_version_id", None),
+        bound_setup_version_id=getattr(session, "production_bound_setup_version_id", None),
+        bound_staging_version_id=getattr(session, "production_bound_staging_version_id", None),
+        bound_clinical_tools_setup_version_id=getattr(
+            session, "production_bound_clinical_tools_setup_version_id", None
+        ),
+        bound_validation_run_id=getattr(session, "production_bound_validation_run_id", None),
+        committed_production_version_id=getattr(session, "production_version_id", None),
+    )
+    production_cad_payload = production_plan.payload()
+
     manufacturing = build_manufacturing_boundary_report(
         has_stage_models=bool(session.staging.stages)
     ).payload()
@@ -1129,6 +1302,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         "validationSummary": validation_summary,
         "validationCapability": validation_capability_payload,
         "manufacturingBoundary": manufacturing,
+        "productionCad": production_cad_payload,
         "planningIntelligence": intelligence_payload,
         "realDataAvailable": True,
         "proposalKind": session.proposal.proposal_kind.value,

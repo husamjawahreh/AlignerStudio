@@ -1,0 +1,85 @@
+{
+  "case_id": "official_real_case_stage2_verified_v1",
+  "tooth_count": 28,
+  "source_kind": "validated_real_case",
+  "production_source": "final_target",
+  "selected_stage_index": 1,
+  "setup_version": "6b2e1a8a5d9616a29ef127e8e00cdccd1c2e74463975565e0b441dbe12059fec",
+  "staging_version": "7bcc8dadb1579c850d14e0cbf10d48e84dd906b2f0cda49c63fe6fe94e04da0f",
+  "shell": "requires_review",
+  "shell_generated": true,
+  "trimline": "not_available",
+  "thickness": "requires_review",
+  "undercut": "not_available",
+  "mesh_qc": "available",
+  "geometry_backends": [
+    {
+      "name": "current_integrity",
+      "version": "production_cad_v1",
+      "available": true,
+      "capabilities": [
+        "mesh_integrity_finite_nonempty"
+      ],
+      "limitations": [
+        "Finite/non-empty checks are technical only.",
+        "Does not certify manufacturing readiness."
+      ]
+    },
+    {
+      "name": "trimesh",
+      "version": "5.1.0",
+      "available": true,
+      "capabilities": [
+        "mesh_load",
+        "watertight_detection",
+        "winding_consistency",
+        "volume_flag"
+      ],
+      "limitations": [
+        "Watertight/volume flags are geometric, not manufacturing certification.",
+        "Self-intersection of a single mesh is not claimed as complete."
+      ]
+    },
+    {
+      "name": "manifold3d",
+      "version": "3.5.3",
+      "available": true,
+      "capabilities": [
+        "boolean_union",
+        "boolean_difference",
+        "manifold_validity_gate"
+      ],
+      "limitations": [
+        "Requires oriented 2-manifold solid input; open crown meshes are rejected.",
+        "No general surface-offset/shell API for open dental meshes.",
+        "Boolean success is not manufacturing certification."
+      ]
+    },
+    {
+      "name": "meshlib",
+      "version": "3.1.4.297",
+      "available": true,
+      "capabilities": [
+        "engineering_offset",
+        "self_intersection_query",
+        "boolean_union",
+        "watertight_rebuild_via_offset"
+      ],
+      "limitations": [
+        "Offset uses voxelization; resolution depends on voxelSize.",
+        "Engineering offset is not manufacturing certification or clinical approval.",
+        "Trimline and material thickness profiles are not provided by this backend."
+      ]
+    }
+  ],
+  "export_verified": true,
+  "compose_ms": 126570.55,
+  "production_select_ms": 2154.36,
+  "export_ms": 32790.9,
+  "verify_ms": 1502.63,
+  "production_cad_ms": 578.3130119962152,
+  "fdi_fabricated": false,
+  "fixture_substituted": false,
+  "manufacturing_certified": false,
+  "clinically_approved": false
+}

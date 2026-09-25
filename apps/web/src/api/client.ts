@@ -415,6 +415,16 @@ export const api = {
     });
   },
 
+  selectProductionSource(
+    caseId: string,
+    body: { stage_index?: number | null; source_kind?: string },
+  ): Promise<ReviewBundle> {
+    return requestJson<ReviewBundle>(`/cases/${caseId}/production/source`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   async exportTreatment(caseId: string): Promise<ExportDownload> {
     const response = await fetch(`${API_BASE_URL}/cases/${caseId}/export`, { method: "POST" });
     if (!response.ok)

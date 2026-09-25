@@ -654,8 +654,8 @@ def build_validation_run(
             category=ValidationCategory.MANUFACTURING_READINESS,
             label="Manufacturing readiness",
             reason=(
-                "Manufacturing QC / production CAD validation is not available "
-                "(boundary-only until WP-10)."
+                "Manufacturing QC / production CAD validation is boundary-only; "
+                "WP-10 Production CAD does not certify manufacturing readiness."
             ),
             context_kind=ValidationContextKind.PRODUCTION_EXPORT,
         )
@@ -815,7 +815,7 @@ def build_validation_run(
             "PASS is never clinical approval or clinical safety.",
             "Unavailable checks remain NOT_AVAILABLE and are never treated as PASS.",
             "Cross-arch occlusion checks are not invented from dual-arch presence.",
-            "WP-10 and later packages are not started.",
+            "WP-11 and later packages are not started.",
         ),
         timings_ms={"validation_2_ms": total_ms},
         legacy_review_summary=legacy if isinstance(legacy, dict) else None,

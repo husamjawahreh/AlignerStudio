@@ -1,0 +1,271 @@
+{
+  "benchmark_id": "wp10_production_cad_tech_evaluation_v1",
+  "case_id": "official_real_case_stage2_verified_v1",
+  "geometry_kind": "validated_real_case_tooth_instances",
+  "clinical_claims": false,
+  "manufacturing_certified": false,
+  "backends": [
+    {
+      "name": "current_integrity",
+      "version": "production_cad_v1",
+      "available": true,
+      "capabilities": [
+        "mesh_integrity_finite_nonempty"
+      ],
+      "limitations": [
+        "Finite/non-empty checks are technical only.",
+        "Does not certify manufacturing readiness."
+      ]
+    },
+    {
+      "name": "trimesh",
+      "version": "5.1.0",
+      "available": true,
+      "capabilities": [
+        "mesh_load",
+        "watertight_detection",
+        "winding_consistency",
+        "volume_flag"
+      ],
+      "limitations": [
+        "Watertight/volume flags are geometric, not manufacturing certification.",
+        "Self-intersection of a single mesh is not claimed as complete."
+      ]
+    },
+    {
+      "name": "manifold3d",
+      "version": "3.5.3",
+      "available": true,
+      "capabilities": [
+        "boolean_union",
+        "boolean_difference",
+        "manifold_validity_gate"
+      ],
+      "limitations": [
+        "Requires oriented 2-manifold solid input; open crown meshes are rejected.",
+        "No general surface-offset/shell API for open dental meshes.",
+        "Boolean success is not manufacturing certification."
+      ]
+    },
+    {
+      "name": "meshlib",
+      "version": "3.1.4.297",
+      "available": true,
+      "capabilities": [
+        "engineering_offset",
+        "self_intersection_query",
+        "boolean_union",
+        "watertight_rebuild_via_offset"
+      ],
+      "limitations": [
+        "Offset uses voxelization; resolution depends on voxelSize.",
+        "Engineering offset is not manufacturing certification or clinical approval.",
+        "Trimline and material thickness profiles are not provided by this backend."
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "operation": "mesh_integrity",
+      "backend": "current_integrity",
+      "backend_version": "production_cad_v1",
+      "supported": true,
+      "success": true,
+      "message": "Finite non-empty triangle mesh.",
+      "elapsed_ms": 13.348100997973233,
+      "input_hash": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+      "output_hash": null,
+      "metrics": {
+        "vertex_count": 2957,
+        "face_count": 5728
+      },
+      "limitations": [
+        "Finite/non-empty checks are technical only.",
+        "Does not certify manufacturing readiness."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": false,
+      "benchmark_name": "current_integrity"
+    },
+    {
+      "operation": "mesh_inspection",
+      "backend": "trimesh",
+      "backend_version": "5.1.0",
+      "supported": true,
+      "success": true,
+      "message": "trimesh geometric inspection complete.",
+      "elapsed_ms": 13.219634012784809,
+      "input_hash": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+      "output_hash": null,
+      "metrics": {
+        "watertight": false,
+        "is_volume": false,
+        "winding_consistent": true,
+        "vertex_count": 2957,
+        "face_count": 5728
+      },
+      "limitations": [
+        "Watertight/volume flags are geometric, not manufacturing certification.",
+        "Self-intersection of a single mesh is not claimed as complete."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": false,
+      "benchmark_name": "trimesh_inspect"
+    },
+    {
+      "operation": "manifold_validity",
+      "backend": "manifold3d",
+      "backend_version": "3.5.3",
+      "supported": true,
+      "success": false,
+      "message": "Manifold status=Error.NotManifold num_tri=0.",
+      "elapsed_ms": 14.285078010288998,
+      "input_hash": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+      "output_hash": null,
+      "metrics": {
+        "status": "Error.NotManifold",
+        "num_tri": 0
+      },
+      "limitations": [
+        "Requires oriented 2-manifold solid input; open crown meshes are rejected.",
+        "No general surface-offset/shell API for open dental meshes.",
+        "Boolean success is not manufacturing certification."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": false,
+      "benchmark_name": "manifold_validity"
+    },
+    {
+      "operation": "self_intersection",
+      "backend": "meshlib",
+      "backend_version": "3.1.4.297",
+      "supported": true,
+      "success": true,
+      "message": "Self-colliding triangle pairs: 0.",
+      "elapsed_ms": 20.267466985387728,
+      "input_hash": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+      "output_hash": null,
+      "metrics": {
+        "self_colliding_pairs": 0
+      },
+      "limitations": [
+        "Offset uses voxelization; resolution depends on voxelSize.",
+        "Engineering offset is not manufacturing certification or clinical approval.",
+        "Trimline and material thickness profiles are not provided by this backend."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": false,
+      "benchmark_name": "meshlib_self_intersection"
+    },
+    {
+      "operation": "engineering_offset",
+      "backend": "meshlib",
+      "backend_version": "3.1.4.297",
+      "supported": true,
+      "success": true,
+      "message": "Engineering voxel offset produced. Not manufacturing certified; not clinically approved.",
+      "elapsed_ms": 154.15506600402296,
+      "input_hash": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+      "output_hash": "cf0134a99a6a6359913a934ef1c1af1dd6964e6b9bd16594e1a1565d3a564a31",
+      "metrics": {
+        "distance": 0.2,
+        "voxel_size": 0.1306638240814209,
+        "sign_mode": "Unsigned",
+        "output_vertices": 21212,
+        "output_faces": 42420,
+        "parameter_kind": "technical"
+      },
+      "limitations": [
+        "Offset uses voxelization; resolution depends on voxelSize.",
+        "Engineering offset is not manufacturing certification or clinical approval.",
+        "Trimline and material thickness profiles are not provided by this backend."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": true,
+      "benchmark_name": "meshlib_engineering_offset"
+    },
+    {
+      "operation": "boolean_union",
+      "backend": "manifold3d",
+      "backend_version": "3.5.3",
+      "supported": true,
+      "success": true,
+      "message": "Engineering solid boolean union (synthetic geometry).",
+      "elapsed_ms": 2.089924004394561,
+      "input_hash": null,
+      "output_hash": "df9266b729e4cb8b83c864bd7e14b50fc34a6995818e340ea4aa553706e9cf11",
+      "metrics": {
+        "num_tri": 276,
+        "geometry_kind": "synthetic_engineering"
+      },
+      "limitations": [
+        "Synthetic engineering geometry \u2014 not anatomical evidence.",
+        "Requires oriented 2-manifold solid input; open crown meshes are rejected.",
+        "No general surface-offset/shell API for open dental meshes.",
+        "Boolean success is not manufacturing certification."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": true,
+      "benchmark_name": "manifold_boolean_synthetic"
+    },
+    {
+      "operation": "boolean_union",
+      "backend": "meshlib",
+      "backend_version": "3.1.4.297",
+      "supported": true,
+      "success": true,
+      "message": "Engineering boolean union (synthetic spheres).",
+      "elapsed_ms": 14.8908729897812,
+      "input_hash": null,
+      "output_hash": "c5fb2c42ed5ebacc436a6c90f56a2f71915b0da6db396f5bef6f0c4cc84c1225",
+      "metrics": {
+        "geometry_kind": "synthetic_engineering"
+      },
+      "limitations": [
+        "Synthetic engineering geometry \u2014 not anatomical evidence.",
+        "Offset uses voxelization; resolution depends on voxelSize.",
+        "Engineering offset is not manufacturing certification or clinical approval.",
+        "Trimline and material thickness profiles are not provided by this backend."
+      ],
+      "provenance": "experimental",
+      "manufacturing_certified": false,
+      "clinically_approved": false,
+      "has_output_mesh": true,
+      "benchmark_name": "meshlib_boolean_synthetic"
+    }
+  ],
+  "decisions_hint": {},
+  "rss_mb_start": 234.1171875,
+  "determinism": {
+    "engineering_offset_hash_match": true,
+    "hash": "cf0134a99a6a6359913a934ef1c1af1dd6964e6b9bd16594e1a1565d3a564a31"
+  },
+  "source_immutability": {
+    "source_hash_before": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+    "source_hash_after": "8e9614ab5031dd948756d3f9cef75eafd7995b3827e95a7eeee06c74a964f329",
+    "unchanged": true,
+    "fdi_fabricated": false
+  },
+  "arch_upper_inspect": {
+    "watertight": false,
+    "is_volume": false,
+    "vertices": 513417,
+    "faces": 171139,
+    "elapsed_ms": 67.27448297897354,
+    "note": "Open crown-arch scan mesh \u2014 not a manifold solid."
+  },
+  "rss_mb_end": 438.546875,
+  "timestamp": "2026-09-25T12:58:58Z"
+}

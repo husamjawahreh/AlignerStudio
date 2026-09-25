@@ -59,6 +59,18 @@ from domain.treatment_plan.validation_v2 import (
     ValidationRun,
     ValidationTruthState,
 )
+from domain.treatment_plan.production_cad import (
+    ProductionBinding,
+    ProductionCapabilityReadiness,
+    ProductionCapabilityState,
+    ProductionFreshness,
+    ProductionParameter,
+    ProductionPlan,
+    ProductionQcCheck,
+    ProductionSourceKind,
+    ProductionTruthState,
+    evaluate_production_freshness,
+)
 
 __all__ = [
     "Stage",
@@ -90,6 +102,16 @@ __all__ = [
     "ValidationFreshness",
     "ValidationRun",
     "ValidationTruthState",
+    "ProductionBinding",
+    "ProductionCapabilityReadiness",
+    "ProductionCapabilityState",
+    "ProductionFreshness",
+    "ProductionParameter",
+    "ProductionPlan",
+    "ProductionQcCheck",
+    "ProductionSourceKind",
+    "ProductionTruthState",
+    "evaluate_production_freshness",
     "AttachmentProposal",
     "AttachmentSite",
     "AttachmentType",

@@ -5,5 +5,11 @@ from engines.export.treatment_export import (
     TreatmentExportError,
     TreatmentExportPackage,
 )
+from engines.export.production_cad_engine import build_production_plan
 
-__all__ = ["TreatmentExportEngine", "TreatmentExportError", "TreatmentExportPackage"]
+__all__ = [
+    "TreatmentExportEngine",
+    "TreatmentExportError",
+    "TreatmentExportPackage",
+    "build_production_plan",
+]
