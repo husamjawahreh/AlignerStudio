@@ -242,6 +242,8 @@ def build_setup_readiness(
     validation: TreatmentValidationReport | None,
     has_real_geometry: bool,
     constraint_availability: ConstraintAvailability,
+    occlusion_readiness: ReadinessState | None = None,
+    clinical_axes_readiness: ReadinessState | None = None,
 ) -> TreatmentSetupReadiness:
     arches = {
         state.arch
@@ -260,6 +262,7 @@ def build_setup_readiness(
         "Readiness signals are capability gates, not an AI score.",
         "Target transforms never unlock staging, IPR, attachments, occlusion, or production CAD.",
         "Doctor edits are not clinical approval.",
+        "Occlusion/clinical-axes readiness reflects WP-08 capability state when evidence exists.",
     )
     return TreatmentSetupReadiness(
         real_geometry=ReadinessState.AVAILABLE
@@ -282,8 +285,8 @@ def build_setup_readiness(
         validation=ReadinessState.AVAILABLE
         if validation is not None and staging.stages
         else ReadinessState.UNAVAILABLE,
-        occlusion=ReadinessState.NOT_AVAILABLE,
-        clinical_axes=ReadinessState.NOT_AVAILABLE,
+        occlusion=occlusion_readiness or ReadinessState.NOT_AVAILABLE,
+        clinical_axes=clinical_axes_readiness or ReadinessState.NOT_AVAILABLE,
         notes=notes,
     )
 
@@ -297,6 +300,8 @@ def build_treatment_setup_payload(
     parent_version_id: str | None,
     version_history: tuple[TreatmentSetupVersionSnapshot, ...],
     source_kind: str,
+    occlusion_readiness: ReadinessState | None = None,
+    clinical_axes_readiness: ReadinessState | None = None,
 ) -> dict[str, Any]:
     constraint = constraint_availability_for_proposal(proposal, staging)
     has_real = True
@@ -323,6 +328,8 @@ def build_treatment_setup_payload(
         validation=validation,
         has_real_geometry=has_real,
         constraint_availability=constraint,
+        occlusion_readiness=occlusion_readiness,
+        clinical_axes_readiness=clinical_axes_readiness,
     )
     current_vs_target = compare_proposals(
         _identity_proposal_view(proposal),
@@ -354,7 +361,7 @@ def build_treatment_setup_payload(
         "notes": [
             "Treatment Setup 2.0 does not claim clinical optimality.",
             "Geometric executability is not clinical clearance.",
-            "WP-06 Smart Staging and later packages are not started.",
+            "Occlusion/clinical-axes readiness is consumed from WP-08 when evidence exists.",
         ],
     }
 

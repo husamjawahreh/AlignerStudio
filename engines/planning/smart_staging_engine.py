@@ -140,13 +140,16 @@ def build_staging_readiness(
     validation: TreatmentValidationReport | None,
     constraint_availability: ConstraintAvailability,
     freshness: StagingFreshness,
+    occlusion_readiness: StagingReadinessState | None = None,
+    clinical_axes_readiness: StagingReadinessState | None = None,
 ) -> StagingReadiness:
     has_setup = proposal.setup is not None and bool(proposal.setup.target_states)
     has_stages = staging is not None and bool(staging.stages)
     notes = (
         "Readiness signals are capability gates, not an AI score.",
-        "Staging never unlocks IPR, attachments, occlusion, or production CAD.",
+        "Staging never unlocks IPR, attachments, or production CAD.",
         "Doctor review is required for any generated staging proposal.",
+        "Occlusion/clinical-axes readiness reflects WP-08 capability state when evidence exists.",
     )
     return StagingReadiness(
         target_setup_available=StagingReadinessState.AVAILABLE
@@ -166,8 +169,8 @@ def build_staging_readiness(
         validation=StagingReadinessState.AVAILABLE
         if validation is not None and has_stages
         else StagingReadinessState.UNAVAILABLE,
-        occlusion=StagingReadinessState.NOT_AVAILABLE,
-        clinical_axes=StagingReadinessState.NOT_AVAILABLE,
+        occlusion=occlusion_readiness or StagingReadinessState.NOT_AVAILABLE,
+        clinical_axes=clinical_axes_readiness or StagingReadinessState.NOT_AVAILABLE,
         staging_proposal_available=(
             StagingReadinessState.REQUIRES_REVIEW
             if has_stages and freshness is StagingFreshness.CURRENT

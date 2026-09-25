@@ -9,6 +9,11 @@ from domain.treatment_plan.clinical_tools import (
     ClinicalToolValueSource,
     ClinicalToolsReadiness,
 )
+from domain.treatment_plan.occlusion_anatomy import (
+    OcclusionAnatomyBinding,
+    OcclusionAnatomyPlan,
+    OcclusionAnatomyPrerequisite,
+)
 from domain.treatment_plan.proposals import (
     AttachmentProposal,
     AttachmentSite,
@@ -79,6 +84,9 @@ __all__ = [
     "ClinicalToolTruthState",
     "ClinicalToolValueSource",
     "ClinicalToolsReadiness",
+    "OcclusionAnatomyBinding",
+    "OcclusionAnatomyPlan",
+    "OcclusionAnatomyPrerequisite",
     "IPRMeasurement",
     "IPRProposal",
     "IPRSite",

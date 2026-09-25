@@ -199,6 +199,8 @@ export interface ReviewBundle {
   smartStaging?: SmartStagingPayload;
   /** WP-07 clinical tools honesty / readiness contract. */
   clinicalTools?: ClinicalToolsPayload;
+  /** WP-08 occlusion + advanced anatomy capability binding. */
+  occlusionAnatomy?: Record<string, unknown> | null;
   stagingId?: string;
 }
 

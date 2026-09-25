@@ -57,6 +57,17 @@ export interface AnalysisOverview {
   readinessReasons: string[];
   dataQualityFindings: string[];
   limitations: string[];
+  /** WP-08 capability detail (null when absent). */
+  occlusionCapabilityState: string | null;
+  registrationState: string | null;
+  geometricContactCount: number | null;
+  crownAnatomyState: string | null;
+  rootAnatomyState: string | null;
+  landmarkAnatomyState: string | null;
+  clinicalAxesAnatomyState: string | null;
+  genericGeometricAxesState: string | null;
+  cbctAnatomyState: string | null;
+  occlusionValidated: false | null;
 }
 
 /**
@@ -92,6 +103,16 @@ export function buildAnalysisOverview(input: {
     readinessReasons: [] as string[],
     dataQualityFindings: [] as string[],
     limitations: [] as string[],
+    occlusionCapabilityState: null as string | null,
+    registrationState: null as string | null,
+    geometricContactCount: null as number | null,
+    crownAnatomyState: null as string | null,
+    rootAnatomyState: null as string | null,
+    landmarkAnatomyState: null as string | null,
+    clinicalAxesAnatomyState: null as string | null,
+    genericGeometricAxesState: null as string | null,
+    cbctAnatomyState: null as string | null,
+    occlusionValidated: null as false | null,
   };
   if (!diagnostic && !intelDoc) {
     return {
@@ -135,29 +156,59 @@ export function buildAnalysisOverview(input: {
   );
 
   const intelFields = intelDoc
-    ? {
-        intelligenceContractVersion: intelDoc.contract_version,
-        overallTruthState: intelDoc.overall_truth_state,
-        clinicalAxesTruth: _dominantToothState(
-          intelDoc.teeth.map((tooth) => tooth.clinical_dental_axes.state),
-        ),
-        landmarksTruth: _dominantToothState(
-          intelDoc.teeth.map((tooth) => tooth.landmarks.state),
-        ),
-        rootsTruth: _dominantToothState(
-          intelDoc.teeth.map((tooth) => tooth.root_geometry.state),
-        ),
-        occlusionTruth: intelDoc.occlusion.state,
-        identityReadiness: intelDoc.capability_readiness.identity_readiness,
-        geometryReadiness: intelDoc.capability_readiness.geometry_readiness,
-        axisReadiness: intelDoc.capability_readiness.axis_readiness,
-        occlusionReadiness: intelDoc.capability_readiness.occlusion_readiness,
-        treatmentSetupReadiness: intelDoc.capability_readiness.treatment_setup_readiness,
-        validationReadiness: intelDoc.capability_readiness.validation_readiness,
-        readinessReasons: intelDoc.capability_readiness.reasons,
-        dataQualityFindings: intelDoc.data_quality_findings,
-        limitations: intelDoc.limitations ?? [],
-      }
+    ? (() => {
+        const occValue = (intelDoc.occlusion.value ?? {}) as Record<string, unknown>;
+        const anatomy = (occValue.advanced_anatomy ?? null) as Record<string, unknown> | null;
+        const registration = (occValue.registration ?? null) as Record<string, unknown> | null;
+        const contacts = Array.isArray(occValue.contact_candidates)
+          ? occValue.contact_candidates
+          : [];
+        return {
+          intelligenceContractVersion: intelDoc.contract_version,
+          overallTruthState: intelDoc.overall_truth_state,
+          clinicalAxesTruth: _dominantToothState(
+            intelDoc.teeth.map((tooth) => tooth.clinical_dental_axes.state),
+          ),
+          landmarksTruth: _dominantToothState(
+            intelDoc.teeth.map((tooth) => tooth.landmarks.state),
+          ),
+          rootsTruth: _dominantToothState(
+            intelDoc.teeth.map((tooth) => tooth.root_geometry.state),
+          ),
+          occlusionTruth: intelDoc.occlusion.state,
+          identityReadiness: intelDoc.capability_readiness.identity_readiness,
+          geometryReadiness: intelDoc.capability_readiness.geometry_readiness,
+          axisReadiness: intelDoc.capability_readiness.axis_readiness,
+          occlusionReadiness: intelDoc.capability_readiness.occlusion_readiness,
+          treatmentSetupReadiness: intelDoc.capability_readiness.treatment_setup_readiness,
+          validationReadiness: intelDoc.capability_readiness.validation_readiness,
+          readinessReasons: intelDoc.capability_readiness.reasons,
+          dataQualityFindings: intelDoc.data_quality_findings,
+          limitations: intelDoc.limitations ?? [],
+          occlusionCapabilityState:
+            typeof occValue.capability_state === "string" ? occValue.capability_state : null,
+          registrationState:
+            typeof registration?.truth_state === "string" ? registration.truth_state : null,
+          geometricContactCount: contacts.length,
+          crownAnatomyState:
+            typeof anatomy?.crown_geometry === "string" ? anatomy.crown_geometry : null,
+          rootAnatomyState:
+            typeof anatomy?.root_geometry === "string" ? anatomy.root_geometry : null,
+          landmarkAnatomyState:
+            typeof anatomy?.landmark_geometry === "string" ? anatomy.landmark_geometry : null,
+          clinicalAxesAnatomyState:
+            typeof anatomy?.clinical_axes === "string" ? anatomy.clinical_axes : null,
+          genericGeometricAxesState:
+            typeof anatomy?.generic_geometric_axes === "string"
+              ? anatomy.generic_geometric_axes
+              : null,
+          cbctAnatomyState:
+            typeof anatomy?.cbct_volumetric_anatomy === "string"
+              ? anatomy.cbct_volumetric_anatomy
+              : null,
+          occlusionValidated: false as false,
+        };
+      })()
     : emptyIntelFields;
 
   // Prefer explicit DI2 truth over boolean availability flags.

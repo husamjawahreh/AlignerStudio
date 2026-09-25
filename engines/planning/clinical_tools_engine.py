@@ -60,7 +60,7 @@ class ClinicalToolsPlan:
                 "Centroid-distance space deltas are geometric COMPUTED values, not clinical IPR prescriptions.",
                 "Attachment candidates without dimensions are not clinical prescriptions.",
                 "Empty site lists do not prove that IPR or attachments are unnecessary.",
-                "WP-08 and later packages are not started.",
+                "WP-09 and later packages are not started.",
             ],
         }
 

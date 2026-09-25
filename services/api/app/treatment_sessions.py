@@ -922,6 +922,14 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
         serialize_attachment_site,
         serialize_ipr_site,
     )
+    from domain.treatment_plan.setup_v2 import ReadinessState
+    from app.intelligence_store import get_dental_intelligence_record
+    from engines.occlusion.capability_engine import (
+        build_advanced_anatomy_report,
+        build_occlusion_anatomy_plan,
+        build_occlusion_result,
+    )
+    from app.segmentation_store import get_segmentation_record
 
     current_staging_version_id = None
     if getattr(session, "smart_staging", None) is not None:
@@ -937,6 +945,84 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             session.proposal.setup and session.proposal.setup.source_states
         ),
     )
+
+    # WP-08: occlusion + advanced anatomy capability for setup/staging consumers.
+    occlusion_readiness_state = ReadinessState.NOT_AVAILABLE
+    clinical_axes_readiness_state = ReadinessState.NOT_AVAILABLE
+    occlusion_anatomy_payload = None
+    intel = get_dental_intelligence_record(session.proposal.case_id)
+    segmentation = get_segmentation_record(session.proposal.case_id)
+    if segmentation and segmentation.get("status") == "completed":
+        occlusion_result = build_occlusion_result(
+            case_id=session.proposal.case_id,
+            segmentation_record=segmentation,
+            bound_setup_version_id=session.proposal.version_id,
+            bound_staging_version_id=current_staging_version_id,
+            current_setup_version_id=session.proposal.version_id,
+            current_staging_version_id=current_staging_version_id,
+        )
+        tooth_summaries = None
+        if isinstance(intel, dict):
+            tooth_summaries = intel.get("teeth")
+        anatomy = build_advanced_anatomy_report(
+            case_id=session.proposal.case_id,
+            segmentation_record=segmentation,
+            tooth_intelligence_summaries=tooth_summaries if isinstance(tooth_summaries, list) else None,
+        )
+        plan = build_occlusion_anatomy_plan(
+            occlusion=occlusion_result,
+            advanced_anatomy=anatomy,
+            setup_version_id=session.proposal.version_id,
+            staging_version_id=current_staging_version_id,
+        )
+        occlusion_anatomy_payload = plan.payload()
+        # Map WP-08 capability → setup readiness vocabulary.
+        occ_map = {
+            "unavailable": ReadinessState.NOT_AVAILABLE,
+            "not_available": ReadinessState.NOT_AVAILABLE,
+            "requires_review": ReadinessState.REQUIRES_REVIEW,
+            "available": ReadinessState.AVAILABLE,
+            "stale": ReadinessState.REQUIRES_REVIEW,
+        }
+        occlusion_readiness_state = occ_map.get(
+            plan.occlusion_prerequisite.value, ReadinessState.NOT_AVAILABLE
+        )
+        clinical_axes_readiness_state = occ_map.get(
+            plan.clinical_axes_prerequisite.value, ReadinessState.NOT_AVAILABLE
+        )
+    elif isinstance(intel, dict):
+        readiness = intel.get("capability_readiness") or {}
+        occ = readiness.get("occlusion_readiness")
+        axis = readiness.get("axis_readiness")
+        if occ == "requires_review":
+            occlusion_readiness_state = ReadinessState.REQUIRES_REVIEW
+        elif occ == "computed" or occ == "verified":
+            occlusion_readiness_state = ReadinessState.AVAILABLE
+        if axis == "requires_review":
+            clinical_axes_readiness_state = ReadinessState.REQUIRES_REVIEW
+        elif axis == "computed" or axis == "verified":
+            clinical_axes_readiness_state = ReadinessState.AVAILABLE
+        occ_value = (intel.get("occlusion") or {}).get("value")
+        if isinstance(occ_value, dict) and occ_value.get("advanced_anatomy"):
+            occlusion_anatomy_payload = {
+                "contract_version": "occlusion_anatomy_binding_1.0",
+                "occlusion": occ_value,
+                "advanced_anatomy": occ_value.get("advanced_anatomy"),
+                "prerequisites": {
+                    "occlusion": occ_value.get("capability_state", "unavailable"),
+                    "clinical_axes": clinical_axes_readiness_state.value,
+                    "root_geometry": (occ_value.get("advanced_anatomy") or {}).get(
+                        "root_geometry", "not_available"
+                    ),
+                    "landmarks": (occ_value.get("advanced_anatomy") or {}).get(
+                        "landmark_geometry", "not_available"
+                    ),
+                },
+                "freshness": occ_value.get("freshness", "unavailable"),
+                "clinically_approved": False,
+                "occlusion_validated": False,
+            }
+
     validation_summary = build_validation_review_summary(
         session.proposal, session.staging, session.validation
     ).payload()
@@ -997,6 +1083,8 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             parent_version_id=getattr(session, "parent_version_id", None),
             version_history=tuple(getattr(session, "version_history", ()) or ()),
             source_kind=session.source_kind,
+            occlusion_readiness=occlusion_readiness_state,
+            clinical_axes_readiness=clinical_axes_readiness_state,
         ),
         "smartStaging": build_smart_staging_review_payload(
             getattr(session, "smart_staging", None),
@@ -1004,6 +1092,7 @@ def review_bundle(session: TreatmentSession) -> dict[str, Any]:
             staging_history=tuple(getattr(session, "staging_history", ()) or ()),
         ),
         "clinicalTools": clinical_plan.payload(),
+        "occlusionAnatomy": occlusion_anatomy_payload,
         "stagingId": session.staging.staging_id,
         "editHistory": [
             {

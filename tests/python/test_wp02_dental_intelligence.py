@@ -179,11 +179,20 @@ def test_intelligence_determinism_on_real_artifact() -> None:
     record = _persist_dual_arch_segmentation("wp02-det")
     first = build_case_dental_intelligence(case_id="wp02-det", segmentation_record=record).payload()
     second = build_case_dental_intelligence(case_id="wp02-det", segmentation_record=record).payload()
-    # Timestamps differ; compare geometry/truth payloads.
-    for key in ("generated_at", "timings_ms"):
-        first.pop(key, None)
-        second.pop(key, None)
-    assert first == second
+    # Timestamps / timings differ across runs; compare truth/geometry payloads only.
+
+    def _strip_volatile(obj):
+        if isinstance(obj, dict):
+            return {
+                key: _strip_volatile(value)
+                for key, value in obj.items()
+                if key not in {"generated_at", "timings_ms"}
+            }
+        if isinstance(obj, list):
+            return [_strip_volatile(item) for item in obj]
+        return obj
+
+    assert _strip_volatile(first) == _strip_volatile(second)
 
 
 def test_no_fdi_invented_when_absent() -> None:

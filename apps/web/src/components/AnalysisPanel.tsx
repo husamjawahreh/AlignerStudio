@@ -222,8 +222,92 @@ export function AnalysisPanel({
             )}
           </strong>
         </div>
+        {overview.occlusionCapabilityState && (
+          <div className="cad-stat-row">
+            <span>Capability state</span>
+            <strong data-testid="occlusion-capability-state">
+              {overview.occlusionCapabilityState.replaceAll("_", " ")}
+            </strong>
+          </div>
+        )}
+        {overview.registrationState && (
+          <div className="cad-stat-row">
+            <span>Registration state</span>
+            <strong data-testid="registration-state">
+              {overview.registrationState.replaceAll("_", " ")}
+            </strong>
+          </div>
+        )}
+        {overview.geometricContactCount !== null && (
+          <div className="cad-stat-row">
+            <span>Geometric contact candidates</span>
+            <strong data-testid="geometric-contact-count">
+              {overview.geometricContactCount}
+            </strong>
+          </div>
+        )}
         <small className="cad-review-note">
           Occlusion stays unavailable until genuine registration or bite evidence exists.
+          Geometric proximity is never a clinical occlusal diagnosis.
+        </small>
+      </section>
+
+      <section className="analysis-section" aria-labelledby="analysis-advanced-anatomy">
+        <h3 id="analysis-advanced-anatomy" className="eyebrow">
+          Advanced Anatomy
+        </h3>
+        <div className="cad-stat-row">
+          <span>Crown geometry</span>
+          <strong data-testid="crown-anatomy-state">
+            {formatTruthState(
+              (overview.crownAnatomyState as "computed" | "not_available" | null) ?? null,
+            )}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Root geometry</span>
+          <strong data-testid="root-anatomy-state">
+            {formatTruthState(
+              (overview.rootAnatomyState as "not_available" | null) ?? overview.rootsTruth,
+            )}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Landmark geometry</span>
+          <strong data-testid="landmark-anatomy-state">
+            {formatTruthState(
+              (overview.landmarkAnatomyState as "not_available" | null) ?? overview.landmarksTruth,
+            )}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Clinical dental axes</span>
+          <strong data-testid="clinical-axes-anatomy-state">
+            {formatTruthState(
+              (overview.clinicalAxesAnatomyState as "not_available" | null) ??
+                overview.clinicalAxesTruth,
+            )}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Generic geometric directions</span>
+          <strong data-testid="generic-axes-state">
+            {formatTruthState(
+              (overview.genericGeometricAxesState as "computed" | "not_available" | null) ?? null,
+            )}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>CBCT / volumetric</span>
+          <strong data-testid="cbct-anatomy-state">
+            {formatTruthState(
+              (overview.cbctAnatomyState as "not_available" | null) ?? null,
+            )}
+          </strong>
+        </div>
+        <small className="cad-review-note">
+          Crown-only STL never fabricates roots, landmarks, clinical axes, or CBCT anatomy.
+          Mesh PCA is geometric only.
         </small>
       </section>
 

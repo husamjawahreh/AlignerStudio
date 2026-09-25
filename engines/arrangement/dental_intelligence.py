@@ -23,12 +23,16 @@ from domain.tooth.intelligence_v2 import (
     not_available,
     requires_review,
 )
-from domain.tooth.occlusion import unavailable_occlusion
 from engines.arrangement.geometry_metrics import (
     ALGORITHM_ID,
     ALGORITHM_VERSION,
     GeometryMetricsError,
     compute_geometry_metrics,
+)
+from engines.occlusion.capability_engine import (
+    build_advanced_anatomy_report,
+    build_occlusion_result,
+    intelligence_truth_for_occlusion,
 )
 
 
@@ -84,20 +88,51 @@ def build_case_dental_intelligence(
         tooth.fixture for tooth in teeth
     )
     provenance = DataProvenance.FIXTURE if fixture else DataProvenance.EXPERIMENTAL
+    generated_at = _now()
 
-    occlusion_stub = unavailable_occlusion(provenance=provenance, fixture=fixture)
+    occlusion_result = build_occlusion_result(
+        case_id=case_id,
+        segmentation_record=segmentation_record,
+        generated_at=generated_at,
+    )
+    advanced_anatomy = build_advanced_anatomy_report(
+        case_id=case_id,
+        segmentation_record=segmentation_record,
+        tooth_intelligence_summaries=[tooth.payload() for tooth in teeth],
+        generated_at=generated_at,
+    )
+    occlusion_truth = intelligence_truth_for_occlusion(occlusion_result.capability_state)
+    occlusion_payload = {
+        **occlusion_result.representation.payload(),
+        "capability_state": occlusion_result.capability_state.value,
+        "contract_version": occlusion_result.contract_version,
+        "registration": occlusion_result.registration.payload(),
+        "contact_candidates": [c.payload() for c in occlusion_result.contact_candidates],
+        "arch_relationship": occlusion_result.arch_relationship.payload(),
+        "readiness": occlusion_result.readiness.payload(),
+        "freshness": occlusion_result.freshness.value,
+        "advanced_anatomy": advanced_anatomy.payload(),
+        "clinically_approved": False,
+        "occlusion_validated": False,
+        "limitations": list(occlusion_result.limitations),
+        "timings_ms": dict(occlusion_result.timings_ms),
+    }
     occlusion = TruthValue(
-        state=IntelligenceTruthState.NOT_AVAILABLE,
-        value=occlusion_stub.payload(),
-        reason=(
-            "Occlusal registration, bite record, and contacts are not provided "
-            "by crown-only STL analysis."
-        ),
-        algorithm="occlusion_gate",
-        algorithm_version=None,
+        state=occlusion_truth,
+        value=occlusion_payload,
+        reason="; ".join(occlusion_result.limitations[:2])
+        if occlusion_result.limitations
+        else None,
+        algorithm=occlusion_result.algorithm or "occlusion_gate",
+        algorithm_version=occlusion_result.algorithm_version,
     )
 
-    readiness = _capability_readiness(teeth, arch_summaries, quality_findings)
+    readiness = _capability_readiness(
+        teeth,
+        arch_summaries,
+        quality_findings,
+        occlusion_state=occlusion_truth,
+    )
     overall = _overall_state(teeth, readiness)
 
     limitations = (
@@ -107,6 +142,7 @@ def build_case_dental_intelligence(
         "Occlusion remains Not Available without bite/registration evidence.",
         "Root/bone anatomy is Not Available for crown-only STL inputs.",
         "COMPUTED geometry metrics are not clinical validation.",
+        "Geometric contact candidates are never clinical occlusal diagnoses.",
     )
 
     total_ms = (perf_counter() - started) * 1000
@@ -116,7 +152,7 @@ def build_case_dental_intelligence(
         job_id=segmentation_record.get("job_id"),
         input_hash=segmentation_record.get("input_hash"),
         processing_mode=segmentation_record.get("processing_mode"),
-        generated_at=_now(),
+        generated_at=generated_at,
         teeth=tuple(teeth),
         arches=tuple(arch_summaries),
         occlusion=occlusion,
@@ -132,6 +168,8 @@ def build_case_dental_intelligence(
             "per_tooth_mean": (sum(per_tooth_ms) / len(per_tooth_ms)) if per_tooth_ms else None,
             "per_tooth_max": max(per_tooth_ms) if per_tooth_ms else None,
             "tooth_count_timed": float(len(per_tooth_ms)),
+            "occlusion_ms": occlusion_result.timings_ms.get("total_ms"),
+            "anatomy_capability_ms": advanced_anatomy.timings_ms.get("anatomy_capability_ms"),
         },
         limitations=limitations,
     )
@@ -416,6 +454,8 @@ def _capability_readiness(
     teeth: list[ToothIntelligence],
     arches: list[ArchIntelligence],
     findings: list[str],
+    *,
+    occlusion_state: IntelligenceTruthState | None = None,
 ) -> CapabilityReadiness:
     reasons: list[str] = []
     if not teeth:
@@ -471,8 +511,15 @@ def _capability_readiness(
         axis = IntelligenceTruthState.REQUIRES_REVIEW
         reasons.append("Clinical dental axes require review.")
 
-    occlusion = IntelligenceTruthState.NOT_AVAILABLE
-    reasons.append("Occlusion is not available without bite/registration evidence.")
+    occlusion = occlusion_state or IntelligenceTruthState.NOT_AVAILABLE
+    if occlusion is IntelligenceTruthState.NOT_AVAILABLE:
+        reasons.append("Occlusion is not available without bite/registration evidence.")
+    elif occlusion is IntelligenceTruthState.REQUIRES_REVIEW:
+        reasons.append("Occlusion registration/evidence requires doctor review.")
+    else:
+        reasons.append(
+            "Occlusion geometric capability is present; not clinical occlusion approval."
+        )
 
     # Treatment setup is NOT unlocked merely because intelligence objects exist.
     if has_refs and geometry_ok > 0 and len(arches) == 2:

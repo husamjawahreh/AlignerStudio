@@ -6,6 +6,20 @@ export type AnatomyExtent = "crown_only_stl" | "root_bone_cbct";
 
 export type OcclusionAvailability = "unavailable" | "requires_review" | "computed";
 
+/** WP-08 occlusion capability vocabulary. */
+export type OcclusionCapabilityState =
+  | "unavailable"
+  | "source_registered"
+  | "computed"
+  | "requires_review"
+  | "verified";
+
+export type AnatomyTruthState =
+  | "verified"
+  | "computed"
+  | "requires_review"
+  | "not_available";
+
 export interface ToothLandmarksPayload {
   centroid: Vector3TupleArray;
   mesial_point: Vector3TupleArray;
@@ -42,6 +56,20 @@ export interface ArchMeasurementsPayload {
   notes: string;
 }
 
+export interface AdvancedAnatomyPayload {
+  contract_version: string;
+  case_id: string;
+  anatomy_extent: AnatomyExtent;
+  crown_geometry: AnatomyTruthState;
+  root_geometry: AnatomyTruthState;
+  landmark_geometry: AnatomyTruthState;
+  clinical_axes: AnatomyTruthState;
+  generic_geometric_axes: AnatomyTruthState;
+  cbct_volumetric_anatomy: AnatomyTruthState;
+  limitations: string[];
+  clinically_approved: false;
+}
+
 export interface OcclusionRepresentationPayload {
   availability: OcclusionAvailability;
   upper_lower_registration: OcclusionAvailability;
@@ -52,6 +80,12 @@ export interface OcclusionRepresentationPayload {
   notes: string[];
   provenance: string;
   fixture: boolean;
+  /** WP-08 extensions when present on intelligence occlusion.value */
+  capability_state?: OcclusionCapabilityState;
+  contract_version?: string;
+  advanced_anatomy?: AdvancedAnatomyPayload;
+  clinically_approved?: false;
+  occlusion_validated?: false;
 }
 
 export interface DataQualityReportPayload {
