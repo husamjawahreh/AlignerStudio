@@ -1,6 +1,11 @@
-import type { MeshValidationResult } from "@alignerstudio/contracts";
+import type {
+  CaseDentalIntelligencePayload,
+  IntelligenceTruthState,
+  MeshValidationResult,
+} from "@alignerstudio/contracts";
 import type { PipelineDiagnostic } from "./api/client";
 import type { ReviewToothMesh } from "./review/types";
+import { PRODUCT_TRUTH_LABELS, type ProductTruthState } from "./design-system/truthState";
 
 export interface AnalysisFinding {
   kind: "warning" | "gap" | "note";
@@ -36,22 +41,59 @@ export interface AnalysisOverview {
   missingAnatomy: boolean | null;
   archTotalWidth: number | null;
   interToothCount: number | null;
+  /** WP-02 Dental Intelligence 2.0 truth states (null when document absent). */
+  intelligenceContractVersion: string | null;
+  overallTruthState: IntelligenceTruthState | null;
+  clinicalAxesTruth: IntelligenceTruthState | null;
+  landmarksTruth: IntelligenceTruthState | null;
+  rootsTruth: IntelligenceTruthState | null;
+  occlusionTruth: IntelligenceTruthState | null;
+  identityReadiness: IntelligenceTruthState | null;
+  geometryReadiness: IntelligenceTruthState | null;
+  axisReadiness: IntelligenceTruthState | null;
+  occlusionReadiness: IntelligenceTruthState | null;
+  treatmentSetupReadiness: IntelligenceTruthState | null;
+  validationReadiness: IntelligenceTruthState | null;
+  readinessReasons: string[];
+  dataQualityFindings: string[];
+  limitations: string[];
 }
 
 /**
  * Build analysis overview from existing pipeline/review data only.
  * Does not invent anatomy, FDI, landmarks, axes, or occlusion.
+ * Prefer Dental Intelligence 2.0 truth states when present.
  */
 export function buildAnalysisOverview(input: {
   diagnostic: PipelineDiagnostic | null;
   teeth: readonly ReviewToothMesh[];
+  dentalIntelligence?: CaseDentalIntelligencePayload | null;
 }): AnalysisOverview {
   const diagnostic = input.diagnostic;
+  const intelDoc =
+    input.dentalIntelligence ?? diagnostic?.dental_intelligence ?? null;
   const upperCount = input.teeth.filter((tooth) => tooth.arch === "upper").length;
   const lowerCount = input.teeth.filter((tooth) => tooth.arch === "lower").length;
   const intel = diagnostic?.anatomical_intelligence ?? null;
   const arch = diagnostic?.arch_measurements ?? null;
-  if (!diagnostic) {
+  const emptyIntelFields = {
+    intelligenceContractVersion: null as string | null,
+    overallTruthState: null as IntelligenceTruthState | null,
+    clinicalAxesTruth: null as IntelligenceTruthState | null,
+    landmarksTruth: null as IntelligenceTruthState | null,
+    rootsTruth: null as IntelligenceTruthState | null,
+    occlusionTruth: null as IntelligenceTruthState | null,
+    identityReadiness: null as IntelligenceTruthState | null,
+    geometryReadiness: null as IntelligenceTruthState | null,
+    axisReadiness: null as IntelligenceTruthState | null,
+    occlusionReadiness: null as IntelligenceTruthState | null,
+    treatmentSetupReadiness: null as IntelligenceTruthState | null,
+    validationReadiness: null as IntelligenceTruthState | null,
+    readinessReasons: [] as string[],
+    dataQualityFindings: [] as string[],
+    limitations: [] as string[],
+  };
+  if (!diagnostic && !intelDoc) {
     return {
       ran: false,
       stateLabel: "Not run",
@@ -81,32 +123,76 @@ export function buildAnalysisOverview(input: {
       missingAnatomy: null,
       archTotalWidth: null,
       interToothCount: null,
+      ...emptyIntelFields,
     };
   }
-  const teethHaveLandmarks = (diagnostic.tooth_instances ?? []).some(
+
+  const teethHaveLandmarks = (diagnostic?.tooth_instances ?? []).some(
     (tooth) => tooth.landmarks != null,
   );
-  const teethHaveAxes = (diagnostic.tooth_instances ?? []).some(
+  const teethHaveAxes = (diagnostic?.tooth_instances ?? []).some(
     (tooth) => tooth.coordinate_system != null || tooth.movement_reference_frame != null,
   );
+
+  const intelFields = intelDoc
+    ? {
+        intelligenceContractVersion: intelDoc.contract_version,
+        overallTruthState: intelDoc.overall_truth_state,
+        clinicalAxesTruth: _dominantToothState(
+          intelDoc.teeth.map((tooth) => tooth.clinical_dental_axes.state),
+        ),
+        landmarksTruth: _dominantToothState(
+          intelDoc.teeth.map((tooth) => tooth.landmarks.state),
+        ),
+        rootsTruth: _dominantToothState(
+          intelDoc.teeth.map((tooth) => tooth.root_geometry.state),
+        ),
+        occlusionTruth: intelDoc.occlusion.state,
+        identityReadiness: intelDoc.capability_readiness.identity_readiness,
+        geometryReadiness: intelDoc.capability_readiness.geometry_readiness,
+        axisReadiness: intelDoc.capability_readiness.axis_readiness,
+        occlusionReadiness: intelDoc.capability_readiness.occlusion_readiness,
+        treatmentSetupReadiness: intelDoc.capability_readiness.treatment_setup_readiness,
+        validationReadiness: intelDoc.capability_readiness.validation_readiness,
+        readinessReasons: intelDoc.capability_readiness.reasons,
+        dataQualityFindings: intelDoc.data_quality_findings,
+        limitations: intelDoc.limitations ?? [],
+      }
+    : emptyIntelFields;
+
+  // Prefer explicit DI2 truth over boolean availability flags.
+  const landmarksAvailable =
+    intelFields.landmarksTruth != null
+      ? intelFields.landmarksTruth === "verified" || intelFields.landmarksTruth === "computed"
+      : (intel?.landmarks_available ?? teethHaveLandmarks);
+  const localAxesAvailable =
+    intelFields.clinicalAxesTruth != null
+      ? intelFields.clinicalAxesTruth === "verified" ||
+        intelFields.clinicalAxesTruth === "computed"
+      : (intel?.local_axes_available ?? teethHaveAxes);
+  const occlusionAvailability =
+    intelFields.occlusionTruth ?? intel?.occlusion.availability ?? "unavailable";
+
   return {
     ran: true,
-    stateLabel: diagnostic.state.replaceAll("_", " "),
-    instanceCount: diagnostic.tooth_instance_count,
+    stateLabel: diagnostic
+      ? diagnostic.state.replaceAll("_", " ")
+      : (intelDoc?.overall_truth_state.replaceAll("_", " ") ?? "Available"),
+    instanceCount: diagnostic?.tooth_instance_count ?? intelDoc?.counts?.tooth_instances ?? input.teeth.length,
     upperCount,
     lowerCount,
-    identifiedTeeth: diagnostic.identified_teeth,
-    uncertainTeeth: diagnostic.uncertain_teeth,
-    unidentifiedTeeth: diagnostic.unidentified_teeth,
-    archAnalysisAvailable: diagnostic.arch_analysis_available,
-    identificationConfidence: diagnostic.identification_confidence,
-    landmarksAvailable: intel?.landmarks_available ?? teethHaveLandmarks,
-    localAxesAvailable: intel?.local_axes_available ?? teethHaveAxes,
+    identifiedTeeth: diagnostic?.identified_teeth ?? null,
+    uncertainTeeth: diagnostic?.uncertain_teeth ?? null,
+    unidentifiedTeeth: diagnostic?.unidentified_teeth ?? null,
+    archAnalysisAvailable: diagnostic?.arch_analysis_available ?? null,
+    identificationConfidence: diagnostic?.identification_confidence ?? null,
+    landmarksAvailable,
+    localAxesAvailable,
     movementFramesAvailable: intel?.movement_frames_available ?? teethHaveAxes,
     archOrientationAvailable: intel?.arch_orientation_available ?? false,
     archFormAvailable: intel?.arch_form_available ?? Boolean(arch),
     midlineAvailable: intel?.midline_available ?? Boolean(arch?.geometric_midline_point),
-    occlusionAvailability: intel?.occlusion.availability ?? "unavailable",
+    occlusionAvailability,
     anatomyExtent: intel?.anatomy_extent ?? "crown_only_stl",
     scaleValidation: intel?.data_quality.scale_validation ?? "unverified",
     units: intel?.data_quality.units ?? "unverified",
@@ -118,7 +204,19 @@ export function buildAnalysisOverview(input: {
     missingAnatomy: intel?.data_quality.missing_anatomy ?? true,
     archTotalWidth: arch?.total_width ?? null,
     interToothCount: arch?.consecutive_tooth_distances.length ?? null,
+    ...intelFields,
   };
+}
+
+function _dominantToothState(
+  states: IntelligenceTruthState[],
+): IntelligenceTruthState | null {
+  if (states.length === 0) return null;
+  if (states.every((state) => state === "not_available")) return "not_available";
+  if (states.some((state) => state === "verified")) return "verified";
+  if (states.some((state) => state === "computed")) return "computed";
+  if (states.some((state) => state === "requires_review")) return "requires_review";
+  return "not_available";
 }
 
 /** Tooth identity label: FDI only when genuinely present; otherwise semantic ref. */
@@ -135,56 +233,77 @@ export function formatToothIdentity(tooth: {
 export function buildAnalysisFindings(input: {
   diagnostic: PipelineDiagnostic | null;
   validation: MeshValidationResult | null;
+  dentalIntelligence?: CaseDentalIntelligencePayload | null;
 }): AnalysisFinding[] {
   const findings: AnalysisFinding[] = [];
   const diagnostic = input.diagnostic;
-  if (!diagnostic) {
+  const intelDoc =
+    input.dentalIntelligence ?? diagnostic?.dental_intelligence ?? null;
+  if (!diagnostic && !intelDoc) {
     findings.push({ kind: "gap", text: "Analysis has not been run for this case." });
     return findings;
   }
-  for (const failure of diagnostic.failures ?? []) {
+  for (const failure of diagnostic?.failures ?? []) {
     findings.push({ kind: "warning", text: failure });
   }
-  for (const finding of diagnostic.validation_findings ?? []) {
+  for (const finding of diagnostic?.validation_findings ?? []) {
     findings.push({ kind: "warning", text: finding });
   }
-  for (const note of diagnostic.notes ?? []) {
+  for (const note of diagnostic?.notes ?? []) {
     findings.push({ kind: "note", text: note });
   }
-  for (const qualityFinding of diagnostic.anatomical_intelligence?.data_quality.findings ?? []) {
+  for (const qualityFinding of diagnostic?.anatomical_intelligence?.data_quality.findings ?? []) {
     findings.push({ kind: "gap", text: qualityFinding });
   }
-  for (const occlusionNote of diagnostic.anatomical_intelligence?.occlusion.notes ?? []) {
+  for (const qualityFinding of intelDoc?.data_quality_findings ?? []) {
+    findings.push({ kind: "gap", text: qualityFinding });
+  }
+  for (const occlusionNote of diagnostic?.anatomical_intelligence?.occlusion.notes ?? []) {
     findings.push({ kind: "gap", text: occlusionNote });
   }
-  if ((diagnostic.duplicate_fdi_numbers?.length ?? 0) > 0) {
+  for (const limitation of intelDoc?.limitations ?? []) {
+    findings.push({ kind: "note", text: limitation });
+  }
+  for (const reason of intelDoc?.capability_readiness.reasons ?? []) {
+    findings.push({ kind: "note", text: reason });
+  }
+  if ((diagnostic?.duplicate_fdi_numbers?.length ?? 0) > 0) {
     findings.push({
       kind: "warning",
-      text: `Duplicate FDI: ${diagnostic.duplicate_fdi_numbers?.join(", ")}`,
+      text: `Duplicate FDI: ${diagnostic?.duplicate_fdi_numbers?.join(", ")}`,
     });
   }
-  if ((diagnostic.missing_fdi_numbers?.length ?? 0) > 0) {
+  if ((diagnostic?.missing_fdi_numbers?.length ?? 0) > 0) {
     findings.push({
       kind: "gap",
-      text: `Missing FDI: ${diagnostic.missing_fdi_numbers?.join(", ")}`,
+      text: `Missing FDI: ${diagnostic?.missing_fdi_numbers?.join(", ")}`,
     });
   }
-  if ((diagnostic.excluded_fragment_count ?? 0) > 0) {
+  if ((diagnostic?.excluded_fragment_count ?? 0) > 0) {
     findings.push({
       kind: "note",
-      text: `Excluded zero-face fragments: ${diagnostic.excluded_fragment_count}`,
+      text: `Excluded zero-face fragments: ${diagnostic?.excluded_fragment_count}`,
     });
   }
-  if (diagnostic.uncertain_teeth > 0) {
+  if ((diagnostic?.uncertain_teeth ?? 0) > 0) {
     findings.push({
       kind: "gap",
-      text: `Uncertain teeth: ${diagnostic.uncertain_teeth}`,
+      text: `Uncertain teeth: ${diagnostic?.uncertain_teeth}`,
     });
   }
-  if (diagnostic.unidentified_teeth > 0) {
+  if ((diagnostic?.unidentified_teeth ?? 0) > 0) {
     findings.push({
       kind: "gap",
-      text: `Unidentified teeth: ${diagnostic.unidentified_teeth}`,
+      text: `Unidentified teeth: ${diagnostic?.unidentified_teeth}`,
+    });
+  }
+  if (
+    intelDoc?.capability_readiness.treatment_setup_readiness === "not_available" ||
+    intelDoc?.capability_readiness.treatment_setup_readiness === "requires_review"
+  ) {
+    findings.push({
+      kind: "gap",
+      text: "Treatment setup is not unlocked by intelligence objects alone.",
     });
   }
   if (input.validation && !input.validation.is_valid) {
@@ -200,6 +319,11 @@ export function formatAvailability(available: boolean | null, detailWhenAvailabl
   if (available === null) return "Unavailable";
   if (!available) return "Unavailable";
   return detailWhenAvailable ?? "Available";
+}
+
+export function formatTruthState(state: IntelligenceTruthState | ProductTruthState | null): string {
+  if (!state) return "Not Available";
+  return PRODUCT_TRUTH_LABELS[state as ProductTruthState] ?? state.replaceAll("_", " ");
 }
 
 export function formatMeshMeasurement(validation: MeshValidationResult | null): string {

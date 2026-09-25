@@ -1,4 +1,4 @@
-import type { MeshValidationResult } from "@alignerstudio/contracts";
+import type { CaseDentalIntelligencePayload, MeshValidationResult } from "@alignerstudio/contracts";
 import type { PipelineDiagnostic } from "../api/client";
 import type { ReviewToothMesh } from "../review/types";
 import {
@@ -8,11 +8,13 @@ import {
   formatMeshMeasurement,
   formatOcclusionAvailability,
   formatToothIdentity,
+  formatTruthState,
 } from "../analysisPresentation";
 
 interface AnalysisPanelProps {
   bothArchesValid: boolean;
   diagnostic: PipelineDiagnostic | null;
+  dentalIntelligence?: CaseDentalIntelligencePayload | null;
   teeth: readonly ReviewToothMesh[];
   validation: MeshValidationResult | null;
   hiddenToothIds: ReadonlySet<number>;
@@ -24,14 +26,15 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({
   bothArchesValid,
   diagnostic,
+  dentalIntelligence = null,
   teeth,
   validation,
   hiddenToothIds,
   onAnalyzeCase,
   onToggleToothVisibility,
 }: AnalysisPanelProps): JSX.Element {
-  const overview = buildAnalysisOverview({ diagnostic, teeth });
-  const findings = buildAnalysisFindings({ diagnostic, validation });
+  const overview = buildAnalysisOverview({ diagnostic, teeth, dentalIntelligence });
+  const findings = buildAnalysisFindings({ diagnostic, validation, dentalIntelligence });
 
   return (
     <div className="analysis-panel case-form" data-testid="analysis-panel">
@@ -51,6 +54,14 @@ export function AnalysisPanel({
           <span>State</span>
           <strong>{overview.stateLabel}</strong>
         </div>
+        {overview.overallTruthState && (
+          <div className="cad-stat-row">
+            <span>Intelligence truth</span>
+            <strong data-testid="intelligence-overall-truth">
+              {formatTruthState(overview.overallTruthState)}
+            </strong>
+          </div>
+        )}
       </section>
 
       <section className="analysis-section" aria-labelledby="analysis-tooth-id">
@@ -75,6 +86,14 @@ export function AnalysisPanel({
             {overview.unidentifiedTeeth === null ? "Unavailable" : overview.unidentifiedTeeth}
           </strong>
         </div>
+        {overview.identityReadiness && (
+          <div className="cad-stat-row">
+            <span>Identity readiness</span>
+            <strong data-testid="identity-readiness">
+              {formatTruthState(overview.identityReadiness)}
+            </strong>
+          </div>
+        )}
         {teeth.length > 0 ? (
           <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
             <strong>{teeth.length} visible meshes</strong>
@@ -102,16 +121,25 @@ export function AnalysisPanel({
                 Excluded zero-face fragments: {diagnostic?.excluded_fragment_count}
               </small>
             )}
-            {teeth.map((tooth) => (
-              <label className="toggle-row" key={tooth.instanceId}>
-                <input
-                  type="checkbox"
-                  checked={!hiddenToothIds.has(tooth.instanceId)}
-                  onChange={() => onToggleToothVisibility(tooth.instanceId)}
-                />
-                <span>{formatToothIdentity(tooth)}</span>
-              </label>
-            ))}
+            {teeth.map((tooth) => {
+              const toothIntel = dentalIntelligence?.teeth.find(
+                (item) => item.instance_id === tooth.instanceId && item.arch === tooth.arch,
+              );
+              const fdiState = toothIntel?.fdi_number.state;
+              return (
+                <label className="toggle-row" key={`${tooth.arch}-${tooth.instanceId}`}>
+                  <input
+                    type="checkbox"
+                    checked={!hiddenToothIds.has(tooth.instanceId)}
+                    onChange={() => onToggleToothVisibility(tooth.instanceId)}
+                  />
+                  <span>
+                    {formatToothIdentity(tooth)}
+                    {fdiState ? ` · ${formatTruthState(fdiState)}` : ""}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         ) : (
           <small className="cad-review-note">No tooth meshes available yet.</small>
@@ -164,7 +192,11 @@ export function AnalysisPanel({
         </h3>
         <div className="cad-stat-row">
           <span>Occlusion</span>
-          <strong>{formatOcclusionAvailability(overview.occlusionAvailability)}</strong>
+          <strong data-testid="occlusion-truth">
+            {overview.occlusionTruth
+              ? formatTruthState(overview.occlusionTruth)
+              : formatOcclusionAvailability(overview.occlusionAvailability)}
+          </strong>
         </div>
         <div className="cad-stat-row">
           <span>Upper/lower registration</span>
@@ -205,16 +237,64 @@ export function AnalysisPanel({
         </div>
         <div className="cad-stat-row">
           <span>Landmarks</span>
-          <strong>{formatAvailability(overview.landmarksAvailable)}</strong>
+          <strong data-testid="landmarks-truth">
+            {overview.landmarksTruth
+              ? formatTruthState(overview.landmarksTruth)
+              : formatAvailability(overview.landmarksAvailable)}
+          </strong>
         </div>
         <div className="cad-stat-row">
-          <span>Local axes</span>
-          <strong>{formatAvailability(overview.localAxesAvailable)}</strong>
+          <span>Clinical dental axes</span>
+          <strong data-testid="clinical-axes-truth">
+            {overview.clinicalAxesTruth
+              ? formatTruthState(overview.clinicalAxesTruth)
+              : formatAvailability(overview.localAxesAvailable)}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Root geometry</span>
+          <strong data-testid="roots-truth">
+            {overview.rootsTruth ? formatTruthState(overview.rootsTruth) : "Not Available"}
+          </strong>
         </div>
         <div className="cad-stat-row">
           <span>Movement reference frames</span>
           <strong>{formatAvailability(overview.movementFramesAvailable)}</strong>
         </div>
+        <small className="cad-review-note">
+          Mesh principal directions are geometric PCA and are not clinical dental axes.
+        </small>
+      </section>
+
+      <section className="analysis-section" aria-labelledby="analysis-readiness">
+        <h3 id="analysis-readiness" className="eyebrow">
+          Capability readiness
+        </h3>
+        <div className="cad-stat-row">
+          <span>Geometry</span>
+          <strong>{formatTruthState(overview.geometryReadiness)}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Axes</span>
+          <strong>{formatTruthState(overview.axisReadiness)}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Occlusion</span>
+          <strong>{formatTruthState(overview.occlusionReadiness)}</strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Treatment setup</span>
+          <strong data-testid="treatment-setup-readiness">
+            {formatTruthState(overview.treatmentSetupReadiness)}
+          </strong>
+        </div>
+        <div className="cad-stat-row">
+          <span>Validation</span>
+          <strong>{formatTruthState(overview.validationReadiness)}</strong>
+        </div>
+        <small className="cad-review-note">
+          Readiness signals are prerequisites, not clinical clearance or auto-unlock.
+        </small>
       </section>
 
       <section className="analysis-section" aria-labelledby="analysis-data-quality">
@@ -309,6 +389,7 @@ export function AnalysisPanel({
 
 interface AnalysisInspectorProps {
   diagnostic: PipelineDiagnostic | null;
+  dentalIntelligence?: CaseDentalIntelligencePayload | null;
   teeth: readonly ReviewToothMesh[];
   validation: MeshValidationResult | null;
   selectedLabel: string;
@@ -318,21 +399,22 @@ interface AnalysisInspectorProps {
 
 export function AnalysisInspector({
   diagnostic,
+  dentalIntelligence = null,
   teeth,
   validation,
   selectedLabel,
   selectedConfidence,
   selectedArch,
 }: AnalysisInspectorProps): JSX.Element {
-  const overview = buildAnalysisOverview({ diagnostic, teeth });
-  const findings = buildAnalysisFindings({ diagnostic, validation });
+  const overview = buildAnalysisOverview({ diagnostic, teeth, dentalIntelligence });
+  const findings = buildAnalysisFindings({ diagnostic, validation, dentalIntelligence });
 
   return (
     <div className="cad-inspector-section" data-testid="analysis-inspector">
       <span className="eyebrow">Analysis</span>
       <h2>Data Quality</h2>
       <p>
-        {diagnostic
+        {diagnostic || dentalIntelligence
           ? "Anatomy overview uses reported instance counts only — no invented FDI or landmarks."
           : "Upload both arches and run Analyze case to review findings."}
       </p>
@@ -340,21 +422,43 @@ export function AnalysisInspector({
         <span>Tooth Identification</span>
         <strong>{overview.stateLabel}</strong>
       </div>
+      {overview.overallTruthState && (
+        <div className="cad-stat-row">
+          <span>Intelligence truth</span>
+          <strong>{formatTruthState(overview.overallTruthState)}</strong>
+        </div>
+      )}
       <div className="cad-stat-row">
         <span>Arch Analysis</span>
         <strong>{formatAvailability(overview.archAnalysisAvailable)}</strong>
       </div>
       <div className="cad-stat-row">
         <span>Occlusion</span>
-        <strong>{formatOcclusionAvailability(overview.occlusionAvailability)}</strong>
+        <strong>
+          {overview.occlusionTruth
+            ? formatTruthState(overview.occlusionTruth)
+            : formatOcclusionAvailability(overview.occlusionAvailability)}
+        </strong>
       </div>
       <div className="cad-stat-row">
         <span>Landmarks</span>
-        <strong>{formatAvailability(overview.landmarksAvailable)}</strong>
+        <strong>
+          {overview.landmarksTruth
+            ? formatTruthState(overview.landmarksTruth)
+            : formatAvailability(overview.landmarksAvailable)}
+        </strong>
       </div>
       <div className="cad-stat-row">
-        <span>Local axes</span>
-        <strong>{formatAvailability(overview.localAxesAvailable)}</strong>
+        <span>Clinical dental axes</span>
+        <strong>
+          {overview.clinicalAxesTruth
+            ? formatTruthState(overview.clinicalAxesTruth)
+            : formatAvailability(overview.localAxesAvailable)}
+        </strong>
+      </div>
+      <div className="cad-stat-row">
+        <span>Treatment setup readiness</span>
+        <strong>{formatTruthState(overview.treatmentSetupReadiness)}</strong>
       </div>
       <div className="cad-stat-row">
         <span>Anatomy extent</span>

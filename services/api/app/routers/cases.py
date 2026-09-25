@@ -496,6 +496,38 @@ def get_planning_intelligence(case_id: str) -> dict:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
+@router.get("/{case_id}/dental-intelligence")
+def get_dental_intelligence(case_id: str) -> dict:
+    """Dental Intelligence 2.0 — truth-preserving clinical intelligence document (WP-02)."""
+    if case_store.get(case_id) is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    from app.intelligence_store import (
+        build_and_store_dental_intelligence,
+        get_dental_intelligence_record,
+    )
+
+    record = get_dental_intelligence_record(case_id)
+    if record is not None:
+        return record
+    try:
+        return build_and_store_dental_intelligence(case_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/dental-intelligence/rebuild")
+def rebuild_dental_intelligence(case_id: str) -> dict:
+    """Rebuild Dental Intelligence 2.0 from the persisted completed segmentation record."""
+    if case_store.get(case_id) is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    from app.intelligence_store import build_and_store_dental_intelligence
+
+    try:
+        return build_and_store_dental_intelligence(case_id)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
 @router.post("/{case_id}/export")
 def export_treatment(case_id: str) -> FileResponse:
     try:

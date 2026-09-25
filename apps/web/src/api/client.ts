@@ -2,6 +2,7 @@ import type {
   AnatomicalIntelligencePayload,
   ArchMeasurementsPayload,
   Case,
+  CaseDentalIntelligencePayload,
   MeshValidationResult,
   ToothCoordinateSystemPayload,
   ToothLandmarksPayload,
@@ -101,6 +102,7 @@ export interface PipelineDiagnostic {
   tooth_instances?: PipelineToothInstance[];
   arch_measurements?: ArchMeasurementsPayload | null;
   anatomical_intelligence?: AnatomicalIntelligencePayload | null;
+  dental_intelligence?: CaseDentalIntelligencePayload | null;
 }
 
 export interface PipelineToothInstance {
@@ -286,6 +288,17 @@ export const api = {
   getPlanningIntelligence(caseId: string): Promise<Record<string, unknown>> {
     return requestJson<Record<string, unknown>>(
       `/cases/${caseId}/treatment/planning-intelligence`,
+    );
+  },
+
+  getDentalIntelligence(caseId: string): Promise<CaseDentalIntelligencePayload> {
+    return requestJson<CaseDentalIntelligencePayload>(`/cases/${caseId}/dental-intelligence`);
+  },
+
+  rebuildDentalIntelligence(caseId: string): Promise<CaseDentalIntelligencePayload> {
+    return requestJson<CaseDentalIntelligencePayload>(
+      `/cases/${caseId}/dental-intelligence/rebuild`,
+      { method: "POST" },
     );
   },
 

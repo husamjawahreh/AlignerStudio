@@ -167,14 +167,34 @@ class ToothInstanceNetEngine:
             ),
         )
         identified = []
+        stamped_instances = []
         for instance, (_, fdi) in zip(segmentation.instances, fdi_by_instance, strict=False):
             identity = None
             if fdi is not None:
                 quadrant = 4 if self.arch is ArchType.LOWER else 1
                 identity = FDIToothIdentity(fdi, self.arch, quadrant, fdi % 10)
+            # Stable instance identity for planning — never invent clinical FDI here.
+            arch_value = self.arch.value
+            tooth_ref = instance.tooth_ref or f"{arch_value}:instance:{instance.instance_id}"
+            stamped = ToothInstance(
+                instance_id=instance.instance_id,
+                triangle_indices=instance.triangle_indices,
+                vertex_indices=instance.vertex_indices,
+                mesh_vertices=instance.mesh_vertices,
+                mesh_faces=instance.mesh_faces,
+                centroid=instance.centroid,
+                confidence=instance.confidence,
+                provenance=instance.provenance,
+                fixture=instance.fixture,
+                notes=instance.notes,
+                tooth_ref=tooth_ref,
+                semantic_label=instance.semantic_label,
+                arch=instance.arch or arch_value,
+            )
+            stamped_instances.append(stamped)
             identified.append(
                 IdentifiedTooth(
-                    instance=instance,
+                    instance=stamped,
                     identity=identity,
                     landmarks=None,
                     coordinate_system=None,
@@ -188,8 +208,16 @@ class ToothInstanceNetEngine:
                     provenance=DataProvenance.EXPERIMENTAL,
                     fixture=False,
                     notes="Model identity is separate from geometric identification.",
+                    tooth_ref=tooth_ref,
+                    semantic_label=instance.semantic_label,
+                    planning_mode="clinical_fdi" if identity else "semantic_only_experimental",
                 )
             )
+        segmentation = ToothSegmentationResult(
+            instances=tuple(stamped_instances),
+            metadata=segmentation.metadata,
+            source_mesh_path=segmentation.source_mesh_path,
+        )
         identification = ToothIdentificationResult(
             arch=self.arch,
             teeth=tuple(identified),

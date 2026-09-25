@@ -81,8 +81,8 @@ export function fdiTruthPresentation(fdiNumber: number | null | undefined): Prod
     };
   }
   return {
-    state: "computed",
-    label: PRODUCT_TRUTH_LABELS.computed,
+    state: "requires_review",
+    label: PRODUCT_TRUTH_LABELS.requires_review,
     reason: `FDI ${fdiNumber} from analysis — confirm before clinical use.`,
   };
 }

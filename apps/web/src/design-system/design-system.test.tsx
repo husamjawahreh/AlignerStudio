@@ -23,7 +23,7 @@ describe("design-system truth states", () => {
 
   it("never fabricates FDI truth", () => {
     expect(fdiTruthPresentation(null).state).toBe("not_available");
-    expect(fdiTruthPresentation(11).state).toBe("computed");
+    expect(fdiTruthPresentation(11).state).toBe("requires_review");
     expect(fdiTruthPresentation(11).reason).toMatch(/FDI 11/);
   });
 

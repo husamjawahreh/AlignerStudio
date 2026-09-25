@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Case, MeshValidationResult } from "@alignerstudio/contracts";
+import type {
+  Case,
+  CaseDentalIntelligencePayload,
+  MeshValidationResult,
+} from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
 import { ExportPanel } from "../components/ExportPanel";
@@ -231,6 +235,8 @@ export function App(): JSX.Element {
   });
   const [fileInputKeys, setFileInputKeys] = useState<Record<Arch, number>>({ upper: 0, lower: 0 });
   const [pipelineDiagnostic, setPipelineDiagnostic] = useState<PipelineDiagnostic | null>(null);
+  const [dentalIntelligence, setDentalIntelligence] =
+    useState<CaseDentalIntelligencePayload | null>(null);
   const [backendTreatment, setBackendTreatment] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -459,9 +465,13 @@ export function App(): JSX.Element {
         setProcessingStatus(status);
         if (status.stage_status === "COMPLETED") {
           setBusyActivity("Loading treatment proposal");
-          void api.getTreatment(caseId).then((bundle) => {
+          void Promise.all([
+            api.getTreatment(caseId),
+            api.getDentalIntelligence(caseId).catch(() => null),
+          ]).then(([bundle, intelligence]) => {
             if (cancelled) return;
             setReviewBundle(bundle);
+            if (intelligence) setDentalIntelligence(intelligence);
             setBackendTreatment(true);
             setStageIndex(0);
             setWorkspace("staging");
@@ -776,6 +786,7 @@ export function App(): JSX.Element {
       setActiveCase(created);
       setValidation(null);
       setPipelineDiagnostic(null);
+      setDentalIntelligence(null);
       setArchUploads({ upper: EMPTY_UPLOAD, lower: EMPTY_UPLOAD });
       setBackendTreatment(false);
       clearRealCaseReview(
@@ -799,6 +810,7 @@ export function App(): JSX.Element {
       setBackendTreatment(true);
       setStageIndex(0);
       setPipelineDiagnostic(null);
+      setDentalIntelligence(null);
       setWorkspace("staging");
     } catch (err) {
       setError((err as Error).message);
@@ -861,6 +873,7 @@ export function App(): JSX.Element {
       setArchUploads((current) => ({ ...current, [arch]: EMPTY_UPLOAD }));
       setFileInputKeys((current) => ({ ...current, [arch]: current[arch] + 1 }));
       setPipelineDiagnostic(null);
+      setDentalIntelligence(null);
       clearRealCaseReview(
         "Case preparation in progress. Import both arches to begin.",
       );
@@ -961,6 +974,8 @@ export function App(): JSX.Element {
         api.processPipeline(activeCase.id, "lower"),
       ]);
       setPipelineDiagnostic(mergePipelineDiagnostics(upperDiagnostic, lowerDiagnostic));
+      const intelligence = await api.getDentalIntelligence(activeCase.id).catch(() => null);
+      if (intelligence) setDentalIntelligence(intelligence);
       setWorkspace("analysis");
     } catch (err) {
       setError((err as Error).message);
@@ -1120,6 +1135,7 @@ export function App(): JSX.Element {
             <AnalysisPanel
               bothArchesValid={bothArchesValid}
               diagnostic={pipelineDiagnostic}
+              dentalIntelligence={dentalIntelligence}
               teeth={pipelineReviewStage?.teeth ?? []}
               validation={validation}
               hiddenToothIds={hiddenToothIds}
@@ -1442,6 +1458,7 @@ export function App(): JSX.Element {
           {workspace === "analysis" && (
             <AnalysisInspector
               diagnostic={pipelineDiagnostic}
+              dentalIntelligence={dentalIntelligence}
               teeth={pipelineReviewStage?.teeth ?? []}
               validation={validation}
               selectedLabel={

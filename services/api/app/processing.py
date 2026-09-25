@@ -519,6 +519,18 @@ def _run(case_id: str, job_id: str) -> None:
             raise ValueError("Segmentation completed without a reviewable identification result")
         persist_started = perf_counter()
         complete_segmentation_record(case_id, status="completed", persist_ms=(perf_counter() - persist_started) * 1000)
+        # WP-02: Dental Intelligence 2.0 from genuine persisted segmentation — never unlocks treatment.
+        try:
+            from app.intelligence_store import build_and_store_dental_intelligence
+
+            build_and_store_dental_intelligence(case_id)
+        except Exception as intel_error:  # noqa: BLE001 - intelligence must not crash processing
+            logger.warning(
+                "DENTAL_INTELLIGENCE_BUILD_FAILED case_id=%s job_id=%s error=%s",
+                case_id,
+                job_id,
+                intel_error,
+            )
         _status(
             case_id,
             job_id,
