@@ -4,7 +4,7 @@
 Authoritative pre-First-Version plan for Aligner Studio. WP-14 and WP-15 remain frozen until this plan is completed and the product owner approves the result.
 
 ## Current blockers
-1. Wave 1 made the REAL_CASE blocker explicit and did not execute inference. Default backend remains `onnx` with no weights. `toothinstancenet` reports `blocked_by_environment` on this host (no NVIDIA driver, torch, pointops, nvcc, or Docker). TEST_FIXTURE is still test-only. Analysis shows Blocked by environment instead of a clinical tooth count of 0. See the Wave 1 section in `docs/PRE_FIRST_VERSION_SEGMENTATION_AUDIT.md`.
+1. Wave 2 established the benchmark contract and the readiness diagnostic. Live ToothInstanceNet inference still has not run. This host remains **BLOCKED_BY_ENVIRONMENT** (no NVIDIA driver, no visible GPU memory, no torch, no pointops). `nvcc` and Docker are absent. Default backend remains `onnx` with no weights. TEST_FIXTURE is still test-only. No benchmark row is `completed`. See the Wave 2 section in `docs/PRE_FIRST_VERSION_SEGMENTATION_AUDIT.md`.
 2. Current segmentation presentation is not professionally acceptable as the first clinical impression.
 3. Current UI is functional but not premium/world-class: duplicated Status, Data Readiness, and Processing; excessive left-panel scrolling; right-panel clipping.
 4. `Analyze Case` (`POST /pipeline/{arch}`) and `Review Treatment Setup` (`POST /processing`, busy copy “Starting case analysis”) are semantically confusing.
@@ -224,7 +224,15 @@ Verified, not implemented:
 **Verdict:** PASS WITH BLOCKER  
 **Inference executed:** no
 
-REAL_CASE stays on the uploaded mesh. Missing ONNX weights or a missing ToothInstanceNet GPU stack return an explicit blocker and do not load fixture geometry. Official upper/lower hashes were unchanged after the real-path run (513,417 / 171,139 and 417,249 / 139,083). Tooth counts are Not available, not a successful zero. Tests: 50 passed (Wave 1 plus WP-01, WP-12, WP-13 and related API tests); web typecheck, eslint on touched files, and production build passed. Next safe step is Wave 2 only after a CUDA/torch/pointops host exists. Do not start the UI redesign, WP-14, or WP-15.
+REAL_CASE stays on the uploaded mesh. Missing ONNX weights or a missing ToothInstanceNet GPU stack return an explicit blocker and do not load fixture geometry. Official upper/lower hashes were unchanged after the real-path run (513,417 / 171,139 and 417,249 / 139,083). Tooth counts are Not available, not a successful zero. Tests: 50 passed (Wave 1 plus WP-01, WP-12, WP-13 and related API tests); web typecheck, eslint on touched files, and production build passed.
+
+## Wave 2 result
+
+**Verdict: PASS WITH BLOCKER.** Benchmark architecture and readiness diagnosis are in place. Real inference did **not** execute. Fixture output is rejected as a `completed` benchmark. Challengers stay `not_run` / contract-only: 3DTeethSAM **EVALUATE**, DentalModelSeg **EVALUATE**, Slicer Automated Dental Tools **REFERENCE**. ToothInstanceNet remains the **ADAPTER** baseline. Official case hashes match and were not modified. The future interaction system is documented in `docs/WORLD_CLASS_INTERACTION_MODEL.md` and is **PLANNED**, not built.
+
+Regression confirmed in this command: Wave 2 + Wave 1 + WP-01 + WP-12 + WP-13, 40 passed; WP-02, 12 passed; web vitest 125 passed; `tsc --noEmit`, eslint, and `npm run build` passed (existing chunk-size warning only). Ruff on the Wave 2 Python files passed.
+
+Next safe step is a measured ToothInstanceNet run on a host that already has the documented CUDA, PyTorch, and `pointops` stack. Do not install ad hoc versions on this machine. Do not start the UI redesign, the segmentation review workspace, WP-14, or WP-15. Waves 3–12 are **not** complete.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

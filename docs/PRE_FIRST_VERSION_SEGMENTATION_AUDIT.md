@@ -446,3 +446,166 @@ Every real diagnostic carries `case_id` / `job_id` when the caller supplies them
 ## Not started
 
 Premium UI, segmentation review workspace, new materials, gingiva presentation, contextual toolbar, workflow redesign, WP-14, and WP-15 were not started.
+
+---
+
+# WAVE 2 IMPLEMENTATION RESULT
+
+**Date:** 2026-09-26  
+**Verdict:** **PASS WITH BLOCKER**  
+**Real inference executed:** **No.**  
+**Fixture used as segmentation evidence:** **No.**
+
+Wave 2 adds a benchmark contract, a readiness diagnostic, challenger decision records, and the interaction-model document. It does not run ToothInstanceNet, does not install packages, and does not change the segmentation backend.
+
+## Status legend
+
+| Tag | Meaning in this section |
+|---|---|
+| **IMPLEMENTED** | Code or document exists after this command. |
+| **VERIFIED** | Checked on this host or by the Wave 2 tests. |
+| **BLOCKED_BY_ENVIRONMENT** | Required NVIDIA/CUDA runtime is absent. |
+| **REQUIRES_REVIEW** | Present in the product, but the doctor-facing meaning is ambiguous. |
+| **PLANNED** | Specified and not built. |
+
+## Benchmark architecture — IMPLEMENTED
+
+`engines/segmentation/benchmark.py` is the comparison contract. ToothInstanceNet stays the baseline (`candidate_version` `3dteethland-424252e3d94a1565c8c2090eb5bb456b76386b93`). Challengers are registered through `run_contract_only_candidate` and are not installed.
+
+Each result records: `benchmark_id`, `case_id`, `arch`, `candidate`, `candidate_version`, `input_hash`, `source_mesh_hash`, `hardware`, `runtime`, `model_hash`, `instance_count`, `identity_count`, `confidence_available`, `runtime_ms`, `memory_mb`, `failure_state`, `limitations`, `provenance`. There is no single quality score.
+
+Run states are `not_run`, `blocked_by_environment`, `failed`, and `completed`. **VERIFIED:** `validate_benchmark_result` rejects a fixture provenance or `fixture_substituted` row whose state is `completed`. Measurements (`instance_count`, `identity_count`, `runtime_ms`, `memory_mb`) are allowed only when `failure_state` is `completed` and `provenance` is `real_model_inference`. A ready host still returns `not_run` from `run_toothinstancenet_benchmark`; that function does not launch inference.
+
+Supported fields when a future measured run exists: input mesh, arch, instances, instance geometry, tooth identity only if the model provides it, confidence only if the model provides it, runtime, memory, model/version, hardware, provenance, and failure state.
+
+## Runtime readiness — VERIFIED, BLOCKED_BY_ENVIRONMENT
+
+`engines/segmentation/runtime_readiness.py` inspects the host and does not set `ALIGNERSTUDIO_SEGMENTATION_BACKEND`. **VERIFIED** by `test_readiness_does_not_change_backend`: backend stays unset, `configured_backend` is `onnx`, `backend_changed` is false, and the state is not `ready`.
+
+Primary state priority among blocking findings: `blocked_by_environment`, then `dependency_missing`, then `model_missing`, then `misconfigured`, otherwise `ready`. `nvcc` is recorded and is not blocking, because it is needed to compile `pointops`, not to run an already-built extension.
+
+On this host the primary state is **BLOCKED_BY_ENVIRONMENT** (unchanged from Command 01 and Wave 1):
+
+| Check | Result |
+|---|---|
+| NVIDIA driver (`nvidia-smi -L`) | Fails. Blocking. |
+| GPU memory | Not visible. Blocking. |
+| `nvcc` | Not on PATH. Recorded, not blocking. |
+| Python | 3.12.3. Matches the validated 3.12. |
+| PyTorch | Not installed. Validated image is `2.10.0+cu128`. Upstream 3dteethland docs also cite `2.3.0`. |
+| `pointops` | Not installed. CPU inference is not supported. |
+| Checkpoint env | `ALIGNERSTUDIO_TOOTHINSTANCENET_CHECKPOINT` unset. Expected SHA-256 `100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803`. Cache file can exist and still be unused. |
+| Source env | `ALIGNERSTUDIO_TOOTHINSTANCENET_SOURCE` unset. Expected revision `424252e3d94a1565c8c2090eb5bb456b76386b93`. |
+| Docker | Not found (Command 01). Not installed by this command. |
+
+Documented requirements, not installed here: Python 3.12, PyTorch `2.10.0+cu128` or the upstream-cited `2.3.0`, CUDA `12.8.1` (validated image) or `12.1` (upstream docs), a visible NVIDIA driver, the `pointops` CUDA extension, the checkpoint hash above, and the source revision above. Selecting the model still requires an explicit `ALIGNERSTUDIO_SEGMENTATION_BACKEND=toothinstancenet`.
+
+## Real-case benchmark status — BLOCKED_BY_ENVIRONMENT
+
+`inventory_benchmark_cases` reads existing files and does not modify them.
+
+| Case | Clinical evidence | Status |
+|---|---|---|
+| `official_real_case_stage2_verified_v1` | Yes, when checksums match | **VERIFIED** present. Lower `5cb38bd65cb2a9f04c89c580774e2d6c4ed28582fb46cc160fdc1249020feec3`. Upper `96e23a65e6a0eaa5550704be628dd3d27c6c5813213f6ea6b48b386d5178bd1e`. ToothInstanceNet benchmark state `blocked_by_environment`. No instance count, runtime, identity count, or memory. Provenance `real_model_not_executed`. |
+| `data/benchmark/real-case` | No | Separate copy. Prior 3DTeethSAM notes record different hashes (`upper` `60aaafed…`, `lower` `dc4f8b0d…`). Not a new clinical case. Not used as evidence. |
+| `tests/fixtures/synthetic_segmentation_arch.obj` | No | Engineering adapter tests only. |
+
+No `completed` row exists. No winner was chosen.
+
+## Challenger research — REQUIRES_REVIEW before any adapter
+
+No challenger was installed or executed. Classifications below do not replace ToothInstanceNet.
+
+### ToothInstanceNet — ADAPTER (baseline)
+
+| Field | Record |
+|---|---|
+| Problem | REAL_CASE needs STL to tooth instances with provenance. |
+| Option | Keep the existing 3dteethland adapter. |
+| Evidence | Checkpoint and source revision match the contract when inspected in Command 01. Live run on this host is blocked. Wave 2 does not emit measurements. |
+| Benefit | Closest existing instance contract, including jaw naming used for FDI mapping in the engine. |
+| Cost | CUDA, PyTorch, and `pointops`. CPU is not a supported path. |
+| Risk | Seven-class official artifact is not verified clinical FDI. |
+| License | MIT source cited in the shortlist. Checkpoint and training-data terms still need a separate review. |
+| Decision | **ADAPTER.** Do not replace before a measured real-case comparison. |
+
+### 3DTeethSAM — EVALUATE
+
+| Field | Record |
+|---|---|
+| Problem | A second instance segmenter might separate teeth differently. |
+| Option | Official source `https://github.com/Crisitofy/3DTeethSAM`, audited commit `4845f4132cbbeca2ebc456d33de7e0c358385615`. |
+| Evidence | `docs/SEGMENTATION_3DTEETHSAM_BENCHMARK.md` status **BLOCKED**. Checkpoints exist only in the research cache (`best.pth` SHA-256 `d6cb1acb935b225f0f798b616f9ae1b7249386de79ef4496b892f1e86f599616`, `sam2.1_hiera_large.pt` SHA-256 `2647878d5dfa5098f2f8649825738a9345572bae2d4350a2468587ece47dd318`). Not in git. Wave 2 registers the candidate as `contract_only` / `not_run`. |
+| Architecture | Multi-view SAM2 masks lifted to per-vertex labels. Python 3.10, PyTorch, PyTorch3D, SAM2 Hiera-L. Input is OBJ in a Teeth3DS-like upper/lower layout, not the production STL path. |
+| Output | Per-vertex labels and a cleaned OBJ. Instance id, confidence, missing-tooth behavior, and FDI are not a verified production contract. |
+| GPU / CPU | CUDA device is the documented path. CPU was not attempted. |
+| Benefit | Public checkpoints and an instance-segmentation direction. |
+| Cost | Large GPU stack, OBJ conversion, and a new adapter. |
+| Risk | Heavier than ToothInstanceNet and a weaker FDI contract. Prior benchmark inputs under `data/benchmark/real-case` are not the official checksums. |
+| License | No GitHub license metadata at audit time. SAM2 and Teeth3DS/3DTeethSeg terms are separate. Not approved for production. |
+| Decision | **EVALUATE.** Not adopted. Not a fallback. |
+
+### DentalModelSeg — EVALUATE
+
+| Field | Record |
+|---|---|
+| Problem | Crown labeling with an explicit numbering system might complement instance separation. |
+| Option | DCBIA-OrthoLab `SlicerDentalModelSeg` (Fly-by-CNN). Paper: `https://pmc.ncbi.nlm.nih.gov/articles/PMC10949221/`. |
+| Evidence | No AlignerStudio run. No adapter in this command. |
+| Architecture | 3D Slicer multi-view crown segmentation. |
+| Output | Reported FDI or Universal labels inside Slicer. Not verified against the `ToothInstance` contract. |
+| GPU / CPU | Slicer/VTK runtime. Not measured here. |
+| Benefit | Numbering is part of the published tool, if a future run confirms it. |
+| Cost | A Slicer process outside the API. |
+| Risk | Integration and maintenance sit outside the current Python segmentation path. Upper/lower and missing-tooth behavior are unverified here. |
+| License | Not re-audited in this command. Do not vendor the extension until the component license is checked. |
+| Decision | **EVALUATE.** Not installed. |
+
+### Slicer Automated Dental Tools — REFERENCE
+
+| Field | Record |
+|---|---|
+| Problem | Landmark and orientation ideas appear in dental Slicer workflows. |
+| Option | Automated Dental Tools / ALI-IOS, cited in `docs/WORLD_CLASS_OPEN_SOURCE_ADOPTION_MATRIX.md`. |
+| Evidence | No segmentation benchmark in this repository. The older matrix marked a possible future adapter. Nothing was imported. |
+| Benefit | Concepts for landmarks and scan orientation. |
+| Cost | Full Slicer runtime, per-component license review. |
+| Risk | Treating a Slicer module as a drop-in instance segmenter. |
+| License | Must be checked per component before any code is copied. |
+| Decision | **REFERENCE.** Not an instance-segmentation candidate for this gate. |
+
+## Segmentation quality requirements — PLANNED
+
+The first clinical screen, when built, must show separated professional tooth geometry, upper versus lower, labels, trustworthy numbering, missing teeth, uncertain teeth, and review-required identity. It must support selection, map and 3D synchronization, fit, isolate, camera presets, and a correction review. If FDI is not established, the label stays `tooth_ref`. This command does not build that screen.
+
+## Interaction model — PLANNED
+
+`docs/WORLD_CLASS_INTERACTION_MODEL.md` defines the future system. Current shell facts that were checked, and not redesigned:
+
+- Seven steps in `workflow.ts`. `App.tsx` owns the step, the job, and the undo stack.
+- Selection is by `tooth_ref` in `useToothSelection`, with additive multi-select and `preserveAcrossTeeth`. Gingiva is not pickable.
+- `StageViewer` uses OrbitControls and BVH picking.
+- `mod+z` exists in `design-system/commands.ts`. The undo stack clears when the case changes.
+- Status, readiness, and processing are repeated across the left panel, inspector, header, and overlay (**REQUIRES_REVIEW**).
+- Analyze Case and Review Treatment Setup start different jobs under overlapping names (**REQUIRES_REVIEW**).
+
+The document answers what, when, where, why, feedback, and next action for navigation, viewport, selection, hover, multi-select, direct manipulation, tool discovery, contextual tools, smart widgets, the inspector, keyboard, mouse, camera, presets, fit, current versus target, labels, measurement, IPR, attachments, validation, staging, undo, persistence, transitions, progress, errors, recovery, hierarchy, and advanced detail. Acceptance is those interaction questions, not visual polish. No layout, StageViewer, or toolbar change was made.
+
+## Tests (Wave 2)
+
+| Suite | Result |
+|---|---|
+| Wave 2 + Wave 1 + WP-01 + WP-12 + WP-13 | **40 passed**, 28.08 s |
+| `apps/web` vitest | **125 passed** (35 files) |
+| `tsc --noEmit` | pass (completed before the production bundle) |
+| `eslint .` | pass (no findings before the bundle step) |
+| `npm run build` | pass (existing chunk-size warning only; `dist/assets/index-TeY1XSEI.js` 887.13 kB) |
+| `tests/python/test_wp02_dental_intelligence.py` | **12 passed**, 62.71 s |
+| Ruff on Wave 2 Python files | pass |
+| Live ToothInstanceNet inference | **not run** |
+
+Existing tests were not edited to obtain these results.
+
+## Not started (Wave 2)
+
+WP-14 **NOT STARTED**. WP-15 **NOT STARTED**. StageViewer redesign **NOT STARTED**. Segmentation review workspace **NOT STARTED**. Full UI redesign **NOT STARTED**.
