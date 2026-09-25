@@ -14,13 +14,18 @@ from engines.segmentation.toothinstancenet import (
     ToothInstanceNetInferenceResult,
 )
 
+from app.processing_modes import selected_backend
+
+__all__ = [
+    "ToothInstanceNetConfigurationError",
+    "selected_backend",
+    "load_toothinstancenet_engine",
+    "load_validated_fixture_result",
+]
+
 
 class ToothInstanceNetConfigurationError(ValueError):
     """Raised when the explicitly selected ToothInstanceNet backend is incomplete."""
-
-
-def selected_backend() -> str:
-    return os.environ.get("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "onnx")
 
 
 def load_toothinstancenet_engine(arch: ArchType) -> ToothInstanceNetEngine:

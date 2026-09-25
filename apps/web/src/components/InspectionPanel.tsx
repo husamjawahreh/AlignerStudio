@@ -88,8 +88,12 @@ export function InspectionPanel({
         {tooth.semanticLabel !== null && tooth.semanticLabel !== undefined && (
           <span>Semantic label {tooth.semanticLabel}</span>
         )}
-        {!tooth.fdiNumber && <span>Experimental · no clinical FDI identity</span>}
-        <span>Identification confidence {(tooth.confidence * 100).toFixed(0)}%</span>
+        {!tooth.fdiNumber && (
+          <span>Clinical tooth numbering: Not Available — confirm identity before treatment use</span>
+        )}
+        {tooth.confidence > 0 && (
+          <span>Identification confidence {(tooth.confidence * 100).toFixed(0)}%</span>
+        )}
       </div>
       <div className="inspection-status">
         <span>Validation</span>

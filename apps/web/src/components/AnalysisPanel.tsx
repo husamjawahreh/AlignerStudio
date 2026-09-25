@@ -79,10 +79,13 @@ export function AnalysisPanel({
           <div className="cad-tooth-map" data-testid="toothinstancenet-summary">
             <strong>{teeth.length} visible meshes</strong>
             <small>Tooth identities from analysis only — FDI shown only when provided</small>
-            {diagnostic?.fixture && (
+            {diagnostic?.fixture && import.meta.env.MODE === "test" && (
               <span className="production-test-metadata">
                 Validated real-case fixture FIXTURE · not clinically valid
               </span>
+            )}
+            {diagnostic?.fixture && import.meta.env.MODE !== "test" && (
+              <small>Requires Review — analysis identity is not clinical tooth numbering</small>
             )}
             {(diagnostic?.duplicate_fdi_numbers?.length ?? 0) > 0 && (
               <small className="diagnostic-warning">

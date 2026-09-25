@@ -58,6 +58,7 @@ def test_matrix_upper_plus_lower_real_artifact_identification() -> None:
         pytest.skip("Verified real-case artifact unavailable")
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     if ARTIFACT_ROOT.is_dir():
         monkeypatch.setenv(
             "ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR", str(ARTIFACT_ROOT.resolve())

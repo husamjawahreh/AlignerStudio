@@ -79,6 +79,7 @@ class InMemoryCaseStore:
                     created_at=datetime.fromisoformat(record["created_at"]),
                 )
                 setattr(case, "processing_status", record.get("processing_status"))
+                setattr(case, "segmentation_results", record.get("segmentation_results"))
             except (KeyError, TypeError, ValueError):
                 continue
             self._cases[case.id] = case
@@ -88,6 +89,7 @@ class InMemoryCaseStore:
         for case in self._cases.values():
             status = getattr(case, "processing_status", None)
             if status and status.get("stage_status") == "PROCESSING":
+                # Restart recovery: previous job identity is dead; retry must create a new job_id.
                 status.update(
                     {
                         "stage_status": "FAILED",
@@ -96,9 +98,13 @@ class InMemoryCaseStore:
                         "user_message": "Case analysis was interrupted. Start analysis again.",
                         "technical_diagnostic": "Processing worker was interrupted during API restart.",
                         "updated_at": now.isoformat(),
+                        "heartbeat_at": now.isoformat(),
                         "completed_at": now.isoformat(),
+                        "result": None,
                     }
                 )
+                if "created_at" not in status and status.get("started_at"):
+                    status["created_at"] = status["started_at"]
                 recovered = True
                 logger.warning("PROCESSING_RECOVERED case_id=%s job_id=%s", case.id, status.get("job_id"))
         if recovered:
@@ -122,6 +128,7 @@ class InMemoryCaseStore:
                     for mesh in case.meshes
                 ],
                 "processing_status": getattr(case, "processing_status", None),
+                "segmentation_results": getattr(case, "segmentation_results", None),
             }
             for case in self._cases.values()
         ]

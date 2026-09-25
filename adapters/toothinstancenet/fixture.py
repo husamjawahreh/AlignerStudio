@@ -261,6 +261,19 @@ def load_validated_fixture(
     payload, vertices, faces, instance_to_label = _validate_arch(root, arch, manifest)
     instances_array = payload["instances"]
     source_stl_sha256 = checksums[f"{arch.value}.stl"]
+    if source_mesh_path is not None:
+        uploaded = Path(source_mesh_path)
+        if not uploaded.is_file():
+            raise ToothInstanceNetFixtureError(
+                f"Uploaded source mesh is missing for hash binding: {uploaded}"
+            )
+        uploaded_hash = _sha256(uploaded)
+        if uploaded_hash != source_stl_sha256:
+            raise ToothInstanceNetFixtureError(
+                f"Uploaded mesh SHA-256 does not match verified artifact {arch.value}.stl "
+                f"(uploaded={uploaded_hash}, expected={source_stl_sha256}). "
+                "Test-fixture processing refuses silent substitution of unrelated geometry."
+            )
     source_json = f"{arch.value}.json"
     artifact_note = (
         f"source_kind=validated_real_case; artifact_id={ARTIFACT_ID}; fixture=true; "

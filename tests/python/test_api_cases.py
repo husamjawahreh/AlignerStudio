@@ -176,7 +176,9 @@ def test_both_arches_upload_and_remove_without_fixture_fallback(tmp_path) -> Non
         assert {mesh["arch"] for mesh in response.json()["meshes"]} == expected_arches
     plan = client.post(f"/cases/{case_id}/plan")
     assert plan.status_code == 503
-    assert "no fake segmentation fallback" in plan.json()["detail"]
+    detail = plan.json()["detail"]
+    assert "fixture substitution is not used" in detail.lower() or "no fake segmentation fallback" in detail.lower()
+    assert "run analysis" in detail.lower() or "segmentation" in detail.lower()
     removed = client.delete(f"/cases/{case_id}/uploads/lower")
     assert removed.status_code == 200
     assert [mesh["arch"] for mesh in removed.json()["meshes"]] == ["upper"]

@@ -8,7 +8,13 @@ from app.store import case_store
 from domain.case.models import Case
 
 
-def _seed_processing_job(case_id: str, *, stage_status: str, started_at: str) -> None:
+def _seed_processing_job(
+    case_id: str,
+    *,
+    stage_status: str,
+    started_at: str,
+    heartbeat_at: str | None = None,
+) -> None:
     case_store.set_processing(
         case_id,
         {
@@ -25,7 +31,8 @@ def _seed_processing_job(case_id: str, *, stage_status: str, started_at: str) ->
             "user_message": "Preparing treatment setup",
             "technical_diagnostic": None,
             "started_at": started_at,
-            "updated_at": started_at,
+            "updated_at": heartbeat_at or started_at,
+            "heartbeat_at": heartbeat_at or started_at,
             "completed_at": None,
             "elapsed_seconds": 0,
         },
@@ -35,15 +42,29 @@ def _seed_processing_job(case_id: str, *, stage_status: str, started_at: str) ->
 def test_processing_job_elapsed_seconds_increases_across_live_reads() -> None:
     case_id = "live-status-case"
     case_store.add(Case(id=case_id, patient_reference="live-status"))
-    started_at = (datetime.now(timezone.utc) - timedelta(seconds=125)).isoformat()
-    _seed_processing_job(case_id, stage_status="PROCESSING", started_at=started_at)
+    now = datetime.now(timezone.utc)
+    started_at = (now - timedelta(seconds=125)).isoformat()
+    # Fresh heartbeat: job is alive; started_at alone drives elapsed_seconds.
+    heartbeat_at = now.isoformat()
+    _seed_processing_job(
+        case_id,
+        stage_status="PROCESSING",
+        started_at=started_at,
+        heartbeat_at=heartbeat_at,
+    )
 
     first = live_processing_status(case_id)
     assert first is not None
+    assert first["stage_status"] == "PROCESSING"
     assert first["elapsed_seconds"] >= 125
 
     later_started_at = (datetime.now(timezone.utc) - timedelta(seconds=200)).isoformat()
-    _seed_processing_job(case_id, stage_status="PROCESSING", started_at=later_started_at)
+    _seed_processing_job(
+        case_id,
+        stage_status="PROCESSING",
+        started_at=later_started_at,
+        heartbeat_at=datetime.now(timezone.utc).isoformat(),
+    )
     second = live_processing_status(case_id)
     assert second is not None
     assert second["elapsed_seconds"] >= 200

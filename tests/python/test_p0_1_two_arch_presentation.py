@@ -50,6 +50,7 @@ def _fast_validate(self, staging, configuration):  # noqa: ANN001, ARG001
 
 def test_combined_fixture_identification_has_both_arches(monkeypatch) -> None:
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE", str(ARTIFACT))
 
     identification, _diagnostics = _combined_fixture_identification()
@@ -65,6 +66,7 @@ def test_combined_fixture_identification_has_both_arches(monkeypatch) -> None:
 def test_semantic_setup_and_review_bundle_preserve_both_arches(monkeypatch) -> None:
     """Planning/setup + review DTO must carry both arches; skip heavy pair validation."""
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE", str(ARTIFACT))
     monkeypatch.setenv("ALIGNERSTUDIO_STAGE_COUNT", "2")
     monkeypatch.setattr(
@@ -110,6 +112,7 @@ def test_semantic_setup_and_review_bundle_preserve_both_arches(monkeypatch) -> N
 
 def test_plan_endpoint_wires_both_arches_into_treatment_session(monkeypatch) -> None:
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE", str(ARTIFACT))
     monkeypatch.setenv("ALIGNERSTUDIO_STAGE_COUNT", "2")
     monkeypatch.setattr(

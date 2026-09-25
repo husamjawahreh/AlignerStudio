@@ -1,6 +1,9 @@
 /**
- * Aligner Studio — P1 Visual Foundation design tokens.
+ * Aligner Studio — Design System + P1 Visual Foundation tokens.
  * Presentation only. Do not encode clinical meaning here.
+ *
+ * Product truth vocabulary (doctor-facing):
+ *   Verified / Computed / Requires Review / Not Available
  */
 
 :root {

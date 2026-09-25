@@ -108,6 +108,12 @@ export function formatIntakeProcessingState(
   if (status.stage_status === "CANCELLED") {
     return { label: "Cancelled", detail: status.user_message || null };
   }
+  if (status.stage_status === "STALE") {
+    return {
+      label: "Stopped responding",
+      detail: status.user_message || "Start analysis again.",
+    };
+  }
   return { label: status.stage_status, detail: status.user_message || null };
 }
 

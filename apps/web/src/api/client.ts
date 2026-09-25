@@ -48,9 +48,11 @@ export interface ExportDownload {
 export interface ProcessingStatus {
   job_id: string;
   case_id: string;
+  /** Hash of case mesh inputs for this job identity. */
+  input_hash?: string | null;
   overall_progress: number;
   current_stage: string;
-  stage_status: "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  stage_status: "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "STALE";
   stage_progress: number | null;
   completed_stages: string[];
   pending_stages: string[];
@@ -58,13 +60,16 @@ export interface ProcessingStatus {
   error_code: string | null;
   user_message: string;
   technical_diagnostic?: string | null;
+  created_at?: string;
   started_at: string;
   updated_at: string;
+  heartbeat_at?: string;
   completed_at: string | null;
   elapsed_seconds?: number;
   upper_status?: string;
   lower_status?: string;
   planning_status?: string;
+  result?: string | null;
 }
 
 export interface PipelineDiagnostic {
@@ -162,6 +167,10 @@ export const api = {
 
   startProcessing(caseId: string): Promise<ProcessingStatus> {
     return requestJson<ProcessingStatus>(`/cases/${caseId}/processing`, { method: "POST" });
+  },
+
+  cancelProcessing(caseId: string): Promise<ProcessingStatus> {
+    return requestJson<ProcessingStatus>(`/cases/${caseId}/processing/cancel`, { method: "POST" });
   },
 
   getProcessingStatus(caseId: string): Promise<ProcessingStatus> {

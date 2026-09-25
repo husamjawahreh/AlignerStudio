@@ -38,6 +38,7 @@ def _fast_validate(self, staging, configuration):  # noqa: ANN001, ARG001
 
 def test_semantic_only_planning_does_not_crash_on_missing_fdi(monkeypatch) -> None:
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv(
         "ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE",
         "/home/hjawahreh/Desktop/Projects/AlignerStudio/official_real_case_stage2_verified_v1.zip",

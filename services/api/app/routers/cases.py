@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from app.config import UPLOAD_DIR
 from app.pipeline_diagnostics import process_uploaded_case
-from app.processing import live_processing_status, start_processing
+from app.processing import cancel_processing, live_processing_status, start_processing
 from app.schemas.cases import (
     CaseResponse,
     CreateCaseRequest,
@@ -28,6 +28,7 @@ from app.schemas.cases import (
 )
 from app.store import case_store
 from app.toothinstancenet_configuration import (
+    ToothInstanceNetConfigurationError,
     load_validated_fixture_result,
     selected_backend,
 )
@@ -46,9 +47,14 @@ ALLOWED_ARCHES = {"upper", "lower"}
 def _combined_fixture_identification() -> tuple[ToothIdentificationResult, tuple[str, ...]]:
     """Load upper and lower validated fixtures into one semantic-only identification.
 
-    Per-tooth arch/tooth_ref remain authoritative. The container arch field is upper for
-    dataclass compatibility only; planning uses tooth.instance.arch / tooth_ref.
+    TEST_FIXTURE boundary only. Per-tooth arch/tooth_ref remain authoritative.
     """
+    from app.processing_modes import ProcessingModeError, resolve_processing_mode
+
+    try:
+        resolve_processing_mode()
+    except ProcessingModeError as error:
+        raise ToothInstanceNetConfigurationError(str(error)) from error
     upper = load_validated_fixture_result(ArchType.UPPER)
     lower = load_validated_fixture_result(ArchType.LOWER)
     diagnostics: list[str] = []
@@ -191,7 +197,11 @@ def generate_plan(case_id: str) -> TreatmentPlanResponse:
 def generate_plan_with_progress(
     case_id: str, progress_callback: Callable[[int, str], None] | None = None
 ) -> TreatmentPlanResponse:
-    """Same behavior as generate_plan, plus optional real-milestone progress reporting."""
+    """Same behavior as generate_plan, plus optional real-milestone progress reporting.
+
+    WP-01: prefer persisted uploaded-case pipeline results. Fixture-backed planning
+    remains available only behind the explicit TEST_FIXTURE allow flag.
+    """
     case = case_store.get(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -205,7 +215,23 @@ def generate_plan_with_progress(
                 f"missing: {', '.join(missing_arches)}."
             ),
         )
-    if selected_backend() == "toothinstancenet_fixture":
+
+    from app.plan_from_pipeline import generate_plan_from_persisted_segmentation
+    from app.processing_modes import ProcessingMode, ProcessingModeError, resolve_processing_mode
+    from app.segmentation_store import get_segmentation_record
+
+    record = get_segmentation_record(case_id)
+    if record and record.get("status") == "completed":
+        return generate_plan_from_persisted_segmentation(case_id, progress_callback)
+
+    try:
+        mode = resolve_processing_mode()
+    except ProcessingModeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    if mode is ProcessingMode.TEST_FIXTURE:
+        # Explicit test/regression path only — still requires hash-bound fixture loads
+        # when source meshes are provided to the fixture loader.
         try:
             identification, fixture_diagnostics = _combined_fixture_identification()
         except Exception as error:
@@ -265,17 +291,17 @@ def generate_plan_with_progress(
             provenance=session.proposal.provenance,
             fixture=session.proposal.fixture,
             notes=(
-                "Semantic-only experimental treatment proposal created; no clinical FDI "
-                "identity is asserted. Review stages are available via treatment session."
+                "TEST_FIXTURE semantic-only treatment proposal. Not a silent substitute for "
+                "uploaded-case ToothInstanceNet processing."
             ),
             created_at=case.created_at,
         )
+
     raise HTTPException(
         status_code=503,
         detail=(
-            "Treatment-plan generation is unavailable: real segmentation may be configured, "
-            "but tooth identification is a separate Phase 3+ stage and no fake segmentation "
-            "fallback is permitted."
+            "Treatment-plan generation requires completed real-case segmentation bound to this "
+            "case. Run analysis on the uploaded STLs first. Fixture substitution is not used."
         ),
     )
 
@@ -298,6 +324,17 @@ def process_case_pipeline(case_id: str, arch: str) -> dict:
 def begin_processing(case_id: str) -> dict:
     try:
         return start_processing(case_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{case_id}/processing/cancel")
+def cancel_case_processing(case_id: str) -> dict:
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    try:
+        return cancel_processing(case_id)
     except KeyError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

@@ -80,6 +80,7 @@ def test_real_upper_fixture_browser_and_benchmark_agree(monkeypatch) -> None:
         pytest.skip("real artifact unavailable")
 
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE", str(ARTIFACT))
     monkeypatch.setenv("ALIGNERSTUDIO_STAGE_COUNT", "2")
 

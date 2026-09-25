@@ -112,6 +112,7 @@ def test_real_artifact_full_three_stage_generate_plan_is_practical(monkeypatch) 
         pytest.skip("Validated real-case artifact is not available in this environment")
 
     monkeypatch.setenv("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+    monkeypatch.setenv("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
     monkeypatch.setenv("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR", str(root))
 
     from app.toothinstancenet_configuration import load_validated_fixture_result

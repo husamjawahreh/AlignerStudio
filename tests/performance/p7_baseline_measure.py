@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "services" / "api")]
 
 os.environ.setdefault("ALIGNERSTUDIO_SEGMENTATION_BACKEND", "toothinstancenet_fixture")
+os.environ.setdefault("ALIGNERSTUDIO_ALLOW_TEST_FIXTURE_BACKEND", "1")
 ARTIFACT = ROOT / ".research/tmp/official_real_case_stage2_verified_v1"
 os.environ.setdefault("ALIGNERSTUDIO_TOOTHINSTANCENET_VALIDATED_FIXTURE_DIR", str(ARTIFACT))
 

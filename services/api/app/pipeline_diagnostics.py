@@ -13,13 +13,9 @@ from engines.arrangement.anatomical_intelligence import (
     serialize_identified_tooth,
 )
 from engines.arrangement.arch_analysis import ArchAnalysisEngine, ArchAnalysisError
-from engines.arrangement.identification import ToothIdentificationEngine
-from engines.segmentation.onnx_engine import OnnxSegmentationEngine
 
-from app.segmentation_config import SegmentationConfigurationError, load_segmentation_configuration
 from app.toothinstancenet_configuration import (
     ToothInstanceNetConfigurationError,
-    load_toothinstancenet_engine,
     load_validated_fixture_result,
     selected_backend,
 )
@@ -58,110 +54,101 @@ class CasePipelineDiagnostic:
     tooth_instances: tuple[dict, ...] = ()
     arch_measurements: dict | None = None
     anatomical_intelligence: dict | None = None
+    # WP-01 provenance binding — present on real uploads; absent on legacy calls.
+    processing_mode: str | None = None
+    case_id: str | None = None
+    job_id: str | None = None
+    input_hash: str | None = None
+    source_mesh_path: str | None = None
+    source_mesh_sha256: str | None = None
+    model_name: str | None = None
+    model_version: str | None = None
 
     def payload(self) -> dict:
         return {**asdict(self), "state": self.state.value}
 
 
-def process_uploaded_case(mesh_path: str, arch: ArchType) -> CasePipelineDiagnostic:
-    """Process a real upload only when a verified external model is configured."""
+def process_uploaded_case(
+    mesh_path: str,
+    arch: ArchType,
+    *,
+    case_id: str | None = None,
+    job_id: str | None = None,
+    input_hash: str | None = None,
+    processing_mode: str | None = None,
+) -> CasePipelineDiagnostic:
+    """Route uploaded-case processing across the REAL / TEST_FIXTURE boundary.
+
+    Production real-case calls must never silently load fixture geometry.
+    """
+    from app.processing_modes import (
+        ProcessingMode,
+        ProcessingModeError,
+        resolve_processing_mode,
+    )
+    from app.real_case_pipeline import process_real_uploaded_arch
+
     started = perf_counter()
-    backend = selected_backend()
-    if backend == "toothinstancenet_fixture":
-        try:
-            result = load_validated_fixture_result(arch, mesh_path)
-        except ToothInstanceNetConfigurationError as error:
-            return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
-        except Exception as error:
-            return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
-        return _diagnostic_from_result(result, started, source_kind="validated_real_case")
-    if backend == "toothinstancenet":
-        try:
-            result = load_toothinstancenet_engine(arch).segment(mesh_path)
-        except ToothInstanceNetConfigurationError as error:
-            return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
-        except Exception as error:
-            return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
-        return _diagnostic_from_result(result, started, source_kind="uploaded_real_case")
     try:
-        configuration = load_segmentation_configuration()
-    except SegmentationConfigurationError as error:
-        return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
-
-    try:
-        segmented = OnnxSegmentationEngine(adapter=configuration.adapter()).segment(mesh_path)
-    except Exception as error:  # model/runtime errors are surfaced as diagnostic state
-        return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
-
-    segmentation_ms = (perf_counter() - started) * 1000
-    identification = ToothIdentificationEngine().identify(segmented, arch)
-    scores = [item.confidence.score for item in identification.teeth]
-    tooth_instances = tuple(serialize_identified_tooth(tooth) for tooth in identification.teeth)
-    # Ensure arch field is set from the requested arch context.
-    tooth_instances = tuple(
-        {**tooth, "arch": arch.value if tooth.get("arch") is None else tooth["arch"]}
-        for tooth in tooth_instances
-    )
-    base = {
-        "segmentation_runtime_ms": segmentation_ms,
-        "tooth_instance_count": len(segmented.instances),
-        "identification_confidence": sum(scores) / len(scores) if scores else None,
-        "identified_teeth": len(identification.identified),
-        "uncertain_teeth": len(identification.uncertain),
-        "unidentified_teeth": len(identification.unidentified),
-        "tooth_instances": tooth_instances,
-        "provenance": identification.provenance.value,
-        "fixture": identification.fixture,
-        "fdi_assignments": tuple(
-            (
-                tooth.instance.instance_id,
-                tooth.identity.number if tooth.identity else None,
-            )
-            for tooth in identification.teeth
-        ),
-    }
-    arch_measurements = None
-    if identification.uncertain or identification.unidentified:
-        summary = build_anatomical_intelligence_summary(
-            identification=identification,
-            arch_measurements=None,
+        mode = (
+            ProcessingMode(processing_mode)
+            if processing_mode
+            else resolve_processing_mode()
         )
+    except ProcessingModeError as error:
         return _diagnostic(
-            PipelineState.IDENTIFICATION_INCOMPLETE,
+            PipelineState.MODEL_UNAVAILABLE,
             started,
-            **base,
-            failures=("Identification is incomplete; planning is blocked.",),
-            anatomical_intelligence=summary.payload(),
-        )
-    try:
-        arch_measurements = ArchAnalysisEngine().analyze(identification)
-    except ArchAnalysisError as error:
-        summary = build_anatomical_intelligence_summary(
-            identification=identification,
-            arch_measurements=None,
-        )
-        return _diagnostic(
-            PipelineState.IDENTIFICATION_INCOMPLETE,
-            started,
-            **base,
             failures=(str(error),),
-            anatomical_intelligence=summary.payload(),
+            source_kind="uploaded_real_case",
+            fixture=False,
+            notes=("Fixture backend blocked for real-case processing.",),
+            processing_mode=ProcessingMode.REAL_CASE.value,
+            case_id=case_id,
+            job_id=job_id,
+            input_hash=input_hash,
+            source_mesh_path=mesh_path,
         )
-    summary = build_anatomical_intelligence_summary(
-        identification=identification,
-        arch_measurements=arch_measurements,
-    )
-    return _diagnostic(
-        PipelineState.PLANNING_READY,
-        started,
-        **base,
-        arch_analysis_available=True,
-        arch_measurements=serialize_arch_measurements(arch_measurements),
-        anatomical_intelligence=summary.payload(),
-        notes=(
-            "Segmentation and geometric identification completed. Explicit treatment objectives "
-            "are still required before setup generation.",
-        ),
+    except ValueError:
+        mode = resolve_processing_mode()
+
+    if mode is ProcessingMode.REAL_CASE:
+        return process_real_uploaded_arch(
+            mesh_path,
+            arch,
+            case_id=case_id,
+            job_id=job_id,
+            input_hash=input_hash,
+        )
+
+    # Explicit test-fixture path only.
+    backend = selected_backend()
+    if backend != "toothinstancenet_fixture":
+        return _diagnostic(
+            PipelineState.MODEL_UNAVAILABLE,
+            started,
+            failures=(f"Unsupported test fixture backend: {backend}",),
+            fixture=False,
+        )
+    try:
+        result = load_validated_fixture_result(arch, mesh_path)
+    except ToothInstanceNetConfigurationError as error:
+        return _diagnostic(PipelineState.MODEL_UNAVAILABLE, started, failures=(str(error),))
+    except Exception as error:
+        return _diagnostic(PipelineState.SEGMENTATION_FAILED, started, failures=(str(error),))
+    diagnostic = _diagnostic_from_result(result, started, source_kind="validated_real_case")
+    return CasePipelineDiagnostic(
+        **{
+            **diagnostic.__dict__,
+            "processing_mode": ProcessingMode.TEST_FIXTURE.value,
+            "case_id": case_id,
+            "job_id": job_id,
+            "input_hash": input_hash,
+            "source_mesh_path": mesh_path,
+            "fixture": True,
+            "model_name": result.segmentation.metadata.model_name,
+            "model_version": result.segmentation.metadata.model_version,
+        }
     )
 
 
@@ -190,6 +177,14 @@ def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineD
         tooth_instances=values.get("tooth_instances", ()),
         arch_measurements=values.get("arch_measurements"),
         anatomical_intelligence=values.get("anatomical_intelligence"),
+        processing_mode=values.get("processing_mode"),
+        case_id=values.get("case_id"),
+        job_id=values.get("job_id"),
+        input_hash=values.get("input_hash"),
+        source_mesh_path=values.get("source_mesh_path"),
+        source_mesh_sha256=values.get("source_mesh_sha256"),
+        model_name=values.get("model_name"),
+        model_version=values.get("model_version"),
     )
 
 

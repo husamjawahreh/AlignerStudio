@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 
+// Existing CAD shell primitives — preserved for P0–P8 compatibility.
+// FV-01 design-system components live in `apps/web/src/design-system/`.
+
 interface AppShellProps {
   children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps): JSX.Element {
-  return <div className="cad-shell">{children}</div>;
+  return <div className="cad-shell as-shell">{children}</div>;
 }
 
 interface WorkflowHeaderProps {
@@ -13,7 +16,7 @@ interface WorkflowHeaderProps {
 }
 
 export function WorkflowHeader({ children }: WorkflowHeaderProps): JSX.Element {
-  return <header className="cad-header">{children}</header>;
+  return <header className="cad-header as-topbar">{children}</header>;
 }
 
 interface PanelProps {
@@ -22,11 +25,11 @@ interface PanelProps {
 }
 
 export function LeftToolPanel({ children, className = "" }: PanelProps): JSX.Element {
-  return <aside className={`cad-panel cad-tools ${className}`}>{children}</aside>;
+  return <aside className={`cad-panel cad-tools as-panel as-panel-left ${className}`}>{children}</aside>;
 }
 
 export function RightInspector({ children, className = "" }: PanelProps): JSX.Element {
-  return <aside className={`cad-panel cad-inspector ${className}`}>{children}</aside>;
+  return <aside className={`cad-panel cad-inspector as-panel as-panel-right ${className}`}>{children}</aside>;
 }
 
 export function BottomTimeline({ children }: PanelProps): JSX.Element {
@@ -34,7 +37,7 @@ export function BottomTimeline({ children }: PanelProps): JSX.Element {
 }
 
 export function WorkspaceContainer({ children }: PanelProps): JSX.Element {
-  return <main className="cad-workspace">{children}</main>;
+  return <main className="cad-workspace as-workspace">{children}</main>;
 }
 
 export function ViewerOverlay({ children }: PanelProps): JSX.Element {
@@ -42,5 +45,5 @@ export function ViewerOverlay({ children }: PanelProps): JSX.Element {
 }
 
 export function StatusBar({ children }: PanelProps): JSX.Element {
-  return <div className="cad-statusbar">{children}</div>;
+  return <div className="cad-statusbar as-statusbar">{children}</div>;
 }

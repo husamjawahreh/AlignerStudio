@@ -199,10 +199,18 @@ def test_stl_topology_and_vertex_count_fail_closed(tmp_path: Path) -> None:
         load_validated_fixture(root, arch=ArchType.UPPER)
 
 
-def test_canonical_source_hash_is_not_an_artifact_gate(tmp_path: Path) -> None:
+def test_canonical_source_hash_is_an_artifact_gate(tmp_path: Path) -> None:
+    """WP-01: when a source mesh is provided, its hash must match the verified artifact STL."""
     root = _write_artifact(tmp_path / "artifact")
     source = tmp_path / "canonical.stl"
     source.write_bytes(b"different serialization")
+    with pytest.raises(ToothInstanceNetFixtureError, match="does not match verified artifact"):
+        load_validated_fixture(root, arch=ArchType.UPPER, source_mesh_path=source)
+
+
+def test_matching_source_hash_allows_fixture_load(tmp_path: Path) -> None:
+    root = _write_artifact(tmp_path / "artifact")
+    source = root / "upper.stl"
     result = load_validated_fixture(root, arch=ArchType.UPPER, source_mesh_path=source)
     assert result.segmentation.metadata.fixture is True
 
