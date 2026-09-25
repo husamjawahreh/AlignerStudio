@@ -1,0 +1,1084 @@
+=== P8 Engineering Gate ===
+timestamp_utc=20260925T001942Z
+cwd=/home/hjawahreh/Desktop/Projects/AlignerStudio
+
+--- backend tests ---
+........................................................................ [ 35%]
+..........................ss............................................ [ 70%]
+...........................................................              [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/hjawahreh/Desktop/Projects/AlignerStudio/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+201 passed, 2 skipped, 1 warning in 144.60s (0:02:24)
+PASS: backend pytest
+--- frontend typecheck ---
+
+> @alignerstudio/web@0.1.0 typecheck /home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web
+> tsc --noEmit
+
+PASS: frontend typecheck
+--- frontend lint ---
+
+> @alignerstudio/web@0.1.0 lint /home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web
+> eslint .
+
+
+/home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web/src/viewer/StageViewer.tsx
+  569:6  warning  React Hook useEffect has a missing dependency: 'gizmoMode'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)
+
+PASS: frontend lint
+--- frontend unit/browser-component tests ---
+
+> @alignerstudio/web@0.1.0 test /home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web
+> vitest run
+
+
+ RUN  v2.1.9 /home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web
+
+ ✓ src/analysisPresentation.test.ts (4 tests) 26ms
+ ✓ src/workflowNavigationPresentation.test.ts (4 tests) 24ms
+ ✓ src/workflow.test.ts (4 tests) 34ms
+ ✓ src/components/production/loadingPresentation.test.ts (6 tests) 37ms
+ ✓ src/p2FinalIntegration.test.ts (3 tests) 30ms
+ ✓ src/viewer/syntheticGingiva.test.ts (6 tests) 92ms
+ ✓ src/treatmentWorkflowPresentation.test.ts (7 tests) 37ms
+ ✓ src/viewer/interactionFoundation.test.ts (5 tests) 34ms
+ ✓ src/components/ContextualToothToolbar.test.tsx (2 tests) 577ms
+   ✓ ContextualToothToolbar > wires live callbacks for gizmo, overlays, and edit actions 501ms
+ ✓ src/viewer/materialProfiles.test.ts (3 tests) 15ms
+ ✓ src/review/editing.test.ts (3 tests) 14ms
+ ✓ src/review/proposalEditing.test.ts (2 tests) 6ms
+ ✓ src/caseIntake.test.ts (3 tests) 9ms
+ ✓ src/caseWorkspacePersistence.test.ts (2 tests) 6ms
+ ✓ src/components/ProposalPanels.test.tsx (1 test) 102ms
+ ✓ src/components/production/CaseLoadingOverlay.test.tsx (2 tests) 214ms
+ ✓ src/components/StageTimeline.test.tsx (1 test) 251ms
+ ✓ src/components/ExportPanel.test.tsx (1 test) 206ms
+ ✓ src/app/p8Workflow.test.tsx (2 tests) 1594ms
+   ✓ P8 browser refresh rehydrate > restores remembered case metadata and treatment from the API on mount 358ms
+   ✓ P8 undo/redo on engineering fixture path > enables Undo after Apply and restores prior draft via Undo then Redo 1231ms
+ ✓ src/app/App.test.tsx (6 tests) 1911ms
+   ✓ App engineering demo > loads the API fixture demo with visible non-clinical labeling 444ms
+   ✓ App engineering demo > clears fixture review data when creating a real case after the engineering demo 394ms
+   ✓ App engineering demo > requires valid upper and lower STL uploads before generation is enabled 440ms
+   ✓ App engineering demo > reviews validated ToothInstanceNet meshes with FDI and diagnostics 332ms
+ ✓ src/review/fixtureData.test.ts (1 test) 5ms
+ ✓ src/components/ValidationPanel.test.tsx (1 test) 50ms
+ ✓ src/components/InspectionPanel.test.tsx (1 test) 72ms
+ ✓ src/viewer/geometryBuffers.test.ts (2 tests) 6ms
+ ✓ src/components/FixtureBadge.test.tsx (2 tests) 50ms
+
+ Test Files  25 passed (25)
+      Tests  74 passed (74)
+   Start at  03:22:17
+   Duration  8.80s (transform 4.63s, setup 12.49s, collect 9.97s, tests 5.40s, environment 41.93s, prepare 9.06s)
+
+PASS: frontend vitest
+--- frontend build ---
+
+> @alignerstudio/web@0.1.0 build /home/hjawahreh/Desktop/Projects/AlignerStudio/apps/web
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 75 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.75 kB │ gzip:   0.41 kB
+dist/assets/index-DmPsX6cY.css   30.84 kB │ gzip:   6.40 kB
+dist/assets/index-Cr1BKILB.js   778.37 kB │ gzip: 208.05 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.41s
+PASS: frontend build
+--- python lint (ruff) ---
+[1m[91mE501[0m[1m Line too long (103 > 100)[0m
+   [1m[94m--> [0mengines/planning/proposals.py:209:101
+    [1m[94m|[0m
+[1m[94m207[0m [1m[94m|[0m         return IPRSite(
+[1m[94m208[0m [1m[94m|[0m             site_id=self._hash(site_key),
+[1m[94m209[0m [1m[94m|[0m             tooth_a=source_a.tooth_number if source_a.tooth_number is not None else source_a.tooth_ref,
+    [1m[94m|[0m                                                                                                     [1m[91m^^^[0m
+[1m[94m210[0m [1m[94m|[0m             tooth_b=source_b.tooth_number if source_b.tooth_number is not None else source_b.tooth_ref,
+[1m[94m211[0m [1m[94m|[0m             current_measurement=IPRMeasurement(current, "model units", "centroid distance", status),
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (103 > 100)[0m
+   [1m[94m--> [0mengines/planning/proposals.py:210:101
+    [1m[94m|[0m
+[1m[94m208[0m [1m[94m|[0m             site_id=self._hash(site_key),
+[1m[94m209[0m [1m[94m|[0m             tooth_a=source_a.tooth_number if source_a.tooth_number is not None else source_a.tooth_ref,
+[1m[94m210[0m [1m[94m|[0m             tooth_b=source_b.tooth_number if source_b.tooth_number is not None else source_b.tooth_ref,
+    [1m[94m|[0m                                                                                                     [1m[91m^^^[0m
+[1m[94m211[0m [1m[94m|[0m             current_measurement=IPRMeasurement(current, "model units", "centroid distance", status),
+[1m[94m212[0m [1m[94m|[0m             target_measurement=IPRMeasurement(target, "model units", "centroid distance", status),
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (122 > 100)[0m
+   [1m[94m--> [0mengines/planning/staging_engine.py:213:101
+    [1m[94m|[0m
+[1m[94m211[0m [1m[94m|[0m                 else f"Stage {stage_index} · {configuration.mode.title()}"
+[1m[94m212[0m [1m[94m|[0m             ),
+[1m[94m213[0m [1m[94m|[0m             stage_type=("initial" if stage_index == 0 else "final" if stage_index == denominator else configuration.mode),
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m214[0m [1m[94m|[0m             metadata=(
+[1m[94m215[0m [1m[94m|[0m                 ("mode", configuration.mode),
+    [1m[94m|[0m
+
+[1m[91mUP035[0m [[1m[96m*[0m][1m Import from `collections.abc` instead: `Callable`[0m
+  [1m[94m--> [0mengines/validation/geometric_engine.py:14:1
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m from threading import Lock
+[1m[94m13[0m [1m[94m|[0m from time import perf_counter
+[1m[94m14[0m [1m[94m|[0m from typing import Callable
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m import numpy as np
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Import from `collections.abc`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m from time import perf_counter
+[1m[94m  [0m [1m[31m-[0m [31mfrom [0m[1m[31mtyping[0m[0m[31m import Callable
+[0m[1m[94m14[0m [1m[32m+[0m [32mfrom [0m[1m[32mcollections.abc[0m[0m[32m import Callable
+[0m[1m[94m15[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (102 > 100)[0m
+   [1m[94m--> [0mservices/api/app/pipeline_diagnostics.py:208:101
+    [1m[94m|[0m
+[1m[94m206[0m [1m[94m|[0m     )
+[1m[94m207[0m [1m[94m|[0m     arch_measurements = None
+[1m[94m208[0m [1m[94m|[0m     if identification.identified and not identification.uncertain and not identification.unidentified:
+    [1m[94m|[0m                                                                                                     [1m[91m^^[0m
+[1m[94m209[0m [1m[94m|[0m         try:
+[1m[94m210[0m [1m[94m|[0m             arch_measurements = ArchAnalysisEngine().analyze(identification)
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mservices/api/app/processing.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """Durable, process-local background processing orchestration."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m from concurrent.futures import Future, ThreadPoolExecutor
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from datetime import UTC, datetime
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from threading import Lock
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from time import perf_counter
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from uuid import uuid4
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from fastapi import HTTPException
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from app.pipeline_diagnostics import process_uploaded_case
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from domain.tooth.identification import ArchType
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m17[0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m   STAGES = (
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m
+[1m[94m12[0m [1m[32m+[0m [32mfrom domain.tooth.identification import ArchType
+[0m[1m[94m13[0m [1m[94m|[0m from fastapi import HTTPException
+[1m[94m14[0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m from app.pipeline_diagnostics import process_uploaded_case
+[1m[94m16[0m [1m[94m|[0m from app.store import case_store
+[1m[94m  [0m [1m[31m-[0m [31mfrom domain.tooth.identification import ArchType
+[0m[1m[94m17[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (143 > 100)[0m
+  [1m[94m--> [0mservices/api/app/processing.py:77:101
+   [1m[94m|[0m
+[1m[94m75[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m76[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m77[0m [1m[94m|[0m [1m[94m…[0mR" in completed else "PROCESSING" if current_stage == "SEGMENTING_UPPER" else "PENDING",
+   [1m[94m|[0m                                               [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m78[0m [1m[94m|[0m [1m[94m…[0mR" in completed else "PROCESSING" if current_stage == "SEGMENTING_LOWER" else "PENDING",
+[1m[94m79[0m [1m[94m|[0m [1m[94m…[0mN" in completed else "PROCESSING" if current_stage in {"BUILDING_PLAN", "VALIDATING_PLAN"} else "PENDING",
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (143 > 100)[0m
+  [1m[94m--> [0mservices/api/app/processing.py:78:101
+   [1m[94m|[0m
+[1m[94m76[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m77[0m [1m[94m|[0m [1m[94m…[0mR" in completed else "PROCESSING" if current_stage == "SEGMENTING_UPPER" else "PENDING",
+[1m[94m78[0m [1m[94m|[0m [1m[94m…[0mR" in completed else "PROCESSING" if current_stage == "SEGMENTING_LOWER" else "PENDING",
+   [1m[94m|[0m                                               [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m79[0m [1m[94m|[0m [1m[94m…[0mN" in completed else "PROCESSING" if current_stage in {"BUILDING_PLAN", "VALIDATING_PLAN"} else "PENDING",
+[1m[94m80[0m [1m[94m|[0m [1m[94m…[0mPLETED", "FAILED", "CANCELLED"} else None,
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (161 > 100)[0m
+  [1m[94m--> [0mservices/api/app/processing.py:79:101
+   [1m[94m|[0m
+[1m[94m77[0m [1m[94m|[0m [1m[94m…[0mpleted else "PROCESSING" if current_stage == "SEGMENTING_UPPER" else "PENDING",
+[1m[94m78[0m [1m[94m|[0m [1m[94m…[0mpleted else "PROCESSING" if current_stage == "SEGMENTING_LOWER" else "PENDING",
+[1m[94m79[0m [1m[94m|[0m [1m[94m…[0mpleted else "PROCESSING" if current_stage in {"BUILDING_PLAN", "VALIDATING_PLAN"} else "PENDING",
+   [1m[94m|[0m                                      [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m80[0m [1m[94m|[0m [1m[94m…[0m"FAILED", "CANCELLED"} else None,
+[1m[94m81[0m [1m[94m|[0m [1m[94m…[0m
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (104 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:154:101
+    [1m[94m|[0m
+[1m[94m152[0m [1m[94m|[0m         completed.append("VALIDATING_SCANS")
+[1m[94m153[0m [1m[94m|[0m         _status(case_id, job_id, current_stage="SEGMENTING_UPPER", stage_status="PROCESSING",
+[1m[94m154[0m [1m[94m|[0m                 overall_progress=10, stage_progress=None, completed=completed, pending=list(STAGES[3:]),
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^[0m
+[1m[94m155[0m [1m[94m|[0m                 message="Segmenting upper arch")
+[1m[94m156[0m [1m[94m|[0m         with ThreadPoolExecutor(max_workers=2) as pool:
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (148 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:158:101
+    [1m[94m|[0m
+[1m[94m156[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m157[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m158[0m [1m[94m|[0m [1m[94m…[0mloaded_case, next(m.file_path for m in case.meshes if m.arch == "upper"), ArchType.UPPER),
+    [1m[94m|[0m                                            [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m159[0m [1m[94m|[0m [1m[94m…[0mloaded_case, next(m.file_path for m in case.meshes if m.arch == "lower"), ArchType.LOWER),
+[1m[94m160[0m [1m[94m|[0m [1m[94m…[0m
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (148 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:159:101
+    [1m[94m|[0m
+[1m[94m157[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m158[0m [1m[94m|[0m [1m[94m…[0mloaded_case, next(m.file_path for m in case.meshes if m.arch == "upper"), ArchType.UPPER),
+[1m[94m159[0m [1m[94m|[0m [1m[94m…[0mloaded_case, next(m.file_path for m in case.meshes if m.arch == "lower"), ArchType.LOWER),
+    [1m[94m|[0m                                            [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m160[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m161[0m [1m[94m|[0m [1m[94m…[0m
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (108 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:164:101
+    [1m[94m|[0m
+[1m[94m162[0m [1m[94m|[0m             completed.append("SEGMENTING_UPPER")
+[1m[94m163[0m [1m[94m|[0m             _status(case_id, job_id, current_stage="SEGMENTING_LOWER", stage_status="PROCESSING",
+[1m[94m164[0m [1m[94m|[0m                     overall_progress=55, stage_progress=None, completed=completed, pending=list(STAGES[4:]),
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^[0m
+[1m[94m165[0m [1m[94m|[0m                     message="Segmenting lower arch")
+[1m[94m166[0m [1m[94m|[0m             lower = futures["SEGMENTING_LOWER"].result()
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (112 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:168:101
+    [1m[94m|[0m
+[1m[94m166[0m [1m[94m|[0m             lower = futures["SEGMENTING_LOWER"].result()
+[1m[94m167[0m [1m[94m|[0m         completed.append("SEGMENTING_LOWER")
+[1m[94m168[0m [1m[94m|[0m         if upper.state.value != "identification_incomplete" or lower.state.value != "identification_incomplete":
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^^^^^[0m
+[1m[94m169[0m [1m[94m|[0m             raise ValueError("Segmentation completed without a reviewable identification result")
+[1m[94m170[0m [1m[94m|[0m         _status(case_id, job_id, current_stage="BUILDING_PLAN", stage_status="PROCESSING",
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (104 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:171:101
+    [1m[94m|[0m
+[1m[94m169[0m [1m[94m|[0m             raise ValueError("Segmentation completed without a reviewable identification result")
+[1m[94m170[0m [1m[94m|[0m         _status(case_id, job_id, current_stage="BUILDING_PLAN", stage_status="PROCESSING",
+[1m[94m171[0m [1m[94m|[0m                 overall_progress=70, stage_progress=None, completed=completed, pending=list(STAGES[4:]),
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^[0m
+[1m[94m172[0m [1m[94m|[0m                 message="Preparing treatment setup")
+[1m[94m173[0m [1m[94m|[0m         from app.routers.cases import generate_plan_with_progress
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (102 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:191:101
+    [1m[94m|[0m
+[1m[94m189[0m [1m[94m|[0m         completed.append("BUILDING_PLAN")
+[1m[94m190[0m [1m[94m|[0m         _status(case_id, job_id, current_stage="VALIDATING_PLAN", stage_status="PROCESSING",
+[1m[94m191[0m [1m[94m|[0m                 overall_progress=88, stage_progress=None, completed=completed, pending=["FINALIZING"],
+    [1m[94m|[0m                                                                                                     [1m[91m^^[0m
+[1m[94m192[0m [1m[94m|[0m                 message="Validating setup")
+[1m[94m193[0m [1m[94m|[0m         completed.append("VALIDATING_PLAN")
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (104 > 100)[0m
+   [1m[94m--> [0mservices/api/app/processing.py:204:101
+    [1m[94m|[0m
+[1m[94m202[0m [1m[94m|[0m         _fail(case_id, job_id, completed, str(error.detail), f"HTTP_{error.status_code}")
+[1m[94m203[0m [1m[94m|[0m     except Exception as error:
+[1m[94m204[0m [1m[94m|[0m         _fail(case_id, job_id, completed, "Processing could not be completed for this case", str(error))
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^[0m
+
+[1m[91mE501[0m[1m Line too long (101 > 100)[0m
+   [1m[94m--> [0mservices/api/app/routers/cases.py:254:101
+    [1m[94m|[0m
+[1m[94m252[0m [1m[94m|[0m                 detail={
+[1m[94m253[0m [1m[94m|[0m                     "code": "planning_unavailable",
+[1m[94m254[0m [1m[94m|[0m                     "message": "Planning could not be completed for the current semantic-only data.",
+    [1m[94m|[0m                                                                                                     [1m[91m^[0m
+[1m[94m255[0m [1m[94m|[0m                     "reason": str(error),
+[1m[94m256[0m [1m[94m|[0m                     "case_id": case_id,
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (101 > 100)[0m
+  [1m[94m--> [0mservices/api/app/session_persistence.py:45:101
+   [1m[94m|[0m
+[1m[94m43[0m [1m[94m|[0m         "session": session,
+[1m[94m44[0m [1m[94m|[0m     }
+[1m[94m45[0m [1m[94m|[0m     encoded = gzip.compress(pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL), compresslevel=6)
+   [1m[94m|[0m                                                                                                     [1m[91m^[0m
+[1m[94m46[0m [1m[94m|[0m     path.parent.mkdir(parents=True, exist_ok=True)
+[1m[94m47[0m [1m[94m|[0m     temporary = path.with_suffix(path.suffix + ".tmp")
+   [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mservices/api/app/store.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """Small durable case repository for the local API session."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from datetime import datetime
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from domain.case.models import Case, CaseStatus, MeshAsset
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from app.config import CASE_STORE_PATH
+   [1m[94m|[0m [1m[91m|______________________________________^[0m
+[1m[94m12[0m [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m from domain.case.models import Case, CaseStatus, MeshAsset
+[1m[94m11[0m [1m[32m+[0m[32m
+[0m[1m[94m12[0m [1m[94m|[0m from app.config import CASE_STORE_PATH
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mB010[0m [[1m[96m*[0m][1m Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.[0m
+  [1m[94m--> [0mservices/api/app/store.py:53:9
+   [1m[94m|[0m
+[1m[94m51[0m [1m[94m|[0m         if case is None:
+[1m[94m52[0m [1m[94m|[0m             raise KeyError(f"Case {case_id} is not present in the repository")
+[1m[94m53[0m [1m[94m|[0m         setattr(case, "processing_status", status)
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m54[0m [1m[94m|[0m         self._persist()
+[1m[94m55[0m [1m[94m|[0m         return status
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `setattr` with assignment[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m             raise KeyError(f"Case {case_id} is not present in the repository")
+[1m[94m  [0m [1m[31m-[0m [31m        [0m[1m[31msetattr(case,[0m[0m[31m [0m[1m[31m"processing_status",[0m[0m[31m [0m[1m[31mstatus)[0m[0m[31m
+[0m[1m[94m53[0m [1m[32m+[0m [32m        [0m[1m[32mcase.processing_status[0m[0m[32m [0m[1m[32m=[0m[0m[32m [0m[1m[32mstatus[0m[0m[32m
+[0m[1m[94m54[0m [1m[94m|[0m         self._persist()
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mB010[0m [[1m[96m*[0m][1m Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.[0m
+  [1m[94m--> [0mservices/api/app/store.py:81:17
+   [1m[94m|[0m
+[1m[94m79[0m [1m[94m|[0m                     created_at=datetime.fromisoformat(record["created_at"]),
+[1m[94m80[0m [1m[94m|[0m                 )
+[1m[94m81[0m [1m[94m|[0m                 setattr(case, "processing_status", record.get("processing_status"))
+   [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m82[0m [1m[94m|[0m             except (KeyError, TypeError, ValueError):
+[1m[94m83[0m [1m[94m|[0m                 continue
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `setattr` with assignment[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m                 )
+[1m[94m  [0m [1m[31m-[0m [31m                [0m[1m[31msetattr(case,[0m[0m[31m [0m[1m[31m"processing_status",[0m[0m[31m [0m[1m[31mrecord.get("processing_status"))[0m[0m[31m
+[0m[1m[94m81[0m [1m[32m+[0m [32m                [0m[1m[32mcase.processing_status[0m[0m[32m [0m[1m[32m=[0m[0m[32m [0m[1m[32mrecord.get("processing_status")[0m[0m[32m
+[0m[1m[94m82[0m [1m[94m|[0m             except (KeyError, TypeError, ValueError):
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (104 > 100)[0m
+  [1m[94m--> [0mservices/api/app/store.py:97:101
+   [1m[94m|[0m
+[1m[94m95[0m [1m[94m|[0m                         "error_code": "PROCESS_RESTARTED",
+[1m[94m96[0m [1m[94m|[0m                         "user_message": "Case analysis was interrupted. Start analysis again.",
+[1m[94m97[0m [1m[94m|[0m                         "technical_diagnostic": "Processing worker was interrupted during API restart.",
+   [1m[94m|[0m                                                                                                     [1m[91m^^^^[0m
+[1m[94m98[0m [1m[94m|[0m                         "updated_at": now.isoformat(),
+[1m[94m99[0m [1m[94m|[0m                         "completed_at": now.isoformat(),
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (106 > 100)[0m
+   [1m[94m--> [0mservices/api/app/store.py:103:101
+    [1m[94m|[0m
+[1m[94m101[0m [1m[94m|[0m                 )
+[1m[94m102[0m [1m[94m|[0m                 recovered = True
+[1m[94m103[0m [1m[94m|[0m                 logger.warning("PROCESSING_RECOVERED case_id=%s job_id=%s", case.id, status.get("job_id"))
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^[0m
+[1m[94m104[0m [1m[94m|[0m         if recovered:
+[1m[94m105[0m [1m[94m|[0m             self._persist()
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mservices/api/app/treatment_sessions.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """HTTP application state for existing treatment engines; no clinical logic lives here."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m import os
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Callable
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from dataclasses import dataclass, replace as dataclass_replace
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from time import perf_counter
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from domain.tooth.identification import ArchType
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.input import TreatmentPlanningInput
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.manufacturing import build_manufacturing_boundary_report
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.proposals import ProposalStatus
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.setup import ToothMovement, TreatmentPlanProposal
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.staging import StagingConfiguration, StagingResult
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.validation import TreatmentValidationReport, ValidationStatus
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m from engines.arrangement.identification import ToothIdentificationEngine
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from engines.export import TreatmentExportEngine, TreatmentExportPackage
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.editing import TreatmentEditingApplication
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.intelligence import (
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m     AdvancedPlanningIntelligenceEngine,
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m     AdvancedPlanningIntelligenceResult,
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.proposals import TreatmentProposalEngine
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.setup_engine import TreatmentPlanningEngine
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.staging_engine import TreatmentStagingEngine
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.review_summary import build_validation_review_summary
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m from app.engineering_fixture import demo_objectives, synthetic_upper_arch
+[1m[94m38[0m [1m[94m|[0m [1m[91m|[0m from app.session_persistence import delete_session, load_session, save_session
+   [1m[94m|[0m [1m[91m|______________________________________________________________________________^[0m
+[1m[94m39[0m [1m[94m|[0m
+[1m[94m40[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m8 [0m [1m[94m|[0m from collections.abc import Callable
+[1m[94m  [0m [1m[31m-[0m [31mfrom dataclasses import [0m[1m[31mdataclass,[0m[0m[31m replace as dataclass_replace
+[0m[1m[94m9 [0m [1m[32m+[0m [32mfrom dataclasses import [0m[1m[32mdataclass[0m[0m[32m
+[0m[1m[94m10[0m [1m[32m+[0m [1m[32mfrom dataclasses import[0m[0m[32m replace as dataclass_replace
+[0m[1m[94m11[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (103 > 100)[0m
+   [1m[94m--> [0mservices/api/app/treatment_sessions.py:407:101
+    [1m[94m|[0m
+[1m[94m405[0m [1m[94m|[0m         )
+[1m[94m406[0m [1m[94m|[0m         proximity_count = sum(
+[1m[94m407[0m [1m[94m|[0m             1 for item in stage_validation.proximity_results if item.status is ValidationStatus.WARNING
+    [1m[94m|[0m                                                                                                     [1m[91m^^^[0m
+[1m[94m408[0m [1m[94m|[0m         )
+[1m[94m409[0m [1m[94m|[0m         contact_count = sum(1 for item in stage_validation.contact_results if item.is_contact)
+    [1m[94m|[0m
+
+[1m[91mF601[0m[1m Dictionary key literal `"validationFindings"` repeated[0m
+   [1m[94m--> [0mservices/api/app/treatment_sessions.py:462:17
+    [1m[94m|[0m
+[1m[94m460[0m [1m[94m|[0m                 "contactCount": contact_count,
+[1m[94m461[0m [1m[94m|[0m                 "warnings": [*stage_validation.warnings, *stage_validation.errors],
+[1m[94m462[0m [1m[94m|[0m                 "validationFindings": [*stage_validation.warnings, *stage_validation.errors],
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m463[0m [1m[94m|[0m                 "provenance": stage.provenance.value,
+[1m[94m464[0m [1m[94m|[0m                 "fixture": stage.fixture,
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove repeated key literal `"validationFindings"`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p0_1_two_arch_presentation.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """P0.1: real-case treatment presentation must include both arches (14+14)."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from app.routers.cases import _combined_fixture_identification
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import review_bundle, treatment_sessions
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from domain.case.models import MeshAsset
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from domain.case.provenance import DataProvenance
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.validation import (
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m     StageValidationResult,
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m     TreatmentValidationReport,
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m     ValidationStatus,
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.setup_engine import TreatmentPlanningEngine
+   [1m[94m|[0m [1m[91m|_________________________________________________________________^[0m
+[1m[94m23[0m [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m   ARTIFACT = Path(__file__).resolve().parents[2] / "official_real_case_stage2_verified_v1.zip"
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m6 [0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m7 [0m [1m[94m|[0m from app.main import app
+[1m[94m8 [0m [1m[94m|[0m from app.routers.cases import _combined_fixture_identification
+[1m[94m9 [0m [1m[94m|[0m from app.store import case_store
+[1m[94m10[0m [1m[94m|[0m from app.treatment_sessions import review_bundle, treatment_sessions
+[1m[94m11[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m12[0m [1m[32m+[0m[32m
+[0m[1m[94m13[0m [1m[94m|[0m from domain.case.models import MeshAsset
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p0_2_validation_reconciliation.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """P0.2: browser validation counts must match true geometric findings (not AABB slots)."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.validation import ValidationStatus
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from domain.tooth.identification import ArchType
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from services.api.app.treatment_sessions import TreatmentSessionStore, review_bundle
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from tests.fixtures.synthetic_validation import validation_result, validation_stage
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from tests.python.test_stage_geometry_and_validation_keying import _semantic_only_stage
+   [1m[94m|[0m [1m[91m|_______________________________________________________________________________________^[0m
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m   ARTIFACT = Path(__file__).resolve().parents[2] / "official_real_case_stage2_verified_v1.zip"
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m8 [0m [1m[94m|[0m
+[1m[94m9 [0m [1m[32m+[0m [32mfrom domain.tooth.identification import ArchType
+[0m[1m[94m10[0m [1m[94m|[0m from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
+[1m[94m11[0m [1m[94m|[0m from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
+[1m[94m12[0m [1m[94m|[0m from domain.treatment_plan.validation import ValidationStatus
+[1m[94m  [0m [1m[31m-[0m [31mfrom domain.tooth.identification import ArchType
+[0m[1m[94m13[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (103 > 100)[0m
+  [1m[94m--> [0mtests/python/test_p0_2_validation_reconciliation.py:30:101
+   [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m         "collisions": sum(1 for item in stage_validation.collision_results if item.intersects),
+[1m[94m29[0m [1m[94m|[0m         "proximity": sum(
+[1m[94m30[0m [1m[94m|[0m             1 for item in stage_validation.proximity_results if item.status is ValidationStatus.WARNING
+   [1m[94m|[0m                                                                                                     [1m[91m^^^[0m
+[1m[94m31[0m [1m[94m|[0m         ),
+[1m[94m32[0m [1m[94m|[0m         "contacts": sum(1 for item in stage_validation.contact_results if item.is_contact),
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (109 > 100)[0m
+  [1m[94m--> [0mtests/python/test_p0_2_validation_reconciliation.py:74:101
+   [1m[94m|[0m
+[1m[94m72[0m [1m[94m|[0m     for tooth in report.stage_results[0].tooth_results:
+[1m[94m73[0m [1m[94m|[0m         assert len(tooth.collision_results) == 1
+[1m[94m74[0m [1m[94m|[0m         assert tooth.tooth_number in (tooth.collision_results[0].tooth_a, tooth.collision_results[0].tooth_b)
+   [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^^[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `pathlib.Path` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p0_3_export_integrity.py:8:21
+   [1m[94m|[0m
+[1m[94m 6[0m [1m[94m|[0m import json
+[1m[94m 7[0m [1m[94m|[0m import zipfile
+[1m[94m 8[0m [1m[94m|[0m from pathlib import Path
+   [1m[94m|[0m                     [1m[91m^^^^[0m
+[1m[94m 9[0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m import pytest
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `pathlib.Path`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m import zipfile
+[1m[94m [0m [1m[31m-[0m [31mfrom pathlib import Path
+[0m[1m[94m8[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `engines.validation.geometric_engine.GeometricValidationConfiguration` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p4_doctor_refinement.py:11:49
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m from engines.planning.editing import TreatmentEditingApplication, TreatmentEditingError
+[1m[94m10[0m [1m[94m|[0m from engines.planning.staging_engine import resolve_dynamic_stage_count
+[1m[94m11[0m [1m[94m|[0m from engines.validation.geometric_engine import GeometricValidationConfiguration
+   [1m[94m|[0m                                                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12[0m [1m[94m|[0m from tests.python.test_doctor_editing_phase9 import build_proposal, validation_config
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `engines.validation.geometric_engine.GeometricValidationConfiguration`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m from engines.planning.staging_engine import resolve_dynamic_stage_count
+[1m[94m  [0m [1m[31m-[0m [31mfrom engines.validation.geometric_engine import GeometricValidationConfiguration
+[0m[1m[94m11[0m [1m[94m|[0m from tests.python.test_doctor_editing_phase9 import build_proposal, validation_config
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (101 > 100)[0m
+  [1m[94m--> [0mtests/python/test_p4_doctor_refinement.py:31:101
+   [1m[94m|[0m
+[1m[94m29[0m [1m[94m|[0m     assert result.validation.stage_results
+[1m[94m30[0m [1m[94m|[0m     final = result.staging.final_stage
+[1m[94m31[0m [1m[94m|[0m     target = next(state for state in result.proposal.setup.target_states if state.tooth_number == 11)
+   [1m[94m|[0m                                                                                                     [1m[91m^[0m
+[1m[94m32[0m [1m[94m|[0m     staged = next(state for state in final.tooth_states if state.tooth_number == 11)
+[1m[94m33[0m [1m[94m|[0m     assert staged.vertices == target.target_vertices
+   [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p5_validation_manufacturing_export.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """P5 — Validation review summary, manufacturing boundary, export verify, proposal audit."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m import zipfile
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import treatment_sessions
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from domain.tooth.identification import ArchType
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.manufacturing import (
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m     ArtifactLayer,
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m     ManufacturingCapabilityStatus,
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m     build_manufacturing_boundary_report,
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.proposals import ProposalStatus
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.staging import StagingConfiguration
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m from engines.arrangement.identification import ToothIdentificationEngine
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from engines.export import TreatmentExportEngine
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.proposals import TreatmentProposalEngine
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.setup_engine import TreatmentPlanningEngine
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.staging_engine import TreatmentStagingEngine
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.review_summary import build_validation_review_summary
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from tests.fixtures.synthetic_arch import build_synthetic_arch
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from tests.fixtures.synthetic_objectives import mild_crowding_objective, rotation_objective
+   [1m[94m|[0m [1m[91m|___________________________________________________________________________________________^[0m
+[1m[94m34[0m [1m[94m|[0m
+[1m[94m35[0m [1m[94m|[0m   client = TestClient(app)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m from app.treatment_sessions import treatment_sessions
+[1m[94m13[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m14[0m [1m[32m+[0m[32m
+[0m[1m[94m15[0m [1m[94m|[0m from domain.tooth.identification import ArchType
+--------------------------------------------------------------------------------
+[1m[94m32[0m [1m[94m|[0m from engines.validation.review_summary import build_validation_review_summary
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m33[0m [1m[94m|[0m from tests.fixtures.synthetic_arch import build_synthetic_arch
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (123 > 100)[0m
+   [1m[94m--> [0mtests/python/test_p5_validation_manufacturing_export.py:193:101
+    [1m[94m|[0m
+[1m[94m191[0m [1m[94m|[0m     assert bundle["iprSites"]
+[1m[94m192[0m [1m[94m|[0m     ipr = bundle["iprSites"][0]
+[1m[94m193[0m [1m[94m|[0m     assert {"siteId", "toothA", "toothB", "currentDistance", "targetDistance", "proposedAmount", "stage", "status"} <= set(
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m194[0m [1m[94m|[0m         ipr
+[1m[94m195[0m [1m[94m|[0m     )
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p6_advanced_planning_intelligence.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """P6 — Advanced planning intelligence: adapters, contracts, validation gate."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from adapters.sttalign import STTAlignAdapter, STTAlignUnavailableError
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from adapters.tadpm import TADPMAdapter, TADPMUnavailableError
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from adapters.threedteethsam import TeethSAMAdapter, TeethSAMUnavailableError
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import treatment_sessions
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from domain.tooth.identification import ArchType
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.intelligence import DecisionState, IntelligenceCapabilityStatus
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.staging import StagingConfiguration
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from engines.arrangement.identification import ToothIdentificationEngine
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.intelligence import (
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m     AdvancedPlanningIntelligenceEngine,
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m     research_adapter_evaluations,
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.setup_engine import TreatmentPlanningEngine
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from engines.planning.staging_engine import TreatmentStagingEngine
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from tests.fixtures.synthetic_arch import build_synthetic_arch
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from tests.fixtures.synthetic_objectives import mild_crowding_objective, rotation_objective
+   [1m[94m|[0m [1m[91m|___________________________________________________________________________________________^[0m
+[1m[94m32[0m [1m[94m|[0m
+[1m[94m33[0m [1m[94m|[0m   client = TestClient(app)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m8 [0m [1m[94m|[0m import pytest
+[1m[94m  [0m [1m[31m-[0m [31mfrom adapters.sttalign import STTAlignAdapter, STTAlignUnavailableError
+[0m[1m[94m  [0m [1m[31m-[0m [31mfrom adapters.tadpm import TADPMAdapter, TADPMUnavailableError
+[0m[1m[94m  [0m [1m[31m-[0m [31mfrom adapters.threedteethsam import TeethSAMAdapter, TeethSAMUnavailableError
+[0m[1m[94m9 [0m [1m[94m|[0m from app.main import app
+[1m[94m10[0m [1m[94m|[0m from app.store import case_store
+[1m[94m11[0m [1m[94m|[0m from app.treatment_sessions import treatment_sessions
+[1m[94m12[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m13[0m [1m[32m+[0m[32m
+[0m[1m[94m14[0m [1m[32m+[0m [32mfrom adapters.sttalign import STTAlignAdapter, STTAlignUnavailableError
+[0m[1m[94m15[0m [1m[32m+[0m [32mfrom adapters.tadpm import TADPMAdapter, TADPMUnavailableError
+[0m[1m[94m16[0m [1m[32m+[0m [32mfrom adapters.threedteethsam import TeethSAMAdapter, TeethSAMUnavailableError
+[0m[1m[94m17[0m [1m[94m|[0m from domain.tooth.identification import ArchType
+--------------------------------------------------------------------------------
+[1m[94m30[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m31[0m [1m[94m|[0m from tests.fixtures.synthetic_arch import build_synthetic_arch
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (102 > 100)[0m
+  [1m[94m--> [0mtests/python/test_p6_advanced_planning_intelligence.py:87:101
+   [1m[94m|[0m
+[1m[94m85[0m [1m[94m|[0m     plan, staging, validation = _stack()
+[1m[94m86[0m [1m[94m|[0m     result = AdvancedPlanningIntelligenceEngine().generate(plan, staging, validation)
+[1m[94m87[0m [1m[94m|[0m     assert result.report.collision_aware_candidate_generation is IntelligenceCapabilityStatus.COMPUTED
+   [1m[94m|[0m                                                                                                     [1m[91m^^[0m
+[1m[94m88[0m [1m[94m|[0m     assert result.report.occlusion_aware_planning is IntelligenceCapabilityStatus.UNAVAILABLE
+[1m[94m89[0m [1m[94m|[0m     assert result.report.constrained_six_dof_trajectories is IntelligenceCapabilityStatus.UNAVAILABLE
+   [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (101 > 100)[0m
+  [1m[94m--> [0mtests/python/test_p6_advanced_planning_intelligence.py:89:101
+   [1m[94m|[0m
+[1m[94m87[0m [1m[94m|[0m     assert result.report.collision_aware_candidate_generation is IntelligenceCapabilityStatus.COMPUTED
+[1m[94m88[0m [1m[94m|[0m     assert result.report.occlusion_aware_planning is IntelligenceCapabilityStatus.UNAVAILABLE
+[1m[94m89[0m [1m[94m|[0m     assert result.report.constrained_six_dof_trajectories is IntelligenceCapabilityStatus.UNAVAILABLE
+   [1m[94m|[0m                                                                                                     [1m[91m^[0m
+[1m[94m90[0m [1m[94m|[0m     assert result.report.alternative_setups is IntelligenceCapabilityStatus.COMPUTED
+[1m[94m91[0m [1m[94m|[0m     assert len(result.candidates) >= 2
+   [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p7_performance_reliability.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """P7 — Performance, reliability, and scale gates."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from app.session_persistence import load_session, session_path
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from app.store import InMemoryCaseStore, case_store
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import TreatmentSession, TreatmentSessionStore, treatment_sessions
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from domain.case.models import Case
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m     _validation_worker_count,
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m )
+   [1m[94m|[0m [1m[91m|_^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m7 [0m [1m[94m|[0m import pytest
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m8 [0m [1m[94m|[0m from app.main import app
+[1m[94m9 [0m [1m[94m|[0m from app.session_persistence import load_session, session_path
+[1m[94m10[0m [1m[94m|[0m from app.store import InMemoryCaseStore, case_store
+[1m[94m11[0m [1m[94m|[0m from app.treatment_sessions import TreatmentSession, TreatmentSessionStore, treatment_sessions
+[1m[94m12[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m13[0m [1m[32m+[0m[32m
+[0m[1m[94m14[0m [1m[94m|[0m from domain.case.models import Case
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:7:1
+   [1m[94m|[0m
+[1m[94m 5[0m [1m[94m|[0m   """
+[1m[94m 6[0m [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m import os
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m import tracemalloc
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m import numpy as np
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m import trimesh
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import TreatmentSessionStore, treatment_sessions
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.manufacturing import ManufacturingCapabilityStatus
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.staging import StagingConfiguration
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m from engines.export import TreatmentExportEngine
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from engines.validation.geometric_engine import (
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationConfiguration,
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m     GeometricValidationEngine,
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m     _mesh_pair_metrics,
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m )
+   [1m[94m|[0m [1m[91m|_^[0m
+[1m[94m29[0m [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m   ARTIFACT_ROOT = Path(".research/tmp/official_real_case_stage2_verified_v1")
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m import trimesh
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m16[0m [1m[94m|[0m from app.main import app
+[1m[94m17[0m [1m[94m|[0m from app.store import case_store
+[1m[94m18[0m [1m[94m|[0m from app.treatment_sessions import TreatmentSessionStore, treatment_sessions
+[1m[94m19[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m20[0m [1m[32m+[0m[32m
+[0m[1m[94m21[0m [1m[94m|[0m from domain.treatment_plan.manufacturing import ManufacturingCapabilityStatus
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `os` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:9:8
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m from __future__ import annotations
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m import os
+   [1m[94m|[0m        [1m[91m^^[0m
+[1m[94m10[0m [1m[94m|[0m import tracemalloc
+[1m[94m11[0m [1m[94m|[0m from pathlib import Path
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `os`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m8[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mimport os
+[0m[1m[94m9[0m [1m[94m|[0m import tracemalloc
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `domain.treatment_plan.staging.StagingConfiguration` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:22:43
+   [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m from app.treatment_sessions import TreatmentSessionStore, treatment_sessions
+[1m[94m21[0m [1m[94m|[0m from domain.treatment_plan.manufacturing import ManufacturingCapabilityStatus
+[1m[94m22[0m [1m[94m|[0m from domain.treatment_plan.staging import StagingConfiguration
+   [1m[94m|[0m                                           [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m23[0m [1m[94m|[0m from engines.export import TreatmentExportEngine
+[1m[94m24[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `domain.treatment_plan.staging.StagingConfiguration`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m from domain.treatment_plan.manufacturing import ManufacturingCapabilityStatus
+[1m[94m  [0m [1m[31m-[0m [31mfrom domain.treatment_plan.staging import StagingConfiguration
+[0m[1m[94m22[0m [1m[94m|[0m from engines.export import TreatmentExportEngine
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `engines.validation.geometric_engine.GeometricValidationConfiguration` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:25:5
+   [1m[94m|[0m
+[1m[94m23[0m [1m[94m|[0m from engines.export import TreatmentExportEngine
+[1m[94m24[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+[1m[94m25[0m [1m[94m|[0m     GeometricValidationConfiguration,
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m26[0m [1m[94m|[0m     GeometricValidationEngine,
+[1m[94m27[0m [1m[94m|[0m     _mesh_pair_metrics,
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+[1m[94m  [0m [1m[31m-[0m [31m    GeometricValidationConfiguration,
+[0m[1m[94m  [0m [1m[31m-[0m [31m    GeometricValidationEngine,
+[0m[1m[94m25[0m [1m[94m|[0m     _mesh_pair_metrics,
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `engines.validation.geometric_engine.GeometricValidationEngine` imported but unused[0m
+  [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:26:5
+   [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+[1m[94m25[0m [1m[94m|[0m     GeometricValidationConfiguration,
+[1m[94m26[0m [1m[94m|[0m     GeometricValidationEngine,
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m27[0m [1m[94m|[0m     _mesh_pair_metrics,
+[1m[94m28[0m [1m[94m|[0m )
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m from engines.validation.geometric_engine import (
+[1m[94m  [0m [1m[31m-[0m [31m    GeometricValidationConfiguration,
+[0m[1m[94m  [0m [1m[31m-[0m [31m    GeometricValidationEngine,
+[0m[1m[94m25[0m [1m[94m|[0m     _mesh_pair_metrics,
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (102 > 100)[0m
+   [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:118:101
+    [1m[94m|[0m
+[1m[94m116[0m [1m[94m|[0m def test_matrix_multiple_real_cases_pending_without_second_artifact() -> None:
+[1m[94m117[0m [1m[94m|[0m     if SECOND_REAL_CASE.exists():
+[1m[94m118[0m [1m[94m|[0m         pytest.fail("Unexpected second real case present — extend matrix coverage instead of PENDING")
+    [1m[94m|[0m                                                                                                     [1m[91m^^[0m
+[1m[94m119[0m [1m[94m|[0m     pytest.skip(
+[1m[94m120[0m [1m[94m|[0m         "PENDING: only one verified real case (official_real_case_stage2_verified_v1) "
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (135 > 100)[0m
+   [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:214:101
+    [1m[94m|[0m
+[1m[94m212[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m213[0m [1m[94m|[0m [1m[94m…[0mxport")
+[1m[94m214[0m [1m[94m|[0m [1m[94m…[0mh / "pkg", session.proposal, session.staging, session.validation, session.adjuncts)
+    [1m[94m|[0m                                                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m215[0m [1m[94m|[0m [1m[94m…[0m(package.zip_path)
+[1m[94m216[0m [1m[94m|[0m [1m[94m…[0mt(package.zip_path)
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (104 > 100)[0m
+   [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:266:101
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m|[0m     demo = client.post("/cases/demo").json()
+[1m[94m265[0m [1m[94m|[0m     case_id = demo["case"]["id"]
+[1m[94m266[0m [1m[94m|[0m     assert demo["review_bundle"]["fixture"] is True or demo["review_bundle"].get("experimental") is True
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^[0m
+[1m[94m267[0m [1m[94m|[0m     body = client.post(f"/cases/{case_id}/export/reopen").json()
+[1m[94m268[0m [1m[94m|[0m     assert body["verified"] is True
+    [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (108 > 100)[0m
+   [1m[94m--> [0mtests/python/test_p8_qa_matrix.py:270:101
+    [1m[94m|[0m
+[1m[94m268[0m [1m[94m|[0m     assert body["verified"] is True
+[1m[94m269[0m [1m[94m|[0m     assert body["clinical_approval"] is False
+[1m[94m270[0m [1m[94m|[0m     assert body.get("fixture") is True or body.get("provenance") in {"fixture", "experimental", "generated"}
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mtests/python/test_planning_fetch_contract.py:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m [1m[91m/[0m import json
+[1m[94m2[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m3[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m7[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+  [1m[94m|[0m [1m[91m|________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m4[0m [1m[94m|[0m from app.main import app
+[1m[94m5[0m [1m[94m|[0m from app.store import case_store
+[1m[94m6[0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m7[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `pathlib.Path` imported but unused[0m
+ [1m[94m--> [0mtests/python/test_planning_fetch_contract.py:2:21
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m import json
+[1m[94m2[0m [1m[94m|[0m from pathlib import Path
+  [1m[94m|[0m                     [1m[91m^^^^[0m
+[1m[94m3[0m [1m[94m|[0m
+[1m[94m4[0m [1m[94m|[0m from fastapi.testclient import TestClient
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `pathlib.Path`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m import json
+[1m[94m [0m [1m[31m-[0m [31mfrom pathlib import Path
+[0m[1m[94m2[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/python/test_semantic_only_planning.py:1:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m [1m[91m/[0m from domain.case.provenance import DataProvenance
+[1m[94m 2[0m [1m[94m|[0m [1m[91m|[0m from domain.case.models import MeshAsset
+[1m[94m 3[0m [1m[94m|[0m [1m[91m|[0m from domain.treatment_plan.validation import (
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m     StageValidationResult,
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m     TreatmentValidationReport,
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m     ValidationStatus,
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from fastapi.testclient import TestClient
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from app.main import app
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from app.store import case_store
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from app.treatment_sessions import treatment_sessions
+   [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m1 [0m [1m[32m+[0m [32mfrom app.main import app
+[0m[1m[94m2 [0m [1m[32m+[0m [32mfrom app.store import case_store
+[0m[1m[94m3 [0m [1m[32m+[0m [32mfrom app.treatment_sessions import treatment_sessions
+[0m[1m[94m4 [0m [1m[32m+[0m [32mfrom fastapi.testclient import TestClient
+[0m[1m[94m5 [0m [1m[32m+[0m[32m
+[0m[1m[94m6 [0m [1m[32m+[0m [32mfrom domain.case.models import MeshAsset
+[0m[1m[94m7 [0m [1m[94m|[0m from domain.case.provenance import DataProvenance
+[1m[94m  [0m [1m[31m-[0m [31mfrom domain.case.models import MeshAsset
+[0m[1m[94m8 [0m [1m[94m|[0m from domain.treatment_plan.validation import (
+--------------------------------------------------------------------------------
+[1m[94m12[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[31m-[0m [31mfrom fastapi.testclient import TestClient
+[0m[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m  [0m [1m[31m-[0m [31mfrom app.main import app
+[0m[1m[94m  [0m [1m[31m-[0m [31mfrom app.store import case_store
+[0m[1m[94m  [0m [1m[31m-[0m [31mfrom app.treatment_sessions import treatment_sessions
+[0m[1m[94m13[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (115 > 100)[0m
+  [1m[94m--> [0mtests/python/test_treatment_staging_phase6.py:51:101
+   [1m[94m|[0m
+[1m[94m49[0m [1m[94m|[0m     assert [stage.stage_index for stage in result.stages] == [0, 1, 2, 3]
+[1m[94m50[0m [1m[94m|[0m     expected_numbers = [state.tooth_number for state in build_proposal().setup.target_states]
+[1m[94m51[0m [1m[94m|[0m     assert all([state.tooth_number for state in stage.tooth_states] == expected_numbers for stage in result.stages)
+   [1m[94m|[0m                                                                                                     [1m[91m^^^^^^^^^^^^^^^[0m
+
+Found 53 errors.
+[[36m*[0m] 21 fixable with the `--fix` option.
+PENDING/SKIP: ruff — ruff reported findings; treat as style debt, not a clinical gate
+--- P8 matrix ---
+...ss.........                                                           [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/hjawahreh/Desktop/Projects/AlignerStudio/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+12 passed, 2 skipped, 1 warning in 26.75s
+PASS: p8 matrix
+--- real artifact / performance (opt-in) ---
+PENDING/SKIP: performance benches — set P8_RUN_PERFORMANCE=1 to run heavy real-artifact benches
+--- browser E2E (playwright) ---
+PENDING/SKIP: playwright e2e — not installed/enabled by default; vitest App/workflow tests cover component browser path. Set P8_RUN_PLAYWRIGHT=1 after playwright install.
+--- clean-machine acceptance ---
+PENDING/SKIP: clean-machine end-to-end — requires dedicated clean OS + clean browser + human operator; not automatable in this gate
+
+=== Gate summary ===
+ENGINEERING_GATE=PASS (with recorded PENDING items above)
+PRODUCTION_CANDIDATE=NOT_CLAIMED

@@ -286,6 +286,15 @@ class TreatmentExportEngine:
 
         Does not invent manufacturing geometry. Returns an auditable verification report.
         """
+        return self.reopen_for_audit(zip_path)
+
+    def reopen_for_audit(self, zip_path: Path) -> dict[str, Any]:
+        """Re-open an exported package for audit/verify without restoring a treatment session.
+
+        Full session re-import from ZIP alone is unavailable: the package is a review/audit
+        artifact (stage meshes + reports), not a complete clinical workspace dump. This
+        path verifies integrity and surfaces provenance/manufacturing boundary honestly.
+        """
         zip_path = Path(zip_path)
         if not zip_path.exists():
             raise TreatmentExportError(f"Export package not found: {zip_path}")
@@ -298,6 +307,7 @@ class TreatmentExportEngine:
             files = manifest.get("files", [])
             mismatches: list[str] = []
             missing: list[str] = []
+            verified_files: list[dict[str, Any]] = []
             for entry in files:
                 path = entry["path"]
                 expected = entry["sha256"]
@@ -307,11 +317,14 @@ class TreatmentExportEngine:
                 digest = self._sha256(archive.read(path))
                 if digest != expected:
                     mismatches.append(path)
+                else:
+                    verified_files.append({"path": path, "sha256": digest})
             content_for_hash = {
                 key: value for key, value in manifest.items() if key != "manifest_hash"
             }
             recomputed = self._sha256(self._json_bytes(content_for_hash))
             manifest_ok = recomputed == expected_hash
+            manufacturing = manifest.get("manufacturing_boundary") or {}
             return {
                 "verified": manifest_ok and not mismatches and not missing,
                 "manifest_hash_matches": manifest_ok,
@@ -320,8 +333,21 @@ class TreatmentExportEngine:
                 "package_kind": manifest.get("package_kind"),
                 "treatment_plan_id": manifest.get("treatment_plan_id"),
                 "plan_version": manifest.get("plan_version"),
-                "manufacturing_boundary": manifest.get("manufacturing_boundary"),
+                "provenance": manifest.get("provenance") or manifest.get("status"),
+                "fixture": bool(manifest.get("fixture", False)),
+                "experimental": bool(manifest.get("experimental", False)),
+                "manufacturing_boundary": manufacturing,
                 "clinical_approval": manifest.get("clinical_approval", False),
+                "session_reimport_available": False,
+                "session_reimport_status": "unavailable",
+                "session_reimport_notes": (
+                    "Export ZIP reopen verifies integrity for audit only. "
+                    "Restoring an editable treatment session requires the durable "
+                    "treatment-session checkpoint, not the export package alone."
+                ),
+                "verified_files": verified_files,
+                "archive_entries": sorted(names),
+                "reopen_mode": "audit_verify",
             }
 
     @staticmethod

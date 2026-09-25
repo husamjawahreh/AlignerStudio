@@ -238,6 +238,11 @@ class TreatmentSessionStore:
         package = self.export(case_id, destination)
         return TreatmentExportEngine().verify_package(package.zip_path)
 
+    def reopen_export_for_audit(self, case_id: str, destination: Path) -> dict[str, Any]:
+        """Export then reopen the ZIP for audit/verify (not full session re-import)."""
+        package = self.export(case_id, destination)
+        return TreatmentExportEngine().reopen_for_audit(package.zip_path)
+
     def select_setup_alternative(self, case_id: str, alternative_id: str) -> TreatmentSession:
         """Doctor decision: accept a validated intelligence candidate as the active setup."""
         from domain.treatment_plan.intelligence import DecisionState, SetupAlternativeSummary

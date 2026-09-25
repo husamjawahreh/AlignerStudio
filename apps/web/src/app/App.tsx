@@ -393,7 +393,11 @@ export function App(): JSX.Element {
   }, [isPlaying, reviewBundle.stages.length]);
 
   useEffect(() => {
-    rememberActiveCaseId(activeCase?.id ?? null);
+    // Persist only when a case is active. Clearing on null would wipe the
+    // remembered id before the mount-time rehydrate effect can read it.
+    if (activeCase?.id) {
+      rememberActiveCaseId(activeCase.id);
+    }
   }, [activeCase?.id]);
 
   useEffect(() => {

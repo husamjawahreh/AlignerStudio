@@ -110,7 +110,7 @@ function buildSyntheticEnvelope(
       toothAngle(toothCentroid(right), archCenter, apical),
   );
 
-  const profiles = sorted.map((tooth) => cervicalProfile(tooth, apical, radialSegments));
+  const profiles = sorted.map((tooth) => cervicalProfile(tooth, apical));
   if (profiles.some((profile) => profile === null)) return null;
   const ready = profiles as CervicalProfile[];
 
@@ -204,7 +204,6 @@ interface CervicalProfile {
 function cervicalProfile(
   tooth: GingivaSourceTooth,
   apical: [number, number, number],
-  _radialSegments: number,
 ): CervicalProfile | null {
   const center = toothCentroid(tooth);
   const scored = tooth.vertices.map((vertex) => ({

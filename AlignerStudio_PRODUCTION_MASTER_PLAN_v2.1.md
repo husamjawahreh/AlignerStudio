@@ -905,40 +905,37 @@ Every significant optimization must include:
 # 12 — P8
 # WORLD-CLASS QA & RELEASE CANDIDATE
 
-**Status: QUEUED**
+**Status: ENGINEERING GATE IMPLEMENTED — evidence in `docs/P8_QA_RELEASE_CANDIDATE.md` and `docs/p8_gate_reports/`.**  
+**Clean-machine acceptance: PENDING. Production Candidate: NOT CLAIMED.**
 
 ## Real-case matrix
 
-- multiple real cases
-- upper + lower
-- upper only
-- lower only
-- different orientations
-- different mesh densities
-- missing data
-- ambiguous identity
-- processing interruption
-- browser refresh
-- backend restart
-- doctor editing
-- undo/redo
-- validation
-- export
-- re-import
-- manufacturing handoff
+Automated coverage lives in `tests/python/test_p8_qa_matrix.py` (+ vitest `p8Workflow.test.tsx`). Honest PENDING cells are recorded; no fabricated clinical evidence.
+
+- multiple real cases — PENDING (single verified fixture in-repo)
+- upper + lower — covered
+- upper only / lower only — rejected by dual-arch policy (unsupported-by-design)
+- different orientations — PENDING (no rotated verified real STLs)
+- different mesh densities — PARTIAL (real dense ZIP + denser oracle)
+- missing data / ambiguous identity — fail-closed covered
+- processing interruption / backend restart — P7 recovery covered
+- browser refresh / undo/redo / doctor editing — covered
+- validation / export — covered
+- re-import — audit reopen covered; editable session re-import unavailable
+- manufacturing handoff — remains explicitly unavailable
 
 ## Engineering gate
 
-Must pass:
+Run `./scripts/p8_engineering_gate.sh`. Must pass / record PENDING as designed:
 
 - backend tests
 - frontend tests
 - typecheck
 - lint
 - build
-- browser/E2E
+- browser/E2E (vitest required; Playwright opt-in `P8_RUN_PLAYWRIGHT=1`)
 - real artifact tests
-- performance benchmarks
+- performance benchmarks (opt-in `P8_RUN_PERFORMANCE=1`)
 - geometry correctness comparisons
 - export integrity
 - provenance integrity
@@ -973,7 +970,9 @@ EXPORT
 REOPEN + VERIFY
 ```
 
-Only after P8 passes:
+**PENDING** until a dedicated clean OS + clean browser + human operator run is evidenced. Automated gates do not substitute this path.
+
+Only after P8 engineering gate PASS **and** clean-machine + human acceptance evidence exist:
 
 # PRODUCTION CANDIDATE
 

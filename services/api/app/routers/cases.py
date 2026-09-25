@@ -482,3 +482,14 @@ def verify_treatment_export(case_id: str) -> dict:
         )
     except (TreatmentSessionError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{case_id}/export/reopen")
+def reopen_treatment_export(case_id: str) -> dict:
+    """Export then reopen for audit. Does not restore an editable treatment session."""
+    try:
+        return treatment_sessions.reopen_export_for_audit(
+            case_id, Path(UPLOAD_DIR) / f"{case_id}-export-reopen"
+        )
+    except (TreatmentSessionError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
