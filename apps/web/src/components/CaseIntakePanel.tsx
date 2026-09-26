@@ -12,6 +12,7 @@ interface ArchUploadView {
   filename: string;
   size: number;
   state: IntakeUploadState;
+  validation?: { triangle_count: number; is_watertight: boolean; errors: string[] } | null;
 }
 
 interface CaseIntakePanelProps {
@@ -34,6 +35,8 @@ interface CaseIntakePanelProps {
   onRequestNewCase?: () => void;
   /** When tooth instances already exist, the plan action becomes the primary next step. */
   segmentationReviewed?: boolean;
+  /** Wave 5 resolver id. When set, only that action uses the primary button. */
+  primaryActionId?: string | null;
 }
 
 /** Case Intake — creation flow before case; active-case workspace after creation. */
@@ -54,6 +57,7 @@ export function CaseIntakePanel({
   onReviewTreatmentProposal,
   onRequestNewCase,
   segmentationReviewed = false,
+  primaryActionId = null,
 }: CaseIntakePanelProps): JSX.Element {
   const arches = buildArchStatuses(archUploads);
   const hasCase = caseId !== null;
@@ -117,8 +121,12 @@ export function CaseIntakePanel({
         <h3 id="case-intake-scan-import" className="eyebrow">
           Scan Import
         </h3>
+        <p className="cad-review-note" data-testid="crown-stl-limitation">
+          Crown STL only. Roots, bite registration, and occlusion are not established from these files.
+        </p>
         {arches.map((arch) => {
           const upload = archUploads[arch.arch];
+          const validation = upload.validation;
           return (
             <div className="mesh-upload" key={arch.arch}>
               <label htmlFor={`${arch.arch}-stl`}>{arch.label} STL</label>
@@ -146,6 +154,19 @@ export function CaseIntakePanel({
                   >
                     Remove
                   </button>
+                  <details className="intake-file-details">
+                    <summary>File details</summary>
+                    <small>
+                      {validation
+                        ? `${validation.triangle_count} triangles · ${validation.is_watertight ? "closed mesh" : "not watertight"}`
+                        : "Triangle count is not available yet."}
+                      {" "}
+                      A content hash is kept with the stored upload and is not repeated here.
+                    </small>
+                    {validation?.errors.length ? (
+                      <small>{validation.errors.join(" ")}</small>
+                    ) : null}
+                  </details>
                 </div>
               )}
             </div>
@@ -160,27 +181,61 @@ export function CaseIntakePanel({
           </h3>
           <button
             aria-label="Review segmentation"
-            className={segmentationReviewed ? "secondary-button" : "primary-button"}
+            className={
+              primaryActionId
+                ? primaryActionId === "review-segmentation" || primaryActionId === "retry-segmentation"
+                  ? "primary-button"
+                  : "secondary-button"
+                : segmentationReviewed
+                  ? "secondary-button"
+                  : "primary-button"
+            }
             onClick={onAnalyzeCase}
             disabled={!bothArchesValid}
-            data-testid={segmentationReviewed ? undefined : "primary-next-action"}
-            title="Run segmentation review for the imported scans."
+            data-testid={
+              primaryActionId
+                ? primaryActionId === "review-segmentation" || primaryActionId === "retry-segmentation"
+                  ? "primary-next-action"
+                  : undefined
+                : segmentationReviewed
+                  ? undefined
+                  : "primary-next-action"
+            }
+            title="Run segmentation review for the imported scans. This does not assign clinical FDI."
           >
-            Analyze case
+            {primaryActionId === "retry-segmentation" ? "Retry segmentation" : "Analyze case"}
           </button>
           <button
             aria-label="Generate Treatment Setup"
-            className={segmentationReviewed ? "primary-button" : "secondary-button"}
+            className={
+              primaryActionId
+                ? primaryActionId === "create-treatment-plan" || primaryActionId === "open-treatment-plan"
+                  ? "primary-button"
+                  : "secondary-button"
+                : segmentationReviewed
+                  ? "primary-button"
+                  : "secondary-button"
+            }
             onClick={onReviewTreatmentProposal}
             disabled={!bothArchesValid || backendTreatment}
-            data-testid={segmentationReviewed ? "primary-next-action" : undefined}
+            data-testid={
+              primaryActionId
+                ? primaryActionId === "create-treatment-plan" || primaryActionId === "open-treatment-plan"
+                  ? "primary-next-action"
+                  : undefined
+                : segmentationReviewed
+                  ? "primary-next-action"
+                  : undefined
+            }
             title={
               segmentationReviewed
                 ? "Open or create the treatment plan."
-                : "Plan action. Segmentation review is the next clinical step. This does not invent tooth numbers."
+                : "Plan action. Segmentation review is the usual next step. This does not invent tooth numbers."
             }
           >
-            {segmentationReviewed ? "Open Treatment Plan" : "Create Treatment Plan"}
+            {segmentationReviewed || primaryActionId === "open-treatment-plan"
+              ? "Open Treatment Plan"
+              : "Create Treatment Plan"}
           </button>
         </section>
       )}
@@ -241,22 +296,12 @@ export function CaseIntakeInspector({
         <strong>{readiness.completenessLabel}</strong>
       </div>
       <div className="cad-stat-row">
-        <span>Status</span>
+        <span>Case status</span>
         <strong>{formatCaseStatus(caseStatus)}</strong>
       </div>
-      <div className="cad-stat-row">
-        <span>Processing</span>
-        <strong>{processing.label}</strong>
-      </div>
-      <div className="cad-stat-row">
-        <span>Status</span>
-        <strong>{formatCaseStatus(caseStatus)}</strong>
-      </div>
-      <div className="cad-stat-row">
-        <span>Processing</span>
-        <strong>{processing.label}</strong>
-      </div>
-      {processing.detail ? <small className="cad-review-note">{processing.detail}</small> : null}
+      {processing.detail && processing.label !== "Idle" ? (
+        <small className="cad-review-note">Processing is reported in the status line.</small>
+      ) : null}
     </div>
   );
 }

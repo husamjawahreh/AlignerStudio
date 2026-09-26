@@ -53,6 +53,8 @@ export interface ToothReviewLabel {
   unresolved: boolean;
   fdiAuthoritative: boolean;
   arch: "upper" | "lower" | null;
+  /** Fixture or test-only identity. Never patient inference. */
+  fixture: boolean;
 }
 
 export interface SegmentationReviewModel {
@@ -87,6 +89,13 @@ export interface FeedbackModel {
   /** Always null. Remaining time is never invented. */
   remainingEstimate: null;
   remainingNote: "No reliable remaining-time estimate.";
+  phaseLabel: string | null;
+  /** Server percent only when the payload included one. Otherwise indeterminate or none. */
+  progressMode: "none" | "indeterminate" | "server-progress";
+  /** Historical sample text. Never a promise of remaining time. */
+  benchmarkNote: string | null;
+  /** Separates an environment blocker from a model or job failure. */
+  distinction: string | null;
 }
 
 export type CameraCommand =
@@ -127,12 +136,35 @@ export interface InspectorRow {
   value: string;
 }
 
+export interface InspectorRecovery {
+  sourceData: string;
+  retry: string;
+  now: string;
+  otherSteps: string;
+}
+
 export interface InspectorModel {
-  mode: "minimized" | "case" | "tooth" | "group" | "blocked";
+  mode:
+    | "minimized"
+    | "none"
+    | "case"
+    | "tooth"
+    | "group"
+    | "processing"
+    | "blocked"
+    | "failed"
+    | "cancelled"
+    | "interrupted"
+    | "stale"
+    | "requires_review"
+    | "unavailable";
   title: string;
   rows: InspectorRow[];
   limitations: string[];
   advanced: InspectorRow[];
+  /** Actions that exist for this context. Empty when none should be offered. */
+  actions: string[];
+  recovery: InspectorRecovery | null;
 }
 
 export interface LayoutBudget {
@@ -218,6 +250,7 @@ export function toothReviewLabel(tooth: ToothIdentityInput): ToothReviewLabel {
     unresolved: !fdiAuthoritative,
     fdiAuthoritative,
     arch,
+    fixture: Boolean(tooth.fixture || tooth.experimental || tooth.provenance === "fixture" || tooth.provenance === "experimental"),
   };
 }
 
@@ -371,6 +404,14 @@ export function buildFeedbackModel(input: {
   elapsedSeconds?: number | null;
   errorCode?: string | null;
   segmentation?: SegmentationReviewModel | null;
+  phase?: string | null;
+  /** Present only when the server sent a numeric overall progress. */
+  serverProgress?: number | null;
+  /**
+   * Optional historical sample in seconds. Rendered as a labeled non-guarantee.
+   * Never copied into remainingEstimate.
+   */
+  benchmarkSeconds?: number | null;
 }): FeedbackModel {
   const status = (input.stageStatus ?? "").toUpperCase();
   const interrupted =
@@ -402,6 +443,16 @@ export function buildFeedbackModel(input: {
       ? "Working. Remaining time is not estimated."
       : "No clinical result is ready.");
 
+  const serverProgress =
+    typeof input.serverProgress === "number" && Number.isFinite(input.serverProgress)
+      ? input.serverProgress
+      : null;
+  const benchmarkSeconds =
+    typeof input.benchmarkSeconds === "number" && Number.isFinite(input.benchmarkSeconds)
+      ? input.benchmarkSeconds
+      : null;
+  const phase = input.phase?.trim() || null;
+
   return {
     state,
     whatHappened: what,
@@ -409,9 +460,24 @@ export function buildFeedbackModel(input: {
     unavailable: fromSegmentation?.unavailable ?? "Downstream clinical review is not available yet.",
     retrySafe: state === "failed" || state === "blocked_by_environment" || state === "cancelled" || state === "interrupted" || state === "stale",
     provenance: fromSegmentation?.provenanceLabel ?? null,
-    elapsedLabel: state === "processing" ? elapsed : elapsed,
+    elapsedLabel: elapsed,
     remainingEstimate: null,
     remainingNote: "No reliable remaining-time estimate.",
+    phaseLabel: phase ? `Phase ${phase}` : null,
+    progressMode:
+      state !== "processing"
+        ? "none"
+        : serverProgress === null
+          ? "indeterminate"
+          : "server-progress",
+    benchmarkNote:
+      benchmarkSeconds === null
+        ? null
+        : `Historical sample ${formatElapsed(benchmarkSeconds)}. Not a guarantee for this case. Uncertainty was not measured here.`,
+    distinction:
+      state === "blocked_by_environment"
+        ? "Environment blocker, not a model failure."
+        : null,
   };
 }
 
@@ -650,7 +716,13 @@ export function buildInspectorModel(input: {
   selectionCount: number;
   confidence: number | null;
   treatmentAvailable: boolean;
+  operation?: FeedbackState | null;
+  phase?: string | null;
+  groupArches?: string | null;
+  groupIdentity?: "same" | "mixed" | null;
+  productionNote?: string | null;
 }): InspectorModel {
+  const advanced = [...input.segmentation.advanced];
   if (input.minimized) {
     return {
       mode: "minimized",
@@ -658,24 +730,8 @@ export function buildInspectorModel(input: {
       rows: [],
       limitations: [],
       advanced: [],
-    };
-  }
-  if (input.segmentation.kind === "blocked_by_environment" && input.selectionCount === 0) {
-    return {
-      mode: "blocked",
-      title: "Segmentation blocked",
-      rows: [
-        { label: "State", value: input.segmentation.headline },
-        { label: "Blocker", value: input.segmentation.runtimeBlocker ?? input.segmentation.whatHappened },
-        { label: "Retry", value: input.segmentation.retrySafe ? "Safe as a new job" : "Not offered" },
-        { label: "Instances", value: input.segmentation.instanceCountLabel },
-      ],
-      limitations: [
-        input.segmentation.unavailable,
-        "Clinical review controls are not shown as completed.",
-        input.segmentation.missingToothStatement,
-      ],
-      advanced: [...input.segmentation.advanced],
+      actions: [],
+      recovery: null,
     };
   }
   if (input.selectionCount > 1) {
@@ -683,14 +739,32 @@ export function buildInspectorModel(input: {
       mode: "group",
       title: `${input.selectionCount} teeth selected`,
       rows: [
-        { label: "Selection", value: "Semantic tooth_ref set" },
+        { label: "Count", value: String(input.selectionCount) },
+        { label: "Arches", value: input.groupArches?.trim() || "Not available" },
+        {
+          label: "Identity",
+          value:
+            input.groupIdentity === "mixed"
+              ? "Not the same on every tooth"
+              : input.groupIdentity === "same"
+                ? "Same identity state"
+                : "See each tooth_ref",
+        },
         { label: "Segmentation", value: input.segmentation.headline },
       ],
-      limitations: ["Group edits are not a clinical numbering action."],
-      advanced: [...input.segmentation.advanced],
+      limitations: [
+        "Group selection does not assign FDI.",
+        input.groupIdentity === "mixed"
+          ? "Conflicting identity is not given a shared clinical action."
+          : "No group numbering or movement action is available from this selection.",
+      ],
+      advanced,
+      actions: ["Fit selection"],
+      recovery: null,
     };
   }
   if (input.selected) {
+    const fixture = input.selected.fixture || input.segmentation.kind === "fixture_test_only";
     return {
       mode: "tooth",
       title: input.selected.text,
@@ -703,35 +777,201 @@ export function buildInspectorModel(input: {
         { label: "Arch", value: input.selected.arch ?? "Not available" },
         { label: "Identity", value: input.selected.unresolved ? "Unresolved" : "Authoritative FDI" },
         { label: "Segmentation", value: input.segmentation.provenanceLabel },
+        ...(fixture ? [{ label: "Source", value: "Fixture / test-only" }] : []),
         {
           label: "Confidence",
           value: input.confidence == null ? "Not available" : input.confidence.toFixed(3),
         },
         {
           label: "Target",
-          value: input.treatmentAvailable ? "Treatment target can be compared" : "No treatment target",
+          value: input.treatmentAvailable ? "Stored target can be compared" : "No treatment target",
         },
       ],
       limitations: [
-        input.selected.unresolved ? "Identity/data not established. No FDI number was invented." : "Confirm FDI before clinical use.",
+        input.selected.unresolved
+          ? "Identity is unresolved. No correction tool is available, and no FDI number was invented."
+          : "Confirm FDI before clinical use.",
+        fixture ? "Fixture output is test-only. It is not patient inference." : "",
         "Clinical axes, roots, and occlusion are not shown unless an authoritative result provides them.",
         "Synthetic gingiva is presentation-only.",
+      ].filter(Boolean),
+      advanced,
+      actions: [
+        "Fit selection",
+        "Isolate",
+        ...(input.treatmentAvailable ? ["Compare stored target"] : []),
       ],
-      advanced: [...input.segmentation.advanced],
+      recovery: null,
+    };
+  }
+  if (input.segmentation.kind === "blocked_by_environment") {
+    return {
+      mode: "blocked",
+      title: "Segmentation blocked",
+      rows: [
+        { label: "State", value: input.segmentation.headline },
+        { label: "Blocker", value: input.segmentation.runtimeBlocker ?? input.segmentation.whatHappened },
+        { label: "Kind", value: "Environment blocker, not a model failure" },
+        { label: "Retry", value: "Not offered while the environment is blocked" },
+        { label: "Instances", value: input.segmentation.instanceCountLabel },
+      ],
+      limitations: [
+        input.segmentation.unavailable,
+        "Clinical review controls are not shown as completed.",
+        input.segmentation.missingToothStatement,
+      ],
+      advanced,
+      actions: ["Review segmentation blocker"],
+      recovery: {
+        sourceData: "This record does not report a change to the uploaded scans.",
+        retry: "Retry is not offered while the runtime blocker remains. A later attempt is a new job, not a resume.",
+        now: "Read the blocker and keep the imported scans.",
+        otherSteps: "Case intake stays available. Tooth review and treatment targets are not available from this result.",
+      },
+    };
+  }
+  if (input.operation === "processing") {
+    return {
+      mode: "processing",
+      title: "Processing",
+      rows: [
+        { label: "Phase", value: input.phase?.trim() || "Not reported" },
+        { label: "Progress", value: "Indeterminate unless the server sent a percent" },
+        { label: "Estimate", value: "No reliable remaining-time estimate" },
+      ],
+      limitations: ["A spinner is not a result. Fixture geometry is not substituted while this runs."],
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.operation === "failed" || input.segmentation.kind === "failed") {
+    return {
+      mode: "failed",
+      title: "Failed",
+      rows: [
+        { label: "State", value: "Failed" },
+        { label: "Instances", value: input.segmentation.instanceCountLabel },
+      ],
+      limitations: [input.segmentation.missingToothStatement],
+      advanced,
+      actions: input.segmentation.retrySafe ? ["Retry segmentation"] : [],
+      recovery: {
+        sourceData: "The failure record does not report that the source scans were replaced.",
+        retry: "Retry is a new job. The failure text stays until that job returns.",
+        now: input.segmentation.nextStep,
+        otherSteps: "Steps that do not need this result stay available. Tooth review is not available from a failed segmentation.",
+      },
+    };
+  }
+  if (input.operation === "cancelled") {
+    return {
+      mode: "cancelled",
+      title: "Cancelled",
+      rows: [{ label: "What happened", value: "The job was cancelled. No partial clinical result was accepted." }],
+      limitations: ["Cancellation does not delete the imported scans."],
+      advanced,
+      actions: ["Retry segmentation"],
+      recovery: {
+        sourceData: "Source scans stay as imported.",
+        retry: "A new job is safe. There is no mid-stage resume.",
+        now: "Retry segmentation when you want a new job.",
+        otherSteps: "Case intake remains available.",
+      },
+    };
+  }
+  if (input.operation === "interrupted") {
+    return {
+      mode: "interrupted",
+      title: "Interrupted",
+      rows: [{ label: "What happened", value: "The job was interrupted. It is not a completed segmentation." }],
+      limitations: ["Interruption is not a model failure and not an environment blocker unless the message says so."],
+      advanced,
+      actions: ["Retry segmentation"],
+      recovery: {
+        sourceData: "Source scans are unchanged by the interruption itself.",
+        retry: "Retry starts a new job. Progress does not resume mid-stage.",
+        now: "Retry segmentation, or stay on case intake.",
+        otherSteps: "Workflow steps that need a segmentation result stay unavailable.",
+      },
+    };
+  }
+  if (input.operation === "stale") {
+    return {
+      mode: "stale",
+      title: "Stale",
+      rows: [{ label: "What happened", value: "A stored result is stale relative to the current case." }],
+      limitations: ["Stale is not a clinical rejection and not a pass."],
+      advanced,
+      actions: [],
+      recovery: {
+        sourceData: "The stale marker does not by itself change the scans.",
+        retry: "Regenerate only the stale product. Do not treat the old result as current.",
+        now: "Open the step that owns the stale result.",
+        otherSteps: "Unrelated steps stay as they were.",
+      },
+    };
+  }
+  if (input.segmentation.kind === "requires_review" || input.segmentation.kind === "fixture_test_only") {
+    return {
+      mode: "requires_review",
+      title: input.segmentation.kind === "fixture_test_only" ? "Fixture / test-only" : "Requires review",
+      rows: [
+        { label: "Segmentation", value: input.segmentation.headline },
+        { label: "Unresolved identity", value: input.segmentation.unresolvedIdentityLabel },
+        { label: "Source", value: input.segmentation.provenanceLabel },
+      ],
+      limitations: [
+        input.segmentation.kind === "fixture_test_only"
+          ? "Fixture output is test-only. It is not patient inference."
+          : "Unresolved identity stays on tooth_ref. No identity-correction tool is available.",
+        input.segmentation.missingToothStatement,
+      ],
+      advanced,
+      actions: ["Review unresolved identities"],
+      recovery: null,
+    };
+  }
+  if (input.segmentation.kind === "not_available") {
+    return {
+      mode: "unavailable",
+      title: "Unavailable",
+      rows: [
+        { label: "Why", value: input.segmentation.whatHappened },
+        { label: "Dependency", value: "A segmentation result that this workspace can review" },
+        { label: "Would become available", value: "A completed segmentation job that is not blocked and not fixture-only silence" },
+      ],
+      limitations: [input.segmentation.missingToothStatement, "Unavailable is not a count of zero teeth."],
+      advanced,
+      actions: input.segmentation.retrySafe ? ["Retry segmentation"] : [],
+      recovery: null,
+    };
+  }
+  if (!input.caseId) {
+    return {
+      mode: "none",
+      title: "No case",
+      rows: [{ label: "Next", value: "Create Case" }],
+      limitations: ["No scan, segmentation, or treatment result is loaded."],
+      advanced: [],
+      actions: ["Create Case"],
+      recovery: null,
     };
   }
   return {
     mode: "case",
-    title: input.caseId ? "Case" : "No case",
+    title: "Case",
     rows: [
       { label: "Patient", value: input.patientReference?.trim() || "Not set" },
-      { label: "Case", value: input.caseId ?? "Not created" },
+      { label: "Case", value: input.caseId },
       { label: "Segmentation", value: input.segmentation.headline },
       { label: "Provenance", value: input.segmentation.provenanceLabel },
-      { label: "Next", value: input.segmentation.nextStep },
+      ...(input.productionNote ? [{ label: "Production", value: input.productionNote }] : []),
     ],
     limitations: [input.segmentation.unavailable, input.segmentation.missingToothStatement],
-    advanced: [...input.segmentation.advanced],
+    advanced,
+    actions: [],
+    recovery: null,
   };
 }
 

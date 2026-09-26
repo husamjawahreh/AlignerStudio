@@ -42,8 +42,10 @@ export function SuggestionCard({
 /** Aligner Studio branded loading overlay — renders only truthful presentation data. */
 export function CaseLoadingOverlay({
   presentation,
+  onCancel,
 }: {
   presentation: LoadingPresentation;
+  onCancel?: () => void;
 }): JSX.Element {
   const elapsed = formatElapsedLabel(presentation.elapsedSeconds);
   const determinate = presentation.mode === "determinate" && presentation.progressPercent != null;
@@ -70,6 +72,12 @@ export function CaseLoadingOverlay({
         <div className="case-loading-meta">
           <span>{presentation.detail}</span>
           {elapsed ? <span>{elapsed}</span> : null}
+          {presentation.mode === "indeterminate" ? <span>No reliable remaining-time estimate</span> : null}
+          {onCancel ? (
+            <button type="button" className="secondary-button" onClick={onCancel} data-testid="cancel-processing">
+              Cancel processing
+            </button>
+          ) : null}
           {presentation.currentStageId ? (
             <span className="case-loading-stage-id">{presentation.currentStageId}</span>
           ) : null}

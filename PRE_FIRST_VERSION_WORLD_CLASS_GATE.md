@@ -252,7 +252,17 @@ WP-14 and WP-15 were not started. Waves 4–12 of this gate were not complete at
 
 The 3D viewport presentation layer is in place on the existing Three.js scene. Tooth materials, studio lighting, gingiva presentation, label density, selection feedback, and fit framing are documented in `docs/WAVE4_PREMIUM_3D_PRESENTATION.md`. Synthetic gingiva stays presentation-only. FDI is still gated. Blocked segmentation is not drawn as zero teeth. Fixture crowns in browser evidence are test meshes, not clinical segmentation validation. Validation and measurement overlays stay unavailable and are not painted as safe. Rendering normals and polygon offset do not write source geometry. Ordinary selection does not move the camera. The scene graph is still `createCaseSceneHierarchy`.
 
-WP-14 and WP-15 were not started. Wave 5 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 4 result, Wave 5 and later had not been started.
+
+## Wave 5 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The workspace now has one primary status, one deterministic next action, and an inspector that follows the actual context. The contract is `docs/WAVE5_SMART_UI_UX.md`. Case readiness stays on the case inspector. Processing status stays on the status line and the processing overlay. Hashes and low-level provenance stay under Advanced details. The next-action resolver only names actions the UI can run. Environment blockers are not offered as a retry and are not drawn as zero teeth. Fixture output stays fixture/test-only. Synthetic gingiva stays presentation-only. FDI is still gated. No clinical algorithm, validation authority, or manufacturing CAD was added.
+
+WP-14 and WP-15 were not started. Wave 6 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

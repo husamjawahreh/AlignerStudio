@@ -53,7 +53,7 @@ export interface ProcessingStatus {
   input_hash?: string | null;
   overall_progress: number;
   current_stage: string;
-  stage_status: "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "STALE";
+  stage_status: "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "STALE" | "INTERRUPTED";
   stage_progress: number | null;
   completed_stages: string[];
   pending_stages: string[];

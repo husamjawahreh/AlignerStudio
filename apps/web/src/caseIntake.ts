@@ -114,6 +114,12 @@ export function formatIntakeProcessingState(
       detail: status.user_message || "Start analysis again.",
     };
   }
+  if (status.stage_status === "INTERRUPTED") {
+    return {
+      label: "Interrupted",
+      detail: status.user_message || "The job stopped before it finished. Retry starts a new job.",
+    };
+  }
   return { label: status.stage_status, detail: status.user_message || null };
 }
 

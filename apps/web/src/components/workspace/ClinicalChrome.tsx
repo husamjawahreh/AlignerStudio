@@ -11,9 +11,12 @@ import type {
 export function SegmentationReviewStrip({
   model,
   patientReference,
+  compact = false,
 }: {
   model: SegmentationReviewModel;
   patientReference: string | null;
+  /** When true, the header status owns the narrative and this strip keeps evidence only. */
+  compact?: boolean;
 }): JSX.Element {
   return (
     <section
@@ -25,7 +28,7 @@ export function SegmentationReviewStrip({
       <div className="segmentation-review-primary">
         <span className="eyebrow">Segmentation review</span>
         <strong data-testid="analysis-segmentation-state">{model.headline}</strong>
-        <p>{model.whatHappened}</p>
+        {compact ? null : <p>{model.whatHappened}</p>}
       </div>
       <dl className="segmentation-review-facts">
         <div>
@@ -59,9 +62,11 @@ export function SegmentationReviewStrip({
           </div>
         ) : null}
       </dl>
-      <p className="segmentation-review-next">
-        <span className="eyebrow">Next</span> {model.nextStep}
-      </p>
+      {compact ? null : (
+        <p className="segmentation-review-next">
+          <span className="eyebrow">Next</span> {model.nextStep}
+        </p>
+      )}
       <p className="segmentation-review-limit" data-testid="missing-tooth-statement">
         {model.missingToothStatement}
       </p>
@@ -111,6 +116,7 @@ export function DentalArchMap({
         <p>No persisted tooth instances.</p>
       ) : (
         <>
+          <p className="dental-map-note">Persisted instances only. Empty space is not a missing tooth.</p>
           <ArchRow
             label="Upper"
             entries={upper}
@@ -172,10 +178,17 @@ function ArchRow({
               type="button"
               role="option"
               aria-selected={selected}
-              className={`dental-map-item${selected ? " is-selected" : ""}${hovered ? " is-hovered" : ""}${entry.unresolved ? " is-unresolved" : ""}`}
+              className={`dental-map-item${selected ? " is-selected" : ""}${hovered ? " is-hovered" : ""}${entry.unresolved ? " is-unresolved" : ""}${entry.fixture ? " is-fixture" : ""}`}
               data-testid={`dental-map-${entry.toothRef}`}
               data-tooth-ref={entry.toothRef}
-              title={entry.unresolved ? `${entry.toothRef} · identity not resolved` : entry.text}
+              data-fixture={entry.fixture ? "true" : "false"}
+              title={
+                entry.fixture
+                  ? `${entry.toothRef} · fixture / test-only · identity not patient inference`
+                  : entry.unresolved
+                    ? `${entry.toothRef} · identity not resolved`
+                    : entry.text
+              }
               onMouseEnter={() => onHover(entry.toothRef)}
               onFocus={() => onHover(entry.toothRef)}
               onClick={(event) => onSelect(entry.toothRef, event.shiftKey || event.metaKey || event.ctrlKey)}
@@ -189,39 +202,55 @@ function ArchRow({
   );
 }
 
+function ToolButton({ tool, onTool }: { tool: ToolItem; onTool: (id: string) => void }): JSX.Element {
+  return (
+    <button
+      type="button"
+      className={tool.active ? "viewer-tool is-active" : "viewer-tool"}
+      disabled={!tool.available}
+      title={`${tool.reason}${tool.shortcut ? ` Shortcut ${tool.shortcut}.` : ""}`}
+      aria-keyshortcuts={tool.shortcut}
+      data-testid={`tool-${tool.id}`}
+      onClick={() => onTool(tool.id)}
+    >
+      {tool.label}
+    </button>
+  );
+}
+
 export function ContextualWorkspaceToolbar({
   tools,
+  advanced = [],
   unavailable,
   selectionCount,
   onTool,
   extra,
 }: {
   tools: readonly ToolItem[];
+  advanced?: readonly ToolItem[];
   unavailable: readonly UnavailableToolNote[];
-  selectionCount: number;
+  /** Selection identity lives on the selection widget, so this count is not rendered. */
+  selectionCount?: number;
   onTool: (id: string) => void;
   extra?: ReactNode;
 }): JSX.Element {
+  void selectionCount;
   return (
     <div className="contextual-workspace-toolbar" data-testid="contextual-toolbar" role="toolbar" aria-label="Viewport tools">
-      <span className="toolbar-selection-count" data-testid="selection-count">
-        {selectionCount === 0 ? "No selection" : `${selectionCount} selected`}
-      </span>
       {tools.map((tool) => (
-        <button
-          key={tool.id}
-          type="button"
-          className={tool.active ? "viewer-tool is-active" : "viewer-tool"}
-          disabled={!tool.available}
-          title={`${tool.reason}${tool.shortcut ? ` Shortcut ${tool.shortcut}.` : ""}`}
-          aria-keyshortcuts={tool.shortcut}
-          data-testid={`tool-${tool.id}`}
-          onClick={() => onTool(tool.id)}
-        >
-          {tool.label}
-        </button>
+        <ToolButton key={tool.id} tool={tool} onTool={onTool} />
       ))}
       {extra}
+      {advanced.length > 0 ? (
+        <details className="toolbar-advanced" data-testid="toolbar-advanced">
+          <summary>More</summary>
+          <div className="toolbar-advanced-tools">
+            {advanced.map((tool) => (
+              <ToolButton key={tool.id} tool={tool} onTool={onTool} />
+            ))}
+          </div>
+        </details>
+      ) : null}
       {unavailable.length > 0 ? (
         <details className="toolbar-unavailable" data-testid="toolbar-unavailable">
           <summary>Unavailable</summary>
@@ -268,12 +297,37 @@ export function AdaptiveInspector({
               <strong>{row.value}</strong>
             </div>
           ))}
+          {model.actions.length > 0 ? (
+            <p className="inspector-actions" data-testid="inspector-actions">
+              {model.actions.join(" · ")}
+            </p>
+          ) : null}
           {model.limitations.length > 0 ? (
             <ul className="inspector-limitations">
               {model.limitations.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
+          ) : null}
+          {model.recovery ? (
+            <dl className="inspector-recovery" data-testid="failure-recovery">
+              <div>
+                <dt>Source data</dt>
+                <dd>{model.recovery.sourceData}</dd>
+              </div>
+              <div>
+                <dt>Retry</dt>
+                <dd>{model.recovery.retry}</dd>
+              </div>
+              <div>
+                <dt>Now</dt>
+                <dd>{model.recovery.now}</dd>
+              </div>
+              <div>
+                <dt>Other steps</dt>
+                <dd>{model.recovery.otherSteps}</dd>
+              </div>
+            </dl>
           ) : null}
           {model.advanced.length > 0 ? (
             <details data-testid="inspector-advanced">
@@ -292,19 +346,49 @@ export function AdaptiveInspector({
   );
 }
 
-export function PrimaryStatus({ feedback }: { feedback: FeedbackModel }): JSX.Element {
+export function PrimaryStatus({
+  feedback,
+  compact = false,
+}: {
+  feedback: FeedbackModel;
+  /** Hide the long sentence when the processing overlay already shows it. */
+  compact?: boolean;
+}): JSX.Element {
   return (
     <div
       className={`primary-status is-${feedback.state}`}
       data-testid="primary-status"
       data-status-surface="primary"
       data-feedback-state={feedback.state}
+      data-progress-mode={feedback.progressMode}
     >
       <strong>{feedback.state.replaceAll("_", " ")}</strong>
-      <span>{feedback.whatHappened}</span>
-      {feedback.elapsedLabel ? <span>{feedback.elapsedLabel}</span> : null}
-      {feedback.state === "processing" ? <span>{feedback.remainingNote}</span> : null}
+      {feedback.distinction ? <span>{feedback.distinction}</span> : null}
+      {compact ? null : feedback.phaseLabel ? <span>{feedback.phaseLabel}</span> : null}
+      {compact ? null : <span>{feedback.whatHappened}</span>}
+      {compact ? null : feedback.elapsedLabel ? <span>{feedback.elapsedLabel}</span> : null}
+      {feedback.state === "processing" && !compact ? <span>{feedback.remainingNote}</span> : null}
+      {feedback.progressMode === "indeterminate" && !compact ? <span>Progress indeterminate</span> : null}
+      {feedback.benchmarkNote ? <span>{feedback.benchmarkNote}</span> : null}
     </div>
+  );
+}
+
+export function WorkflowOrientation({
+  where,
+  now,
+  next,
+}: {
+  where: string;
+  now: string;
+  next: string;
+}): JSX.Element {
+  return (
+    <p className="workflow-orientation" data-testid="workflow-orientation">
+      <span data-testid="workflow-where">{where}</span>
+      <span>{now}</span>
+      <span data-testid="workflow-next">{next}</span>
+    </p>
   );
 }
 

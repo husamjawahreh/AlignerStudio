@@ -21,6 +21,7 @@ interface AnalysisPanelProps {
   hiddenToothIds: ReadonlySet<number>;
   onAnalyzeCase: () => void;
   onToggleToothVisibility: (instanceId: number) => void;
+  emphasizeRun?: boolean;
 }
 
 /** Analysis left tools — Master Plan labels; only existing diagnostic data. */
@@ -33,6 +34,7 @@ export function AnalysisPanel({
   hiddenToothIds,
   onAnalyzeCase,
   onToggleToothVisibility,
+  emphasizeRun = true,
 }: AnalysisPanelProps): JSX.Element {
   const overview = buildAnalysisOverview({ diagnostic, teeth, dentalIntelligence });
   const findings = buildAnalysisFindings({ diagnostic, validation, dentalIntelligence });
@@ -45,7 +47,7 @@ export function AnalysisPanel({
         </h3>
         <button
           aria-label="Review segmentation"
-          className="primary-button"
+          className={emphasizeRun ? "primary-button" : "secondary-button"}
           onClick={onAnalyzeCase}
           disabled={!bothArchesValid}
           data-testid="primary-next-action"

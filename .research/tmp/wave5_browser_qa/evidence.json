@@ -1,0 +1,340 @@
+{
+  "wave": 5,
+  "clinicalSegmentationValidation": false,
+  "liveToothInstanceNet": false,
+  "fixtureEvidence": "non-clinical",
+  "note": "Screenshots are UI evidence. Fixture crowns are generated test meshes. Blocked shots are not a tooth count of zero. No patient STL was loaded. WP-14 and WP-15 were not exercised. Playwright passed 6/6 on the first full run. A later rerun refreshed the blocked empty state so it is not a second primary action.",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "name": "1366x768"
+    },
+    {
+      "width": 1600,
+      "height": 1000,
+      "name": "1600x1000"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "name": "1280x800"
+    }
+  ],
+  "images": [
+    {
+      "file": "1280x800_01_launch.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Launch. No case. Create Case is the step action."
+    },
+    {
+      "file": "1280x800_02_case_intake.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Crown STL limitation is visible. No bite-registration control."
+    },
+    {
+      "file": "1280x800_03_blocked_segmentation.png",
+      "viewport": "1280x800",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Not a model failure and not zero teeth. The empty viewport does not offer a competing primary action."
+    },
+    {
+      "file": "1280x800_04_staging_dependency.png",
+      "viewport": "1280x800",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging, validation, and production stay dependent on a treatment plan."
+    },
+    {
+      "file": "1280x800_05_fixture_review.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture crowns. Not clinical segmentation validation."
+    },
+    {
+      "file": "1280x800_06_selected_tooth.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "One unresolved fixture tooth. No invented FDI."
+    },
+    {
+      "file": "1280x800_07_multi_selection.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Multi-selection. Shared clinical actions are not invented."
+    },
+    {
+      "file": "1280x800_08_treatment_dependency.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup step. No stored target is implied as approved."
+    },
+    {
+      "file": "1280x800_09_processing.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Indeterminate processing. Cancel is available. No invented remaining time."
+    },
+    {
+      "file": "1280x800_10_failure.png",
+      "viewport": "1280x800",
+      "provenance": "failure",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Durable failure text is preserved. Not a generic error."
+    },
+    {
+      "file": "1366x768_01_launch.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Launch. No case. Create Case is the step action."
+    },
+    {
+      "file": "1366x768_02_case_intake.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Crown STL limitation is visible. No bite-registration control."
+    },
+    {
+      "file": "1366x768_03_blocked_segmentation.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Not a model failure and not zero teeth. The empty viewport does not offer a competing primary action."
+    },
+    {
+      "file": "1366x768_04_staging_dependency.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging, validation, and production stay dependent on a treatment plan."
+    },
+    {
+      "file": "1366x768_05_fixture_review.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture crowns. Not clinical segmentation validation."
+    },
+    {
+      "file": "1366x768_06_selected_tooth.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "One unresolved fixture tooth. No invented FDI."
+    },
+    {
+      "file": "1366x768_07_multi_selection.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Multi-selection. Shared clinical actions are not invented."
+    },
+    {
+      "file": "1366x768_08_treatment_dependency.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup step. No stored target is implied as approved."
+    },
+    {
+      "file": "1366x768_09_processing.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Indeterminate processing. Cancel is available. No invented remaining time."
+    },
+    {
+      "file": "1366x768_10_failure.png",
+      "viewport": "1366x768",
+      "provenance": "failure",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Durable failure text is preserved. Not a generic error."
+    },
+    {
+      "file": "1600x1000_01_launch.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Launch. No case. Create Case is the step action."
+    },
+    {
+      "file": "1600x1000_02_case_intake.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Crown STL limitation is visible. No bite-registration control."
+    },
+    {
+      "file": "1600x1000_03_blocked_segmentation.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Not a model failure and not zero teeth. The empty viewport does not offer a competing primary action."
+    },
+    {
+      "file": "1600x1000_04_staging_dependency.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging, validation, and production stay dependent on a treatment plan."
+    },
+    {
+      "file": "1600x1000_05_fixture_review.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture crowns. Not clinical segmentation validation."
+    },
+    {
+      "file": "1600x1000_06_selected_tooth.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "One unresolved fixture tooth. No invented FDI."
+    },
+    {
+      "file": "1600x1000_07_multi_selection.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Multi-selection. Shared clinical actions are not invented."
+    },
+    {
+      "file": "1600x1000_08_treatment_dependency.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup step. No stored target is implied as approved."
+    },
+    {
+      "file": "1600x1000_09_processing.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Indeterminate processing. Cancel is available. No invented remaining time."
+    },
+    {
+      "file": "1600x1000_10_failure.png",
+      "viewport": "1600x1000",
+      "provenance": "failure",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Durable failure text is preserved. Not a generic error."
+    }
+  ],
+  "performance": [
+    {
+      "viewport": "1366x768",
+      "action": "create-case-to-import-action",
+      "milliseconds": 242
+    },
+    {
+      "viewport": "1366x768",
+      "action": "blocked-segmentation-review",
+      "milliseconds": 298
+    },
+    {
+      "viewport": "1366x768",
+      "action": "select-tooth-inspector",
+      "milliseconds": 17459,
+      "note": "Includes pipeline round-trip, scene settle, and the scripted wait. Not a UI-state update."
+    },
+    {
+      "viewport": "1600x1000",
+      "action": "create-case-to-import-action",
+      "milliseconds": 225
+    },
+    {
+      "viewport": "1600x1000",
+      "action": "blocked-segmentation-review",
+      "milliseconds": 257
+    },
+    {
+      "viewport": "1600x1000",
+      "action": "select-tooth-inspector",
+      "milliseconds": 22009,
+      "note": "Includes pipeline round-trip, scene settle, and the scripted wait. Not a UI-state update."
+    },
+    {
+      "viewport": "1280x800",
+      "action": "create-case-to-import-action",
+      "milliseconds": 197
+    },
+    {
+      "viewport": "1280x800",
+      "action": "blocked-segmentation-review",
+      "milliseconds": 313
+    },
+    {
+      "viewport": "1280x800",
+      "action": "select-tooth-inspector",
+      "milliseconds": 21323,
+      "note": "Includes pipeline round-trip, scene settle, and the scripted wait. Not a UI-state update."
+    }
+  ],
+  "states": [
+    {
+      "viewport": "1366x768",
+      "validation": "A treatment plan is required before this step.",
+      "production": "A treatment plan is required before this step.",
+      "staging": "A treatment plan is required before this step.",
+      "next": "Review segmentation blocker. The host runtime is blocked. This is not a model failure and not zero teeth. Retry stays unavailable until that blocker is gone."
+    },
+    {
+      "viewport": "1600x1000",
+      "validation": "A treatment plan is required before this step.",
+      "production": "A treatment plan is required before this step.",
+      "staging": "A treatment plan is required before this step.",
+      "next": "Review segmentation blocker. The host runtime is blocked. This is not a model failure and not zero teeth. Retry stays unavailable until that blocker is gone."
+    },
+    {
+      "viewport": "1280x800",
+      "validation": "A treatment plan is required before this step.",
+      "production": "A treatment plan is required before this step.",
+      "staging": "A treatment plan is required before this step.",
+      "next": "Review segmentation blocker. The host runtime is blocked. This is not a model failure and not zero teeth. Retry stays unavailable until that blocker is gone."
+    }
+  ],
+  "resolverUnitPerformance": "2000 resolveNextAction calls stayed under 50 ms in Vitest."
+}

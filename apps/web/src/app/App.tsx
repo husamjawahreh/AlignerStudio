@@ -59,6 +59,7 @@ import {
   PrimaryStatus,
   SegmentationReviewStrip,
   SelectionWidget,
+  WorkflowOrientation,
 } from "../components/workspace/ClinicalChrome";
 import {
   buildContextualTools,
@@ -67,7 +68,6 @@ import {
   buildInspectorModel,
   buildSegmentationReviewModel,
   deleteShortcutEffect,
-  headerNextAction,
   isTextEntryTarget,
   matchWorkspaceShortcut,
   toothReviewLabel,
@@ -75,6 +75,8 @@ import {
   type CameraCommand,
   type ToothLabelMode,
 } from "../interaction/model";
+import { resolveNextAction, type NextAction } from "../interaction/nextAction";
+import { dedupeNotice, splitToolbar, workflowOrientation } from "../interaction/smartUx";
 import { nextLabelMode } from "../viewer/presentation/labelPolicy";
 import {
   beginTransformTransaction,
@@ -611,8 +613,12 @@ export function App(): JSX.Element {
             setError(error.message);
             stopBusy();
           });
-        } else if (status.stage_status === "FAILED" || status.stage_status === "CANCELLED") {
-          setError(status.user_message);
+        } else if (
+          status.stage_status === "FAILED" ||
+          status.stage_status === "CANCELLED" ||
+          status.stage_status === "STALE" ||
+          status.stage_status === "INTERRUPTED"
+        ) {
           stopBusy();
         }
       }).catch((error: Error) => {
@@ -1299,41 +1305,81 @@ export function App(): JSX.Element {
     void handleCreateCase();
   }
 
-  function handleContextualAction(label: string): void {
-    if (label === "New Case" || label === "Create Case") {
+  function focusScanInput(which: "upper" | "lower"): void {
+    setWorkspace("case-intake");
+    window.requestAnimationFrame(() => {
+      document.getElementById(which === "lower" ? "lower-stl" : "upper-stl")?.focus();
+    });
+  }
+
+  async function handleCancelProcessing(): Promise<void> {
+    if (!activeCase) return;
+    try {
+      const status = await api.cancelProcessing(activeCase.id);
+      setProcessingStatus(status);
+      stopBusy();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  function handleNextAction(action: NextAction): void {
+    if (action.id === "create-case") {
       requestNewCase();
       return;
     }
-    if (label === "Scan Import") {
-      setWorkspace("case-intake");
+    if (action.id === "import-scans") {
+      focusScanInput(action.label.includes("lower") && !action.label.includes("upper") ? "lower" : "upper");
       return;
     }
-    if (label === "Analyze case" || label === "Review segmentation") {
+    if (action.id === "resolve-segmentation-environment" || action.id === "review-unresolved") {
+      setWorkspace("analysis");
+      return;
+    }
+    if (action.id === "review-segmentation" || action.id === "retry-segmentation") {
       void handleReviewSegmentation();
       return;
     }
-    if (
-      label === "Review Treatment Setup" ||
-      label === "Create Treatment Plan" ||
-      label === "Open Treatment Plan"
-    ) {
+    if (action.id === "review-treatment-dependency" || action.id === "open-treatment-plan") {
+      if (action.id === "open-treatment-plan") {
+        void handleGeneratePlan();
+        return;
+      }
+      setWorkspace("treatment-setup");
+      return;
+    }
+    if (action.id === "create-treatment-plan") {
       void handleGeneratePlan();
       return;
     }
-    if (label === "Open Staging") {
+    if (action.id === "open-staging") {
       setWorkspace("staging");
       return;
     }
-    if (label === "Open Refinement") {
-      setWorkspace("refinement");
+    if (action.id === "regenerate-staging") {
+      setWorkspace("staging");
+      void handleRegenerateStaging();
       return;
     }
-    if (label === "Open Validation" || label === "Review Findings") {
+    if (action.id === "refresh-validation") {
+      setWorkspace("staging");
+      void handleRecalculate();
+      return;
+    }
+    if (action.id === "review-findings") {
       setWorkspace("validation");
       return;
     }
-    if (label === "Export Package") {
+    if (action.id === "review-production") {
+      setWorkspace("production");
+      return;
+    }
+    if (action.id === "export-package") {
       void handleExportRequest();
+      return;
+    }
+    if (action.id === "cancel-processing") {
+      void handleCancelProcessing();
     }
   }
 
@@ -1407,6 +1453,9 @@ export function App(): JSX.Element {
     userMessage: processingStatus?.user_message ?? null,
     elapsedSeconds: processingStatus?.elapsed_seconds ?? null,
     errorCode: processingStatus?.error_code ?? null,
+    phase: processingStatus?.current_stage ?? null,
+    serverProgress:
+      processingStatus?.stage_status === "PROCESSING" ? processingStatus.overall_progress : null,
     segmentation: segmentationReview,
   });
   const toolbar = buildContextualTools({
@@ -1426,6 +1475,24 @@ export function App(): JSX.Element {
     validationAvailable: validation != null || Boolean(reviewBundle.validationSummary),
     canTransform: treatmentAvailable && canTransformTooth(draftMovement),
   });
+  const toolbarBands = splitToolbar(toolbar.tools);
+  const selectedEntries = dentalEntries.filter((entry) => selectedMapKeys.includes(entry.toothRef));
+  const groupArches = [...new Set(selectedEntries.map((entry) => entry.arch).filter(Boolean))].join(", ");
+  const unresolvedFlags = selectedEntries.map((entry) => entry.unresolved);
+  const groupIdentity =
+    unresolvedFlags.length === 0
+      ? null
+      : unresolvedFlags.every((flag) => flag === unresolvedFlags[0])
+        ? "same"
+        : "mixed";
+  const stagingFreshnessValue =
+    reviewBundle.smartStaging?.meta?.freshness ?? reviewBundle.smartStaging?.freshness ?? null;
+  const validationFreshnessValue = reviewBundle.validationCapability?.freshness ?? null;
+  const asFreshness = (value: string | null): "stale" | "current" | "unavailable" | null => {
+    if (!value) return null;
+    if (value === "stale" || value === "current") return value;
+    return "unavailable";
+  };
   const inspectorModel = buildInspectorModel({
     minimized: inspectorMinimized || (!activeCase && !selectedTooth),
     patientReference: activeCase?.patient_reference ?? patientReference,
@@ -1435,15 +1502,49 @@ export function App(): JSX.Element {
     selectionCount: selectedMapKeys.length,
     confidence: selectedReviewTooth?.confidence ?? null,
     treatmentAvailable,
+    operation: feedback.state,
+    phase: processingStatus?.current_stage ?? null,
+    groupArches: groupArches || null,
+    groupIdentity,
+    productionNote: reviewBundle.productionCad
+      ? reviewBundle.productionCad.overall_truth_state.replaceAll("_", " ")
+      : treatmentAvailable
+        ? "Manufacturing capabilities are not available"
+        : null,
   });
-  const nextAction = headerNextAction({
+  const nextAction = resolveNextAction({
     workspace,
     hasCase: Boolean(activeCase),
-    bothArchesValid,
-    hasSegmentation: pipelineReviewStage !== null,
+    upperReady: archUploads.upper.state === "valid",
+    lowerReady: archUploads.lower.state === "valid",
+    segmentationKind: segmentationReview.kind,
+    unresolvedIdentityCount: segmentationReview.countsAvailable
+      ? reviewTeeth.filter((tooth) => !toothReviewLabel(tooth).fdiAuthoritative).length
+      : null,
     hasTreatment: treatmentAvailable,
+    stagingFreshness: asFreshness(stagingFreshnessValue),
+    validationFreshness: asFreshness(validationFreshnessValue),
+    productionReachable: treatmentAvailable,
+    productionLimited: treatmentAvailable && !reviewBundle.productionCad,
     isBusy,
+    stageStatus: processingStatus?.stage_status ?? null,
+    canCancelProcessing: Boolean(activeCase && processingStatus?.job_id),
+    canRegenerateStaging: treatmentAvailable,
+    canRefreshValidation: treatmentAvailable,
   });
+  const orientation = workflowOrientation({
+    stepLabel: workspaceLabel,
+    blockReason: workflowBlockReason(workspace, {
+      hasCase: Boolean(activeCase),
+      bothArchesValid,
+      hasSegmentation: pipelineReviewStage !== null,
+      segmentationKind: segmentationReview.kind,
+      hasTreatment: treatmentAvailable,
+    }),
+    next: nextAction,
+  });
+  const inlineError = dedupeNotice(feedback.whatHappened, error);
+  const transientNotice = dedupeNotice(feedback.whatHappened, dedupeNotice(inlineError, exportMessage));
   const inspectorIsMinimized = inspectorMinimized || (!activeCase && !selectedTooth);
 
   return (
@@ -1460,10 +1561,12 @@ export function App(): JSX.Element {
           {workflowSteps.map((step, index) => {
             const id = step.id;
             const blocked = step.status === "blocked";
+            const environmentBlocked = id === "analysis" && segmentationReview.kind === "blocked_by_environment";
             return (
               <button
-                className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}`}
+                className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}${environmentBlocked ? " is-environment-blocked" : ""}`}
                 key={id}
+                data-step-visual={environmentBlocked ? "environment" : step.status}
                 onClick={() => {
                   if (blocked) return;
                   setWorkspace(id);
@@ -1487,19 +1590,24 @@ export function App(): JSX.Element {
           })}
         </nav>
         <div className="cad-environment">
-          {nextAction ? (
+          {nextAction?.showInHeader ? (
             <button
               type="button"
               className="primary-button"
               data-testid="header-next-action"
+              data-next-action={nextAction.id}
               title={nextAction.reason}
-              onClick={() => handleContextualAction(nextAction.label)}
+              onClick={() => handleNextAction(nextAction)}
             >
               {nextAction.label}
             </button>
           ) : null}
-          <PrimaryStatus feedback={feedback} />
-          {exportMessage ? <span>{exportMessage}</span> : null}
+          <PrimaryStatus feedback={feedback} compact={Boolean(loadingPresentation)} />
+          {transientNotice ? (
+            <span className="transient-notice" data-testid="transient-notice">
+              {transientNotice}
+            </span>
+          ) : null}
         </div>
       </WorkflowHeader>
 
@@ -1512,6 +1620,7 @@ export function App(): JSX.Element {
             </div>
             <span className="panel-index">{String(workflowStepIndex(workspace) + 1).padStart(2, "0")}</span>
           </div>
+          <WorkflowOrientation where={orientation.where} now={orientation.now} next={orientation.next} />
           {workspace !== "case-intake" && activeCase && (
             <div className="cad-quick-actions">
               <button
@@ -1544,6 +1653,7 @@ export function App(): JSX.Element {
               onRemoveMesh={(arch) => void handleRemoveMesh(arch)}
               onAnalyzeCase={() => void handleReviewSegmentation()}
               onReviewTreatmentProposal={() => void handleGeneratePlan()}
+              primaryActionId={nextAction?.id ?? null}
             />
           )}
           {workspace === "analysis" && (
@@ -1555,6 +1665,9 @@ export function App(): JSX.Element {
               validation={validation}
               hiddenToothIds={hiddenToothIds}
               onAnalyzeCase={() => void handleReviewSegmentation()}
+              emphasizeRun={
+                nextAction?.id === "review-segmentation" || nextAction?.id === "retry-segmentation"
+              }
               onToggleToothVisibility={(instanceId) =>
                 setHiddenToothIds((current) => {
                   const next = new Set(current);
@@ -1653,10 +1766,9 @@ export function App(): JSX.Element {
             />
           )}
 
-          {error && (
-            <div className="error-message">
-              We could not complete this step. {error}
-              <span className="production-test-metadata">{error}</span>
+          {inlineError && (
+            <div className="error-message" data-testid="inline-error">
+              {inlineError}
             </div>
           )}
         </LeftToolPanel>
@@ -1676,6 +1788,7 @@ export function App(): JSX.Element {
             <SegmentationReviewStrip
               model={segmentationReview}
               patientReference={activeCase?.patient_reference ?? patientReference}
+              compact
             />
           ) : null}
           <div className="cad-viewport-frame">
@@ -1720,9 +1833,9 @@ export function App(): JSX.Element {
                 onReset={() => undefined}
                 contextualToolbar={
                   <ContextualWorkspaceToolbar
-                    tools={toolbar.tools}
+                    tools={toolbarBands.visible}
+                    advanced={toolbarBands.advanced}
                     unavailable={toolbar.unavailable}
-                    selectionCount={selectedMapKeys.length}
                     onTool={handleTool}
                     extra={
                       selectedTooth && workspace === "refinement" ? (
@@ -1787,9 +1900,9 @@ export function App(): JSX.Element {
                     : segmentationReview.whatHappened
                 }
                 action={
-                  workspace !== "case-intake" ? (
+                  workspace !== "case-intake" && segmentationReview.kind === "not_run" ? (
                     <button
-                      className="primary-button"
+                      className="secondary-button"
                       onClick={() => setWorkspace("case-intake")}
                     >
                       Go to Case Intake
@@ -1971,7 +2084,16 @@ export function App(): JSX.Element {
           </span>
         </>
       )}
-      {loadingPresentation ? <CaseLoadingOverlay presentation={loadingPresentation} /> : null}
+      {loadingPresentation ? (
+        <CaseLoadingOverlay
+          presentation={loadingPresentation}
+          onCancel={
+            processingStatus?.stage_status === "PROCESSING" && processingStatus.job_id
+              ? () => void handleCancelProcessing()
+              : undefined
+          }
+        />
+      ) : null}
       <ConfirmDialog
         open={confirmNewCaseOpen}
         title="Start another case?"
