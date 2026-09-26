@@ -296,7 +296,19 @@ WP-14 and WP-15 were not started. At the time of this Wave 7 result, Wave 8 had 
 
 Long work stays visible. The processing status shows phase and elapsed time. A remaining time is shown only from completed jobs of the same kind on this computer, and it is labeled estimated rather than guaranteed. With no history, the sentence is “No reliable remaining-time estimate.” Elapsed time is not converted into a percent. Opening a step still does not start segmentation, planning, staging, or validation. GeometricValidationEngine was not weakened. The multi-minute validation cost measured in WP-12 remains. Browser QA passed at 1366×768, 1600×1000, and 1280×800. The contract is `docs/WAVE8_PERFORMANCE_REMAINING_TIME.md`.
 
-WP-14 and WP-15 were not started. Wave 9 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 8 result, Wave 9 had not been started.
+
+## Wave 9 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**This is not First Version acceptance.** Live ToothInstanceNet inference did not run. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+Treatment Setup now uses the existing tooth edit stack: direct and numeric edits, lock, exclude, undo, and redo, with no configured movement limits treated as a clinical prescription. Staging, IPR, attachments, occlusion, validation, and production keep their existing engines and their unavailable states. The contract is `docs/WAVE9_FEATURE_DEPTH.md`.
+
+This result section was added because the previous sentence said Wave 9 had not been started.
+
+WP-14 and WP-15 were not started. Wave 10 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

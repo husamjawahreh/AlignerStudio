@@ -311,10 +311,10 @@ test.describe("Wave 9 feature depth", () => {
       const api = await installApi(page);
       await page.goto(WEB);
       await importScans(page);
-      await page.getByRole("button", { name: "Analysis", exact: true }).click();
+      await page.getByTestId("workflow-step-analysis").click();
       await expect(page.getByTestId("analysis-panel")).toBeVisible();
       const before = api.counts.pipeline;
-      await page.getByRole("button", { name: "Analysis", exact: true }).click();
+      await page.getByTestId("workflow-step-analysis").click();
       expect(api.counts.pipeline).toBe(before);
       await shot(page, `${viewport.name}_01_analysis`, "Analysis opened without a segmentation run.");
 
@@ -326,15 +326,15 @@ test.describe("Wave 9 feature depth", () => {
       api.mode.value = "fixture";
       await page.goto(WEB);
       await importScans(page);
-      await page.getByRole("button", { name: "Analysis", exact: true }).click();
+      await page.getByTestId("workflow-step-analysis").click();
       await page.getByTestId("analysis-panel").getByRole("button", { name: "Review segmentation" }).click();
       await expect(page.getByTestId("analysis-fixture-note")).toContainText(/test-only/i, { timeout: 20_000 });
 
       api.mode.value = "treatment";
-      await page.getByRole("button", { name: "Treatment Setup", exact: true }).click();
+      await page.getByTestId("workflow-step-treatment-setup").click();
       await page.getByRole("button", { name: "Generate Treatment Setup" }).click();
       await expect(page.getByRole("region", { name: "Smart Staging" })).toBeVisible({ timeout: 20_000 });
-      await page.getByRole("button", { name: "Treatment Setup", exact: true }).click();
+      await page.getByTestId("workflow-step-treatment-setup").click();
       await expect(page.getByTestId("setup-no-movement-limits")).toBeVisible();
       await expect(page.getByTestId("inspection-panel")).toBeVisible();
       await shot(page, `${viewport.name}_03_treatment_setup`, "Stored plan. No movement limits. Numeric inspector is present.");
@@ -349,13 +349,14 @@ test.describe("Wave 9 feature depth", () => {
       await shot(page, `${viewport.name}_05_multi_tooth`, "Shift adds a second fixture tooth.");
 
       await page.getByTestId("dental-map-upper:instance:0").click();
-      const spin = page.getByTestId("inspection-panel").getByRole("spinbutton").first();
+      const inspection = page.getByTestId("inspection-panel");
+      const spin = inspection.getByRole("spinbutton").first();
       await spin.fill("0.4");
-      await expect(page.getByRole("button", { name: "Apply" })).toBeEnabled();
+      await expect(inspection.getByRole("button", { name: "Apply" })).toBeEnabled();
       const edits = api.counts.edits;
-      await page.getByRole("button", { name: "Apply" }).click();
+      await inspection.getByRole("button", { name: "Apply" }).click();
       await expect.poll(() => api.counts.edits).toBe(edits + 1);
-      await page.getByRole("button", { name: "Undo doctor edit" }).click();
+      await inspection.getByRole("button", { name: "Undo doctor edit" }).click();
       await expect.poll(() => api.counts.edits).toBe(edits + 2);
       await shot(page, `${viewport.name}_06_edit_undo`, "Numeric edit and undo use the existing edit request. Not a new engine.");
 
@@ -373,7 +374,7 @@ test.describe("Wave 9 feature depth", () => {
       await expect(page.getByTestId("staging-freshness")).toHaveText("stale", { timeout: 15_000 });
       await shot(page, `${viewport.name}_08_staging_stale`, "Stale staging stays stale after refresh.");
 
-      await page.getByRole("button", { name: "Refinement", exact: true }).click();
+      await page.getByTestId("workflow-step-refinement").click();
       await expect(page.getByTestId("refinement-unavailable")).toContainText("Boundary edit is not available");
       await expect(page.getByRole("button", { name: "Split" })).toHaveCount(0);
       await shot(page, `${viewport.name}_09_refinement`, "Unsupported edits are text, not broken buttons.");
@@ -382,7 +383,7 @@ test.describe("Wave 9 feature depth", () => {
       await expect(page.getByTestId("validation-review-note")).toContainText(/not a pass/i);
       await shot(page, `${viewport.name}_10_validation`, "Validation review. A missing check is not a pass.");
 
-      await page.getByRole("button", { name: "Production", exact: true }).click();
+      await page.getByTestId("workflow-step-production").click();
       await expect(page.getByTestId("production-manufacturing-limit")).toContainText(/not manufacturing readiness/i);
       await shot(page, `${viewport.name}_11_production`, "Production does not claim manufacturing certification.");
     });

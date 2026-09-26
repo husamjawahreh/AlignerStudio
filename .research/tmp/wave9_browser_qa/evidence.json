@@ -22,5 +22,303 @@
       "name": "1280x800"
     }
   ],
-  "images": []
+  "images": [
+    {
+      "file": "1366x768_01_analysis.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_02_analysis_blocked.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Environment blocker. Not zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_03_treatment_setup.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Stored plan. No movement limits. Numeric inspector is present.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_04_one_tooth.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "One fixture tooth. Identity is the tooth reference, not an invented number.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_05_multi_tooth.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Shift adds a second fixture tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_06_edit_undo.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Numeric edit and undo use the existing edit request. Not a new engine.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_07_staging.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Opening staging did not regenerate. Regeneration was explicit. Not clinically optimal.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_08_staging_stale.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_09_refinement.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Unsupported edits are text, not broken buttons.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_10_validation.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Validation review. A missing check is not a pass.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_11_production.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Production does not claim manufacturing certification.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_01_analysis.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_02_analysis_blocked.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Environment blocker. Not zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_03_treatment_setup.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Stored plan. No movement limits. Numeric inspector is present.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_04_one_tooth.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "One fixture tooth. Identity is the tooth reference, not an invented number.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_05_multi_tooth.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Shift adds a second fixture tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_06_edit_undo.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Numeric edit and undo use the existing edit request. Not a new engine.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_07_staging.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Opening staging did not regenerate. Regeneration was explicit. Not clinically optimal.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_08_staging_stale.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_09_refinement.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Unsupported edits are text, not broken buttons.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_10_validation.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Validation review. A missing check is not a pass.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_11_production.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Production does not claim manufacturing certification.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_01_analysis.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_02_analysis_blocked.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Environment blocker. Not zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_03_treatment_setup.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Stored plan. No movement limits. Numeric inspector is present.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_04_one_tooth.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "One fixture tooth. Identity is the tooth reference, not an invented number.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_05_multi_tooth.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Shift adds a second fixture tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_06_edit_undo.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Numeric edit and undo use the existing edit request. Not a new engine.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_07_staging.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Opening staging did not regenerate. Regeneration was explicit. Not clinically optimal.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_08_staging_stale.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_09_refinement.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Unsupported edits are text, not broken buttons.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_10_validation.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Validation review. A missing check is not a pass.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_11_production.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Production does not claim manufacturing certification.",
+      "clinicalSegmentationValidation": false
+    }
+  ]
 }

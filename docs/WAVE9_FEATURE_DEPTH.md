@@ -45,6 +45,10 @@ Official real-case timings and production evidence remain the WP-10 and WP-12 re
 
 ## Tests
 
-Wave 9 unit tests cover the matrix and Treatment Setup undo ownership. Browser evidence is `.research/tmp/wave9_browser_qa/` when the viewport run has completed. The three previously unconfirmed WP-10 tests are recorded in the Wave 9 result only after that run finishes.
+Wave 9 unit tests cover the matrix and Treatment Setup undo ownership. Frontend Vitest: 204 passed. Typecheck, ESLint on the touched files, and the production web build passed.
+
+Browser QA passed at 1366×768, 1600×1000, and 1280×800 in 4.8 minutes. Evidence is `.research/tmp/wave9_browser_qa/`. Those screenshots use generated test meshes.
+
+The three previously unconfirmed WP-10 tests passed in one run (307 seconds): real-case production evidence, the WP-09 validation regression, and the manufacturing-boundary check. A later combined WP-04 through WP-09 plus WP-12 and WP-13 run printed 17 passes and was stopped before its summary, so that combined run is not a completed regression record. WP-12 and WP-13 had already passed together earlier in Wave 8 (15 tests).
 
 WP-14 and WP-15 were not started. Wave 10 of this gate was not started.

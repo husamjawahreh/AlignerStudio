@@ -88,4 +88,4 @@ Headless Chromium passed the navigation and processing matrix at 1366×768, 1600
 - Live ToothInstanceNet inference did not run.
 - First-time and dual-arch validation can still take many minutes. The UI says so instead of inventing a finish time.
 - Remaining time is for the whole case-processing job, not a promise about a single phase.
-- WP-14 and WP-15 were not started. Wave 9 and later were not started.
+- WP-14 and WP-15 were not started. At the time of this Wave 8 result, Wave 9 had not been started.

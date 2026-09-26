@@ -10,4 +10,6 @@ Wave 7 — Workflow simplification — is **PASS WITH BLOCKER**. Live ToothInsta
 
 Wave 8 — Performance and remaining time — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE8_PERFORMANCE_REMAINING_TIME.md`](WAVE8_PERFORMANCE_REMAINING_TIME.md).
 
-WP-14 and WP-15 were not started. Wave 9 and later were not started.
+Wave 9 — Feature depth — is **PASS WITH BLOCKER**. This is not First Version acceptance. Live ToothInstanceNet inference did not run. The contract is [`WAVE9_FEATURE_DEPTH.md`](WAVE9_FEATURE_DEPTH.md).
+
+WP-14 and WP-15 were not started. Wave 10 and later were not started.
