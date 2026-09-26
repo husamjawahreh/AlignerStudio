@@ -69,34 +69,36 @@ export function toothVisualStyle(input: ToothVisualInput): ToothVisualStyle {
       const profile = dentalMaterialProfiles.enamelSelected;
       return {
         role,
-        color: profileColor(profile.color, 0xf4d08a),
-        emissive: 0x5a3c12,
-        emissiveIntensity: 0.32,
-        roughness: Number(profile.roughness ?? 0.22),
-        envMapIntensity: Number(profile.envMapIntensity ?? 1.2),
+        color: profileColor(profile.color, 0xf4e6c8),
+        emissive: profileColor(profile.emissive, 0x3d2a12),
+        emissiveIntensity: Number(profile.emissiveIntensity ?? 0.12),
+        roughness: Number(profile.roughness ?? 0.36),
+        envMapIntensity: Number(profile.envMapIntensity ?? 0.55),
         opacity: 1,
         transparent: false,
       };
     }
-    case "multi_selected":
+    case "multi_selected": {
+      const profile = dentalMaterialProfiles.enamelSelected;
       return {
         role,
-        color: 0xe8c078,
-        emissive: 0x3a2a10,
-        emissiveIntensity: 0.22,
-        roughness: 0.24,
-        envMapIntensity: 1.1,
+        color: profileColor(profile.color, 0xf4e6c8),
+        emissive: profileColor(profile.emissive, 0x3d2a12),
+        emissiveIntensity: Number(profile.emissiveIntensity ?? 0.12) * 0.7,
+        roughness: Number(profile.roughness ?? 0.36),
+        envMapIntensity: Number(profile.envMapIntensity ?? 0.55),
         opacity: 1,
         transparent: false,
       };
+    }
     case "hovered":
       return {
         role,
-        color: 0xf7ecd8,
-        emissive: 0x2a2210,
-        emissiveIntensity: 0.14,
-        roughness: 0.26,
-        envMapIntensity: 1.08,
+        color: baseColor,
+        emissive: 0x2a2418,
+        emissiveIntensity: 0.05,
+        roughness: Number(base.roughness ?? 0.42),
+        envMapIntensity: Number(base.envMapIntensity ?? 0.48),
         opacity: 1,
         transparent: false,
       };
@@ -104,10 +106,10 @@ export function toothVisualStyle(input: ToothVisualInput): ToothVisualStyle {
       return {
         role,
         color: baseColor,
-        emissive: 0x7a1e1a,
-        emissiveIntensity: 0.28,
-        roughness: 0.3,
-        envMapIntensity: 0.95,
+        emissive: 0x6a2420,
+        emissiveIntensity: 0.14,
+        roughness: Number(base.roughness ?? 0.42),
+        envMapIntensity: Number(base.envMapIntensity ?? 0.48),
         opacity: 1,
         transparent: false,
       };
@@ -115,10 +117,10 @@ export function toothVisualStyle(input: ToothVisualInput): ToothVisualStyle {
       return {
         role,
         color: baseColor,
-        emissive: 0x6a4a12,
-        emissiveIntensity: 0.18,
-        roughness: 0.3,
-        envMapIntensity: 0.95,
+        emissive: 0x5a4014,
+        emissiveIntensity: 0.1,
+        roughness: Number(base.roughness ?? 0.42),
+        envMapIntensity: Number(base.envMapIntensity ?? 0.48),
         opacity: 1,
         transparent: false,
       };
@@ -126,12 +128,12 @@ export function toothVisualStyle(input: ToothVisualInput): ToothVisualStyle {
       const profile = dentalMaterialProfiles.enamelTarget;
       return {
         role,
-        color: profileColor(profile.color, 0xf7f1e6),
+        color: profileColor(profile.color, 0xd5e2ea),
         emissive: 0x000000,
         emissiveIntensity: 0,
-        roughness: Number(profile.roughness ?? 0.3),
-        envMapIntensity: 1,
-        opacity: Number(profile.opacity ?? 0.7),
+        roughness: Number(profile.roughness ?? 0.5),
+        envMapIntensity: Number(profile.envMapIntensity ?? 0.32),
+        opacity: Number(profile.opacity ?? 0.68),
         transparent: true,
       };
     }

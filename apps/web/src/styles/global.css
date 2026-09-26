@@ -95,28 +95,32 @@ button:disabled {
 }
 .stage-tooth-label {
   position: absolute;
-  z-index: 2;
-  padding: 2px 5px;
-  border: 1px solid rgba(196, 168, 110, 0.4);
-  border-radius: 3px;
-  background: rgba(9, 13, 18, 0.82);
-  color: var(--as-color-current-tooth);
-  font-size: 10px;
-  font-weight: 700;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: 1px 5px;
+  border: 1px solid rgba(232, 224, 210, 0.38);
+  border-radius: 2px;
+  background: rgba(36, 48, 56, 0.82);
+  color: #efe8dc;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   pointer-events: none;
   white-space: nowrap;
 }
 .stage-tooth-label.is-upper {
-  border-color: rgba(242, 232, 212, 0.55);
-  color: #f2e8d4;
+  border-color: rgba(246, 239, 230, 0.45);
+  color: #f6efe6;
 }
 .stage-tooth-label.is-lower {
-  border-color: rgba(221, 212, 194, 0.55);
-  color: #ddd4c2;
+  border-color: rgba(230, 220, 203, 0.45);
+  color: #e6dccb;
 }
 .stage-tooth-label.is-selected {
-  border-color: var(--as-accent-gold);
-  color: var(--as-accent-gold);
+  border-color: rgba(244, 230, 200, 0.9);
+  background: rgba(52, 46, 38, 0.9);
+  color: #f4e6c8;
 }
 .workflow-bar {
   height: 48px;
@@ -581,7 +585,7 @@ button:disabled {
   padding: 6px 8px;
   border: 1px solid var(--as-border);
   border-radius: var(--as-radius);
-  background: rgba(8, 12, 17, 0.9);
+  background: rgba(36, 48, 56, 0.92);
   backdrop-filter: blur(8px);
   box-shadow: var(--as-shadow-panel);
   transform: translateX(-50%);
@@ -1662,7 +1666,7 @@ body,
   font-size: var(--as-font-size-xs);
 }
 .stage-tooth-label.is-hovered {
-  outline: 1px solid rgba(244, 208, 138, 0.7);
+  border-color: rgba(239, 232, 220, 0.85);
 }
 
 /* WP-11 shell polish */
@@ -1694,7 +1698,7 @@ body,
   padding-left: 10px;
 }
 .cad-viewport-frame {
-  background: radial-gradient(120% 80% at 50% 35%, #16202b 0%, #0d131a 55%, #0a0e13 100%);
+  background: var(--as-bg-viewport);
 }
 .inspection-panel .as-truth-badge {
   align-self: flex-start;
@@ -1896,7 +1900,7 @@ body,
   padding: 4px;
   border: 1px solid var(--as-border);
   border-radius: var(--as-radius-sm);
-  background: rgba(8, 12, 17, 0.9);
+  background: rgba(36, 48, 56, 0.92);
 }
 
 .toolbar-selection-count {
@@ -1956,7 +1960,7 @@ body,
 
 .stage-tooth-label.is-unresolved {
   border-style: dashed;
-  color: #d7c7a2;
+  color: #e4d8c4;
 }
 
 .cad-workspace.is-inspector-minimized {

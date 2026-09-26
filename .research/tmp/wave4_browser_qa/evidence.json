@@ -1,0 +1,270 @@
+{
+  "wave": 4,
+  "clinicalSegmentationValidation": false,
+  "liveToothInstanceNet": false,
+  "note": "Screenshots are presentation evidence. Fixture crowns are generated test meshes. Blocked shots are not a tooth count of zero. No patient STL was loaded.",
+  "images": [
+    {
+      "file": "1366x768_01_launch.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Application launch. No case geometry."
+    },
+    {
+      "file": "1366x768_02_case_intake.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake before segmentation."
+    },
+    {
+      "file": "1366x768_03_blocked_segmentation.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Live inference blocked. The viewport does not invent an empty tooth scene."
+    },
+    {
+      "file": "1366x768_04_both_arches.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Both arches. Default labels are selected-only, so unlabeled teeth stay clear."
+    },
+    {
+      "file": "1366x768_05_labels_all.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "All-label mode. Text is tooth_ref. FDI is not shown on fixture identity."
+    },
+    {
+      "file": "1366x768_06_upper_only.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Upper arch only."
+    },
+    {
+      "file": "1366x768_07_lower_only.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Lower arch only."
+    },
+    {
+      "file": "1366x768_08_selected_tooth.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "One selected tooth_ref. Ordinary selection does not retarget the camera."
+    },
+    {
+      "file": "1366x768_09_multi_selection.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Multi-selection stays on tooth_ref and stays in sync with the dental map."
+    },
+    {
+      "file": "1366x768_10_occlusal.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Occlusal preset."
+    },
+    {
+      "file": "1366x768_11_frontal.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Frontal preset."
+    },
+    {
+      "file": "1366x768_12_lateral.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Right lateral preset."
+    },
+    {
+      "file": "1366x768_13_fit_selection.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Explicit fit-selection. This is a camera command, not ordinary selection."
+    },
+    {
+      "file": "1366x768_14_current_target_unavailable.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "No stored treatment target, so current/target comparison is not drawn."
+    },
+    {
+      "file": "1366x768_15_validation_unavailable.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Validation step is blocked without a treatment plan. No validation overlay is drawn."
+    },
+    {
+      "file": "1600x1000_01_launch.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Application launch. No case geometry."
+    },
+    {
+      "file": "1600x1000_02_case_intake.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake before segmentation."
+    },
+    {
+      "file": "1600x1000_03_blocked_segmentation.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "clinicalSegmentationValidation": false,
+      "note": "Live inference blocked. The viewport does not invent an empty tooth scene."
+    },
+    {
+      "file": "1600x1000_04_both_arches.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Both arches. Default labels are selected-only, so unlabeled teeth stay clear."
+    },
+    {
+      "file": "1600x1000_05_labels_all.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "All-label mode. Text is tooth_ref. FDI is not shown on fixture identity."
+    },
+    {
+      "file": "1600x1000_06_upper_only.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Upper arch only."
+    },
+    {
+      "file": "1600x1000_07_lower_only.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Lower arch only."
+    },
+    {
+      "file": "1600x1000_08_selected_tooth.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "One selected tooth_ref. Ordinary selection does not retarget the camera."
+    },
+    {
+      "file": "1600x1000_09_multi_selection.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Multi-selection stays on tooth_ref and stays in sync with the dental map."
+    },
+    {
+      "file": "1600x1000_10_occlusal.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Occlusal preset."
+    },
+    {
+      "file": "1600x1000_11_frontal.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Frontal preset."
+    },
+    {
+      "file": "1600x1000_12_lateral.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Right lateral preset."
+    },
+    {
+      "file": "1600x1000_13_fit_selection.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Explicit fit-selection. This is a camera command, not ordinary selection."
+    },
+    {
+      "file": "1600x1000_14_current_target_unavailable.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "No stored treatment target, so current/target comparison is not drawn."
+    },
+    {
+      "file": "1600x1000_15_validation_unavailable.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "clinicalSegmentationValidation": false,
+      "note": "Validation step is blocked without a treatment plan. No validation overlay is drawn."
+    }
+  ],
+  "performance": [
+    {
+      "viewport": "1366x768",
+      "action": "arch-upper-toggle-plus-frame",
+      "milliseconds": 12998
+    },
+    {
+      "viewport": "1366x768",
+      "action": "two-animation-frames",
+      "milliseconds": 364.69999998807907
+    },
+    {
+      "viewport": "1600x1000",
+      "action": "arch-upper-toggle-plus-frame",
+      "milliseconds": 14958
+    },
+    {
+      "viewport": "1600x1000",
+      "action": "two-animation-frames",
+      "milliseconds": 563.3000000119209
+    }
+  ]
+}

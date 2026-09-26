@@ -22,13 +22,13 @@ export interface CameraPreset {
 }
 
 export const CAMERA_PRESETS: readonly CameraPreset[] = [
-  { id: "occlusal", label: "Occlusal", direction: [0, 1, 0.01] },
+  { id: "occlusal", label: "Occlusal", direction: [0, 1, 0.28] },
   { id: "front", label: "Front", direction: [0, 0.08, 1] },
   { id: "back", label: "Back", direction: [0, 0.08, -1] },
   { id: "left", label: "Left", direction: [-1, 0.08, 0] },
   { id: "right", label: "Right", direction: [1, 0.08, 0] },
-  { id: "upper", label: "Upper", direction: [0, 1, 0] },
-  { id: "lower", label: "Lower", direction: [0, -1, 0] },
+  { id: "upper", label: "Upper", direction: [0, 1, 0.28] },
+  { id: "lower", label: "Lower", direction: [0, -1, 0.28] },
 ] as const;
 
 export interface OrientationCubeFace {

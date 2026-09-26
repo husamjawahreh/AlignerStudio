@@ -23,16 +23,21 @@ import { reviewToothKey, toothMatchesKey } from "./toothKey";
 import { float32PositionsFromVertices, uint32IndicesFromFaces } from "./geometryBuffers";
 import type { CameraCommand } from "../interaction/model";
 import { toothReviewLabel } from "../interaction/model";
+import { resolveLabelVisibility, type ToothLabelMode } from "./presentation/labelPolicy";
+import { installDentalStudioLighting } from "./presentation/lighting";
 import {
   CAMERA_PRESETS,
   type CameraPresetId,
   type FitRequest,
+  PRESENTATION_FIT_FILL,
   createCaseSceneHierarchy,
   enableBvhAcceleration,
   prepareMeshForPicking,
   pickToothFromPointer,
   resolveFitBounds,
   cameraPositionForSphere,
+  computeObjectBounds,
+  framingDistanceFactor,
   nearFarForSphere,
   disposeObjectTree,
   toothVisualStyle,
@@ -62,6 +67,8 @@ interface StageViewerProps {
   onHoverTooth?: (toothRef: string | null) => void;
   hoveredToothKey?: string | null;
   cameraCommand?: { nonce: number; command: CameraCommand } | null;
+  /** Label density. Applied in the render loop; it does not rebuild the scene. */
+  labelMode?: ToothLabelMode;
   showBuiltinCameraTools?: boolean;
   onFit: () => void;
   onReset: () => void;
@@ -85,8 +92,7 @@ interface ToothRecord {
   opacityTarget: number;
 }
 
-const SCENE_BG = 0x06090d;
-const CAMERA_TRANSITION_MS = 480;
+const CAMERA_TRANSITION_MS = 420;
 const SELECTION_LERP = 0.18;
 
 const PRESET_DIRECTIONS: Record<CameraPresetId, THREE.Vector3> = Object.fromEntries(
@@ -114,6 +120,7 @@ export function StageViewer({
   onHoverTooth,
   hoveredToothKey = null,
   cameraCommand = null,
+  labelMode = "selected",
   showBuiltinCameraTools = true,
   onFit,
   onReset,
@@ -136,6 +143,8 @@ export function StageViewer({
   const selectedToothRef = useRef(selectedTooth);
   const multiSelectedRef = useRef(multiSelectedTeeth);
   const hoveredKeyRef = useRef<string | null>(null);
+  const labelModeRef = useRef<ToothLabelMode>(labelMode);
+  labelModeRef.current = labelMode;
   const applyVisualsRef = useRef<(() => void) | null>(null);
   const applyVisibilityRef = useRef<(() => void) | null>(null);
   /** Visibility / wireframe filters — applied without tearing down BVH meshes (WP-12). */
@@ -172,8 +181,7 @@ export function StageViewer({
     enableBvhAcceleration();
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(SCENE_BG);
-    scene.fog = new THREE.Fog(SCENE_BG, 40, 120);
+    installDentalStudioLighting(scene);
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -181,7 +189,7 @@ export function StageViewer({
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.replaceChildren(renderer.domElement);
@@ -220,27 +228,6 @@ export function StageViewer({
       controls.enabled = event.value !== true;
     };
     transformControls.addEventListener("dragging-changed", handleDragging);
-
-    scene.add(new THREE.HemisphereLight(0xfff8f0, 0x0c1218, 1.05));
-    const keyLight = new THREE.DirectionalLight(0xfff6ec, 2.05);
-    keyLight.position.set(7, 16, 11);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.bias = -0.0002;
-    keyLight.shadow.normalBias = 0.025;
-    keyLight.shadow.radius = 4;
-    scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0xa8c4d4, 0.78);
-    fillLight.position.set(-11, 6, -5);
-    scene.add(fillLight);
-    const rimLight = new THREE.DirectionalLight(0xe2c49a, 0.62);
-    rimLight.position.set(1, 7, -15);
-    scene.add(rimLight);
-    const bounceLight = new THREE.DirectionalLight(0xd0d6dc, 0.34);
-    bounceLight.position.set(0, -9, 5);
-    scene.add(bounceLight);
-    scene.background = new THREE.Color(0x0d131a);
-    scene.fog = new THREE.FogExp2(0x0d131a, 0.012);
 
     const hierarchy = createCaseSceneHierarchy();
     scene.add(hierarchy.allContent);
@@ -336,6 +323,7 @@ export function StageViewer({
         new THREE.Float32BufferAttribute(float32PositionsFromVertices(tooth.vertices), 3),
       );
       geometry.setIndex(uint32IndicesFromFaces(tooth.faces));
+      // Rendering-only normals on a copied buffer. Source tooth.vertices stay unchanged.
       geometry.computeVertexNormals();
       const baseProfile = enamelProfileForArch(tooth.arch);
       const material = new THREE.MeshStandardMaterial({
@@ -425,6 +413,9 @@ export function StageViewer({
             ? dentalMaterialProfiles.gingivaReal
             : dentalMaterialProfiles.gingivaVisualization;
         const material = new THREE.MeshStandardMaterial({ ...profile });
+        material.polygonOffset = true;
+        material.polygonOffsetFactor = 1;
+        material.polygonOffsetUnits = 1;
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -456,7 +447,7 @@ export function StageViewer({
 
     const shadowCatcher = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.ShadowMaterial({ opacity: 0.38, transparent: true }),
+      new THREE.ShadowMaterial({ opacity: 0.2, transparent: true }),
     );
     shadowCatcher.rotation.x = -Math.PI / 2;
     shadowCatcher.receiveShadow = true;
@@ -467,24 +458,23 @@ export function StageViewer({
       const radius = Math.max(sphere.radius, 1);
       shadowCatcher.position.set(sphere.center.x, bounds.min.y - radius * 0.02, sphere.center.z);
       shadowCatcher.scale.set(radius * 5, radius * 5, 1);
-      keyLight.target.position.copy(sphere.center);
-      scene.add(keyLight.target);
-      const shadowExtent = radius * 2.4;
-      keyLight.shadow.camera.left = -shadowExtent;
-      keyLight.shadow.camera.right = shadowExtent;
-      keyLight.shadow.camera.top = shadowExtent;
-      keyLight.shadow.camera.bottom = -shadowExtent;
-      keyLight.shadow.camera.near = 0.5;
-      keyLight.shadow.camera.far = radius * 12;
-      keyLight.shadow.camera.updateProjectionMatrix();
-      keyLight.position.set(
-        sphere.center.x + radius * 1.1,
-        sphere.center.y + radius * 2.4,
-        sphere.center.z + radius * 1.35,
-      );
-      if (scene.fog instanceof THREE.Fog) {
-        scene.fog.near = radius * 2.2;
-        scene.fog.far = radius * 9;
+      const keyLight = scene.getObjectByName("StudioKey");
+      if (keyLight instanceof THREE.DirectionalLight) {
+        keyLight.target.position.copy(sphere.center);
+        scene.add(keyLight.target);
+        const shadowExtent = radius * 2.4;
+        keyLight.shadow.camera.left = -shadowExtent;
+        keyLight.shadow.camera.right = shadowExtent;
+        keyLight.shadow.camera.top = shadowExtent;
+        keyLight.shadow.camera.bottom = -shadowExtent;
+        keyLight.shadow.camera.near = 0.5;
+        keyLight.shadow.camera.far = radius * 12;
+        keyLight.shadow.camera.updateProjectionMatrix();
+        keyLight.position.set(
+          sphere.center.x + radius * 1.1,
+          sphere.center.y + radius * 2.4,
+          sphere.center.z + radius * 1.35,
+        );
       }
     };
 
@@ -534,6 +524,14 @@ export function StageViewer({
       cameraTween.toFar = far;
     };
 
+    const fitFill = (request: FitRequest): number => {
+      if (request.target === "selected") return PRESENTATION_FIT_FILL.selection;
+      if (request.target === "arch") return PRESENTATION_FIT_FILL.arch;
+      return PRESENTATION_FIT_FILL.case;
+    };
+    const visibleFitObjects = () =>
+      fitMeshIndex.filter((item) => item.object.visible).map((item) => item.object);
+
     const applyFitResult = (request: FitRequest) => {
       const result = resolveFitBounds({
         request,
@@ -547,24 +545,32 @@ export function StageViewer({
           ? PRESET_DIRECTIONS.lower
           : request.target === "arch" && request.arch === "upper"
             ? PRESET_DIRECTIONS.upper
-            : new THREE.Vector3(0, 0.75, 2.35);
-      const position = cameraPositionForSphere(result.sphere, direction, request.target === "selected" ? 2.1 : 2.5);
+            : new THREE.Vector3(0, 0.55, 1);
+      const position = cameraPositionForSphere(
+        result.sphere,
+        direction,
+        framingDistanceFactor(camera.fov, fitFill(request)),
+      );
       const { near, far } = nearFarForSphere(result.sphere);
       smoothCameraTo(position, result.sphere.center.clone(), near, far);
     };
 
     const fit = (request: FitRequest = { target: "case" }) => applyFitResult(request);
     const setView = (view: CameraPresetId) => {
-      const bounds = new THREE.Box3().setFromObject(hierarchy.allContent);
+      const visible = visibleFitObjects();
+      const bounds =
+        visible.length > 0 ? computeObjectBounds(visible) : new THREE.Box3().setFromObject(hierarchy.allContent);
       if (bounds.isEmpty()) return;
       const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-      const position = cameraPositionForSphere(sphere, PRESET_DIRECTIONS[view], 2.5);
+      const position = cameraPositionForSphere(
+        sphere,
+        PRESET_DIRECTIONS[view],
+        framingDistanceFactor(camera.fov, PRESENTATION_FIT_FILL.case),
+      );
       const { near, far } = nearFarForSphere(sphere);
       smoothCameraTo(position, sphere.center.clone(), near, far);
     };
-    const reset = () => {
-      smoothCameraTo(new THREE.Vector3(0, 10, 17), new THREE.Vector3(0, 0, 0), 0.1, 1000);
-    };
+    const reset = () => applyFitResult({ target: "case" });
 
     // Instant first fit so the case is framed before transitions run.
     {
@@ -572,11 +578,12 @@ export function StageViewer({
       if (!bounds.isEmpty()) {
         const sphere = bounds.getBoundingSphere(new THREE.Sphere());
         configurePresentationDepth(sphere, bounds);
-        camera.position.set(
-          sphere.center.x,
-          sphere.center.y + sphere.radius * 0.75,
-          sphere.center.z + sphere.radius * 2.35,
+        const position = cameraPositionForSphere(
+          sphere,
+          new THREE.Vector3(0, 0.55, 1),
+          framingDistanceFactor(camera.fov, PRESENTATION_FIT_FILL.case),
         );
+        camera.position.copy(position);
         controls.target.copy(sphere.center);
         const depth = nearFarForSphere(sphere);
         camera.near = depth.near;
@@ -709,6 +716,7 @@ export function StageViewer({
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
 
     let animationFrame = 0;
+    const labelPoint = new THREE.Vector3();
     const animate = () => {
       if (cameraTween.active) {
         const t = Math.min(1, (performance.now() - cameraTween.startMs) / CAMERA_TRANSITION_MS);
@@ -721,6 +729,14 @@ export function StageViewer({
         if (t >= 1) cameraTween.active = false;
       }
       controls.update();
+      const filters = visibilityRef.current;
+      const liveSelected = selectedToothRef.current;
+      const multi = multiSelectedRef.current;
+      const hovered = hoveredKeyRef.current;
+      let visibleToothCount = 0;
+      for (const record of records) {
+        if (record.mesh.visible) visibleToothCount += 1;
+      }
       records.forEach((record) => {
         record.material.color.lerp(record.colorTarget, SELECTION_LERP);
         record.material.emissive.lerp(record.emissiveTarget, SELECTION_LERP);
@@ -734,10 +750,27 @@ export function StageViewer({
           record.opacityTarget,
           SELECTION_LERP,
         );
-        const point = new THREE.Vector3(...toothDisplayCentroid(record.tooth)).project(camera);
-        record.label.style.transform = `translate(-50%, -50%) translate(${(point.x * 0.5 + 0.5) * container.clientWidth}px, ${(-point.y * 0.5 + 0.5) * container.clientHeight}px)`;
+        const centroid = toothDisplayCentroid(record.tooth);
+        labelPoint.set(centroid[0], centroid[1], centroid[2]).project(camera);
+        const point = labelPoint;
+        const labelX = (point.x * 0.5 + 0.5) * container.clientWidth;
+        const lane = record.tooth.instanceId % 2;
+        const labelY = (-point.y * 0.5 + 0.5) * container.clientHeight - 18 - lane * 16;
+        record.label.style.transform = `translate(-50%, -100%) translate(${labelX}px, ${labelY}px)`;
+        const onScreen = point.z < 1 && point.z > -1 && Math.abs(point.x) <= 1.02 && Math.abs(point.y) <= 1.02;
+        const selectedNow = liveSelected != null && toothMatchesKey(record.tooth, liveSelected);
         const labelVisible =
-          record.mesh.visible && point.z < 1 && layers["tooth-labels"].visible;
+          record.mesh.visible &&
+          onScreen &&
+          layers["tooth-labels"].visible &&
+          resolveLabelVisibility({
+            mode: labelModeRef.current,
+            selected: selectedNow,
+            hovered: hovered === record.toothKey,
+            multiSelected: !selectedNow && multi.includes(record.toothKey),
+            singleArchIsolated: filters.effectiveShowUpper !== filters.effectiveShowLower,
+            visibleToothCount,
+          });
         record.label.style.display = labelVisible ? "block" : "none";
       });
       renderer.render(scene, camera);

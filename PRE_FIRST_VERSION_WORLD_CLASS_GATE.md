@@ -242,7 +242,17 @@ Next safe step is a measured ToothInstanceNet run on a host that already has the
 
 The clinical segmentation review workspace and the interaction model are implemented. The viewport is the dominant surface. One header status replaces the repeated status bar. Segmentation that is blocked, failed, or unavailable is labeled that way and is not shown as zero teeth. FDI is rendered only from authoritative persisted identity. Fixture output stays fixture/test-only. Synthetic gingiva stays presentation-only. Undo/redo still uses the durable WP-04/WP-05/WP-13 edit stack. Selection and camera changes are not clinical undo.
 
-WP-14 and WP-15 were not started. Waves 4–12 of this gate are not complete. The interaction contract is `docs/PRE_FIRST_VERSION_INTERACTION_MODEL.md`. The review contract is `docs/WAVE3_CLINICAL_SEGMENTATION_REVIEW.md`.
+WP-14 and WP-15 were not started. Waves 4–12 of this gate were not complete at the time of the Wave 3 result. The interaction contract is `docs/PRE_FIRST_VERSION_INTERACTION_MODEL.md`. The review contract is `docs/WAVE3_CLINICAL_SEGMENTATION_REVIEW.md`.
+
+## Wave 4 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The 3D viewport presentation layer is in place on the existing Three.js scene. Tooth materials, studio lighting, gingiva presentation, label density, selection feedback, and fit framing are documented in `docs/WAVE4_PREMIUM_3D_PRESENTATION.md`. Synthetic gingiva stays presentation-only. FDI is still gated. Blocked segmentation is not drawn as zero teeth. Fixture crowns in browser evidence are test meshes, not clinical segmentation validation. Validation and measurement overlays stay unavailable and are not painted as safe. Rendering normals and polygon offset do not write source geometry. Ordinary selection does not move the camera. The scene graph is still `createCaseSceneHierarchy`.
+
+WP-14 and WP-15 were not started. Wave 5 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

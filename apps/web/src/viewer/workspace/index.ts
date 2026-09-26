@@ -20,8 +20,13 @@ export {
 } from "./cameraNavigation";
 export type { CameraPreset, CameraPresetId, FitRequest, FitTarget, OrientationCubeFace } from "./cameraNavigation";
 
-export { WORKSPACE_OVERLAY_CAPABILITIES, overlayCapability } from "./overlayArchitecture";
-export type { OverlayCapability, OverlayKind } from "./overlayArchitecture";
+export {
+  WORKSPACE_OVERLAY_CAPABILITIES,
+  overlayCapability,
+  validationOverlayPresentation,
+  measurementOverlayPresentation,
+} from "./overlayArchitecture";
+export type { OverlayCapability, OverlayKind, OverlayDrawDecision, OverlayFindingSeverity } from "./overlayArchitecture";
 
 export {
   pickToothFromPointer,
@@ -54,6 +59,9 @@ export {
   computeObjectBounds,
   cameraPositionForSphere,
   nearFarForSphere,
+  framingDistanceFactor,
+  stableViewDirection,
+  PRESENTATION_FIT_FILL,
 } from "./fitTargets";
 export type { FitBoundsResult } from "./fitTargets";
 

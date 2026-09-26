@@ -26,6 +26,9 @@ describe("viewer presentation profiles", () => {
       "opacity",
       "depthWrite",
       "side",
+      "polygonOffset",
+      "polygonOffsetFactor",
+      "polygonOffsetUnits",
     ]);
     const samples = [
       dentalMaterialProfiles.enamelUpper,

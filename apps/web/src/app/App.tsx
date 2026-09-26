@@ -73,7 +73,9 @@ import {
   toothReviewLabel,
   workflowBlockReason,
   type CameraCommand,
+  type ToothLabelMode,
 } from "../interaction/model";
+import { nextLabelMode } from "../viewer/presentation/labelPolicy";
 import {
   beginTransformTransaction,
   buildToothInteractionState,
@@ -167,8 +169,12 @@ function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | nul
         intrusion: 0,
         extrusion: 0,
       },
-      validationStatus: "pass",
-      validationMessage: "Validated ToothInstanceNet geometry; no treatment validation was run.",
+      validationStatus:
+        tooth.fixture || tooth.provenance === "fixture" || tooth.experimental ? "unavailable" : "pass",
+      validationMessage:
+        tooth.fixture || tooth.provenance === "fixture" || tooth.experimental
+          ? "Fixture/test-only surface. Treatment validation was not run."
+          : "Treatment validation was not run on this surface.",
       provenance: tooth.provenance,
       fixture: tooth.fixture,
       experimental: tooth.experimental,
@@ -178,7 +184,12 @@ function pipelineStage(diagnostic: PipelineDiagnostic | null): ReviewStage | nul
     index: 0,
     stageId: "toothinstancenet-validation-stage",
     teeth,
-    validationStatus: diagnostic.duplicate_fdi_numbers?.length || diagnostic.missing_fdi_numbers?.length ? "warning" : "pass",
+    validationStatus:
+      diagnostic.fixture || diagnostic.provenance === "fixture"
+        ? "unavailable"
+        : diagnostic.duplicate_fdi_numbers?.length || diagnostic.missing_fdi_numbers?.length
+          ? "warning"
+          : "pass",
     collisionCount: 0,
     proximityCount: 0,
     contactCount: 0,
@@ -285,7 +296,7 @@ export function App(): JSX.Element {
   const [showLower, setShowLower] = useState(true);
   const [archMode, setArchMode] = useState<ArchIsolationMode>("both");
   const [isolateSelectedTooth, setIsolateSelectedTooth] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
+  const [labelMode, setLabelMode] = useState<ToothLabelMode>("selected");
   const [hoveredToothKey, setHoveredToothKey] = useState<string | null>(null);
   const [cameraCommand, setCameraCommand] = useState<{ nonce: number; command: CameraCommand } | null>(null);
   const [inspectorMinimized, setInspectorMinimized] = useState(false);
@@ -373,7 +384,7 @@ export function App(): JSX.Element {
             ? "Target / proposed setup ghost overlay."
             : "Requires a treatment proposal.",
         },
-        "tooth-labels": { visible: showLabels, available: activeReviewStage !== null },
+        "tooth-labels": { visible: true, available: activeReviewStage !== null },
         "movement-vectors": {
           visible: showMovementVectors,
           available: treatmentAvailable,
@@ -382,7 +393,7 @@ export function App(): JSX.Element {
             : "Requires a treatment proposal.",
         },
       }),
-    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showGingiva, showLabels, showLower, showMovementVectors, showOriginal, showSegmentation, showTargetGhost, showUpper, treatmentAvailable],
+    [activeReviewStage, originalScanBuffers, pipelineReviewStage, showGingiva, showLower, showMovementVectors, showOriginal, showSegmentation, showTargetGhost, showUpper, treatmentAvailable],
   );
   const targetStage = useMemo(
     () => (treatmentAvailable ? reviewBundle.stages.at(-1) ?? null : null),
@@ -1347,7 +1358,7 @@ export function App(): JSX.Element {
     else if (id === "arch-upper") setArchMode("upper");
     else if (id === "arch-lower") setArchMode("lower");
     else if (id === "arch-both") setArchMode("both");
-    else if (id === "labels") setShowLabels((value) => !value);
+    else if (id === "labels") setLabelMode((mode) => nextLabelMode(mode));
     else if (id === "gingiva") setShowGingiva((value) => !value);
     else if (id === "segmentation") setShowSegmentation((value) => !value);
     else if (id === "wireframe") setWireframe((value) => !value);
@@ -1405,7 +1416,7 @@ export function App(): JSX.Element {
     selectionCount: selectedMapKeys.length,
     archMode,
     isolateActive: isolateSelectedTooth,
-    labelsVisible: showLabels,
+    labelMode,
     gingivaVisible: showGingiva,
     segmentationVisible: showSegmentation,
     wireframe,
@@ -1703,6 +1714,7 @@ export function App(): JSX.Element {
                 onHoverTooth={setHoveredToothKey}
                 hoveredToothKey={hoveredToothKey}
                 cameraCommand={cameraCommand}
+                labelMode={labelMode}
                 showBuiltinCameraTools={false}
                 onFit={() => undefined}
                 onReset={() => undefined}

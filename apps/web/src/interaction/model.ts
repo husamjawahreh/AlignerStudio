@@ -7,7 +7,10 @@
  */
 
 import type { PipelineDiagnostic } from "../api/client";
+import type { ToothLabelMode } from "../viewer/presentation/labelPolicy";
 import type { WorkflowStepId } from "../workflow";
+
+export type { ToothLabelMode };
 
 export type FeedbackState =
   | "processing"
@@ -426,7 +429,7 @@ export interface ToolbarContext {
   selectionCount: number;
   archMode: "upper" | "lower" | "both";
   isolateActive: boolean;
-  labelsVisible: boolean;
+  labelMode: ToothLabelMode;
   gingivaVisible: boolean;
   segmentationVisible: boolean;
   wireframe: boolean;
@@ -491,7 +494,7 @@ export function buildContextualTools(ctx: ToolbarContext): {
       id: "reset-view",
       label: "Reset view",
       available: true,
-      reason: "Return the camera to the home framing.",
+      reason: "Fit the case. Ordinary selection does not move the camera.",
     });
     view({
       id: "arch-upper",
@@ -519,10 +522,17 @@ export function buildContextualTools(ctx: ToolbarContext): {
     });
     view({
       id: "labels",
-      label: "Labels",
+      label:
+        ctx.labelMode === "off"
+          ? "Labels off"
+          : ctx.labelMode === "selected"
+            ? "Labels: selected"
+            : ctx.labelMode === "arch"
+              ? "Labels: arch"
+              : "Labels: all",
       available: true,
-      reason: "Show or hide tooth labels. Labels use tooth_ref unless FDI is authoritative.",
-      active: ctx.labelsVisible,
+      reason: "Cycle label density: selected, arch, all, off. tooth_ref unless FDI is authoritative.",
+      active: ctx.labelMode !== "off",
     });
     view({
       id: "gingiva",
@@ -577,7 +587,7 @@ export function buildContextualTools(ctx: ToolbarContext): {
       id: "target",
       label: "Target",
       available: true,
-      reason: "Show or hide the treatment target overlay.",
+      reason: "Show the stored treatment target beside current geometry. This does not approve the plan.",
       active: ctx.targetVisible,
     });
     view({
