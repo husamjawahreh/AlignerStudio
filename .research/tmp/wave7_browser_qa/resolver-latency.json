@@ -1,0 +1,5 @@
+{
+  "iterations": 2000,
+  "resolveWorkflowAndNextActionMs": 113.86,
+  "note": "Pure resolvers. No geometry serialization and no scene rebuild."
+}

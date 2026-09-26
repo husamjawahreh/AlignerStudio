@@ -30,8 +30,23 @@ export function RefinementPanel({
           Refinement
         </h3>
         <p className="cad-review-note">
-          Select a tooth in the viewport. Use the toolbar for Move / Rotate. Apply commits edits.
+          Select a tooth in the viewport. Move, rotate, lock, exclude, reset, undo, and redo use the stored plan.
         </p>
+        {!treatmentAvailable ? (
+          <p className="cad-review-note" data-testid="refinement-empty">
+            No treatment plan yet. Refinement edits a stored plan and does not create one.
+          </p>
+        ) : null}
+        <ul className="workflow-unsupported" data-testid="refinement-unavailable">
+          <li>Boundary edit is not available</li>
+          <li>Split is not available</li>
+          <li>Merge is not available</li>
+          <li>Identity correction is not available</li>
+          <li>Measure is not available</li>
+          {tools?.readiness?.ipr_measurement === "not_available" || !tools ? (
+            <li>IPR is not available</li>
+          ) : null}
+        </ul>
         {tools?.freshness === "stale" && (
           <p className="proposal-warning" data-testid="clinical-tools-stale">
             Clinical tools need refresh relative to the current setup or staging version.

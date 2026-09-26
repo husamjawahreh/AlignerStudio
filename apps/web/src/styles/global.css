@@ -2048,8 +2048,31 @@ body,
   color: var(--as-text-primary);
 }
 
-.cad-workflow-step.is-complete {
+.cad-workflow-step.is-complete,
+.cad-workflow-step.is-completed {
   color: var(--as-text-secondary);
+}
+
+.cad-workflow-step.is-stale,
+.cad-workflow-step.is-requires_review,
+.cad-workflow-step.is-unavailable {
+  color: var(--as-warning);
+}
+
+.cad-workflow-step.is-failed {
+  color: var(--as-danger);
+}
+
+.workflow-step-brief {
+  margin: 0 0 8px;
+}
+
+.workflow-unsupported {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--as-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .cad-workflow-step.is-environment-blocked {

@@ -1,0 +1,215 @@
+{
+  "wave": 7,
+  "clinicalSegmentationValidation": false,
+  "liveToothInstanceNet": false,
+  "environment": "BLOCKED_BY_ENVIRONMENT",
+  "fixtureEvidence": "non-clinical",
+  "note": "Screenshots are UI evidence. Fixture crowns are generated test meshes, not patient inference. Blocked shots are an environment blocker, not zero teeth. WP-14 and WP-15 were not exercised.",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "name": "1366x768"
+    },
+    {
+      "width": 1600,
+      "height": 1000,
+      "name": "1600x1000"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "name": "1280x800"
+    }
+  ],
+  "images": [
+    {
+      "file": "1366x768_01_launch.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "workflowState": "active",
+      "nextAction": "create-case",
+      "clinicalSegmentationValidation": false,
+      "note": "Launch opens case intake. No case is loaded."
+    },
+    {
+      "file": "1366x768_02_case_intake.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "workflowState": "completed",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake with both scans. No segmentation has been started."
+    },
+    {
+      "file": "1366x768_03_analysis_not_started.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "workflowState": "active",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Analysis opened without starting segmentation."
+    },
+    {
+      "file": "1366x768_04_analysis_blocked.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "workflowState": "blocked",
+      "nextAction": "resolve-segmentation-environment",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Not zero teeth. Retry is not offered."
+    },
+    {
+      "file": "1366x768_05_treatment_dependency.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "workflowState": "unavailable",
+      "nextAction": "resolve-segmentation-environment",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup shows the missing target and does not start a plan."
+    },
+    {
+      "file": "1366x768_06_fixture_analysis.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "requires_review",
+      "nextAction": "review-unresolved",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture segmentation is labeled test-only and is not patient inference."
+    },
+    {
+      "file": "1366x768_07_processing.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "workflowState": "active",
+      "nextAction": "cancel-processing",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing started only from the explicit create action."
+    },
+    {
+      "file": "1366x768_08_treatment_plan.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "completed",
+      "nextAction": "review-unresolved",
+      "clinicalSegmentationValidation": false,
+      "note": "Stored fixture plan. Opening the step did not start a second run."
+    },
+    {
+      "file": "1366x768_09_staging.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "completed",
+      "nextAction": "review-unresolved",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging review. Not a clinical optimum."
+    },
+    {
+      "file": "1366x768_10_staging_stale.png",
+      "viewport": "1366x768",
+      "provenance": "stale",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "stale",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Stale staging stays explicit after refresh."
+    },
+    {
+      "file": "1366x768_11_refinement.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "active",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Refinement lists unsupported edits as text, not broken buttons."
+    },
+    {
+      "file": "1366x768_12_validation_stale.png",
+      "viewport": "1366x768",
+      "provenance": "stale",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "stale",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Stale validation. Missing checks are not a pass."
+    },
+    {
+      "file": "1366x768_13_production.png",
+      "viewport": "1366x768",
+      "provenance": "unavailable",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "requires_review",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Production states the manufacturing limit."
+    },
+    {
+      "file": "1366x768_14_back.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "requires_review",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Browser back returns to production without a new run."
+    },
+    {
+      "file": "1366x768_15_forward.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "completed",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Browser forward returns to case intake."
+    },
+    {
+      "file": "1366x768_16_refresh.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "workflowState": "requires_review",
+      "nextAction": "review-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Refresh restores the case and the production step."
+    },
+    {
+      "file": "1366x768_17_failure.png",
+      "viewport": "1366x768",
+      "provenance": "failure",
+      "geometry": "none",
+      "workflowState": "failed",
+      "nextAction": "retry-segmentation",
+      "clinicalSegmentationValidation": false,
+      "note": "Failed segmentation stays a failure. Opening the step is separate from the retry click."
+    },
+    {
+      "file": "1366x768_18_processing_recovery.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "workflowState": "completed",
+      "nextAction": "cancel-processing",
+      "clinicalSegmentationValidation": false,
+      "note": "Refresh keeps the in-progress run. It does not invent a completed plan."
+    }
+  ],
+  "timings": [
+    {
+      "viewport": "1366x768",
+      "transition": "case-intake-to-analysis",
+      "ms": 240,
+      "pipelinePosts": 0
+    }
+  ]
+}

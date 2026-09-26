@@ -37,9 +37,9 @@ export function ProductionPanel({
         <h3 id="production-heading" className="eyebrow">
           Production
         </h3>
-        <p className="cad-review-note">
-          Export is an engineering package. Engineering offset is review-only — not manufacturing
-          certification.
+        <p className="cad-review-note" data-testid="production-manufacturing-limit">
+          Export is an engineering package. Manufacturing capabilities that are not available stay
+          unavailable. This is not manufacturing readiness.
         </p>
       </section>
 

@@ -32,6 +32,8 @@ interface CaseIntakePanelProps {
   onRemoveMesh: (arch: "upper" | "lower") => void;
   onAnalyzeCase: () => void;
   onReviewTreatmentProposal: () => void;
+  /** Open a stored plan. Does not start processing. */
+  onOpenTreatmentPlan?: () => void;
   onRequestNewCase?: () => void;
   /** When tooth instances already exist, the plan action becomes the primary next step. */
   segmentationReviewed?: boolean;
@@ -55,6 +57,7 @@ export function CaseIntakePanel({
   onRemoveMesh,
   onAnalyzeCase,
   onReviewTreatmentProposal,
+  onOpenTreatmentPlan,
   onRequestNewCase,
   segmentationReviewed = false,
   primaryActionId = null,
@@ -206,36 +209,33 @@ export function CaseIntakePanel({
             {primaryActionId === "retry-segmentation" ? "Retry segmentation" : "Analyze case"}
           </button>
           <button
-            aria-label="Generate Treatment Setup"
+            aria-label={backendTreatment ? "Open Treatment Plan" : "Generate Treatment Setup"}
             className={
               primaryActionId
-                ? primaryActionId === "create-treatment-plan" || primaryActionId === "open-treatment-plan"
+                ? (backendTreatment
+                    ? primaryActionId === "open-treatment-plan"
+                    : primaryActionId === "create-treatment-plan")
                   ? "primary-button"
                   : "secondary-button"
-                : segmentationReviewed
-                  ? "primary-button"
-                  : "secondary-button"
+                : "secondary-button"
             }
-            onClick={onReviewTreatmentProposal}
-            disabled={!bothArchesValid || backendTreatment}
+            onClick={backendTreatment ? onOpenTreatmentPlan : onReviewTreatmentProposal}
+            disabled={!bothArchesValid || isBusy || (backendTreatment && !onOpenTreatmentPlan)}
             data-testid={
-              primaryActionId
-                ? primaryActionId === "create-treatment-plan" || primaryActionId === "open-treatment-plan"
-                  ? "primary-next-action"
-                  : undefined
-                : segmentationReviewed
-                  ? "primary-next-action"
-                  : undefined
+              primaryActionId &&
+              (backendTreatment
+                ? primaryActionId === "open-treatment-plan"
+                : primaryActionId === "create-treatment-plan")
+                ? "primary-next-action"
+                : undefined
             }
             title={
-              segmentationReviewed
-                ? "Open or create the treatment plan."
-                : "Plan action. Segmentation review is the usual next step. This does not invent tooth numbers."
+              backendTreatment
+                ? "Opens the stored treatment plan. This does not rebuild it."
+                : "Creates a treatment plan. This does not run by itself when you open treatment setup."
             }
           >
-            {segmentationReviewed || primaryActionId === "open-treatment-plan"
-              ? "Open Treatment Plan"
-              : "Create Treatment Plan"}
+            {backendTreatment ? "Open Treatment Plan" : "Create Treatment Plan"}
           </button>
         </section>
       )}

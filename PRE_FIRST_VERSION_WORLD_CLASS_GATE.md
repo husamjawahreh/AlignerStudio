@@ -274,7 +274,19 @@ The viewport toolbar is one deterministic resolver, `resolveToolbar`. Actions ca
 
 Keyboard shortcuts call the same command ids as the toolbar. Undo and redo stay on the existing durable edit stack. Viewport commands do not write treatment data. Fixture output stays fixture/test-only. FDI is still gated. No clinical algorithm, validation authority, or manufacturing CAD was added.
 
-WP-14 and WP-15 were not started. Wave 7 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 6 result, Wave 7 had not been started.
+
+## Wave 7 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The clinical journey is one resolver, `resolveWorkflow`, over the existing workflow module. Step state, dependencies, completion, the next action, and navigation permission come from persisted case and session facts. Opening a step does not start segmentation, planning, staging, or validation. Creating a plan, reviewing segmentation, regenerating staging, and refreshing validation stay explicit. Analysis is segmentation review. Treatment setup is planning. Staging, refinement, validation, and production keep those meanings, including stale, failed, and unavailable states. Browser back, forward, and refresh restore the step without a second undo engine. The contract is `docs/WAVE7_WORKFLOW_SIMPLIFICATION.md`.
+
+Browser evidence for the full matrix is recorded at 1366×768. The same matrix at 1600×1000 and 1280×800 was not reconfirmed after the refresh-persistence fix.
+
+WP-14 and WP-15 were not started. Wave 8 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

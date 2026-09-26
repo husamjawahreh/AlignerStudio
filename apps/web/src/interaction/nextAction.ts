@@ -81,6 +81,37 @@ export function isKnownNextActionLabel(label: string): boolean {
   return CLINICAL_LABELS.has(label);
 }
 
+export type WorkflowOperationKind = "navigate" | "inspect" | "compute" | "regenerate" | "apply";
+
+/** Explicit operation for an action. Navigation and inspection do not start a long job. */
+export function nextActionOperation(id: NextActionId): WorkflowOperationKind {
+  switch (id) {
+    case "review-segmentation":
+    case "retry-segmentation":
+    case "create-treatment-plan":
+      return "compute";
+    case "regenerate-staging":
+    case "refresh-validation":
+      return "regenerate";
+    case "create-case":
+    case "export-package":
+    case "cancel-processing":
+      return "apply";
+    case "resolve-segmentation-environment":
+    case "review-unresolved":
+    case "review-treatment-dependency":
+    case "review-production":
+    case "review-findings":
+      return "inspect";
+    default:
+      return "navigate";
+  }
+}
+
+export function operationStartsLongWork(kind: WorkflowOperationKind): boolean {
+  return kind === "compute" || kind === "regenerate";
+}
+
 function formOwns(id: NextActionId, workspace: WorkflowStepId): boolean {
   switch (id) {
     case "create-case":

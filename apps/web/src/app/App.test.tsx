@@ -31,8 +31,11 @@ describe("Wave 3 workspace composition", () => {
     expect(document.querySelector("[data-testid='case-status-compact']")).toBeNull();
     expect(document.querySelectorAll("[data-readiness-surface='primary']")).toHaveLength(1);
     const analysis = screen.getByRole("button", { name: /Analysis/ });
-    expect(analysis).toBeDisabled();
+    expect(analysis).toHaveAttribute("data-navigation", "explain");
     expect(analysis).toHaveAttribute("title", expect.stringMatching(/Create a case/i));
+    fireEvent.click(analysis);
+    expect(screen.getByTestId("case-intake-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("workflow-orientation")).toHaveTextContent(/Create a case/i);
   });
 });
 

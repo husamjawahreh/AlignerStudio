@@ -23,6 +23,11 @@ export function ValidationWorkflowPanel({
         <small className="cad-review-note">
           Geometry findings only. No clinical approval workflow is represented.
         </small>
+        <p className="cad-review-note" data-testid="validation-review-note">
+          {bundle.validationCapability
+            ? "A validation run is stored. Unavailable checks are not a pass, and this is not a clinical approval."
+            : "No validation run for this treatment version. A missing check is not a pass."}
+        </p>
       </section>
 
       {rows.map((row) => (

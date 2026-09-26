@@ -70,11 +70,10 @@ import {
   isTextEntryTarget,
   matchWorkspaceShortcut,
   toothReviewLabel,
-  workflowBlockReason,
   type CameraCommand,
   type ToothLabelMode,
 } from "../interaction/model";
-import { resolveNextAction, type NextAction } from "../interaction/nextAction";
+import type { NextAction } from "../interaction/nextAction";
 import { dedupeNotice, workflowOrientation } from "../interaction/smartUx";
 import { commandIdForShortcut, resolveToolbar, viewportCommandMutatesClinicalState } from "../interaction/toolbar";
 import { resolveWidgets } from "../interaction/widgets";
@@ -97,7 +96,14 @@ import {
   WorkflowHeader,
   WorkspaceContainer,
 } from "../components/workspace/WorkspacePrimitives";
-import { buildWorkflowSteps, workflowLabel, workflowStepIndex, type WorkflowStepId } from "../workflow";
+import {
+  resolveWorkflow,
+  resolveWorkflowNavigation,
+  workflowLabel,
+  workflowStepFromHistory,
+  workflowStepIndex,
+  type WorkflowStepId,
+} from "../workflow";
 import { CaseLoadingOverlay, ProductionEmptyState } from "../components/production/ProductionPrimitives";
 import { resolveLoadingPresentation } from "../components/production/loadingPresentation";
 import {
@@ -325,6 +331,10 @@ export function App(): JSX.Element {
     "idle" | "recalculating" | "complete"
   >("idle");
   const [workspace, setWorkspace] = useState<WorkspaceId>("case-intake");
+  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null);
+  const ignoreWorkspaceHistory = useRef(false);
+  const historyBoot = useRef(true);
+  const workspaceHydrated = useRef(false);
   const [gizmoMode, setGizmoMode] = useState<"translate" | "rotate">("translate");
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([]);
@@ -439,15 +449,6 @@ export function App(): JSX.Element {
   ]);
   const bothArchesValid =
     archUploads.upper.state === "valid" && archUploads.lower.state === "valid";
-  const workflowSteps = useMemo(() => buildWorkflowSteps({
-    activeStep: workspace as WorkflowStepId,
-    hasCase: activeCase !== null,
-    bothArchesValid,
-    hasSegmentation: pipelineReviewStage !== null,
-    hasTreatment: treatmentAvailable,
-    editCount: reviewBundle.editHistory.length,
-    hasValidation: treatmentAvailable && activeReviewStage?.validationStatus !== "unavailable",
-  }), [activeCase, activeReviewStage, bothArchesValid, pipelineReviewStage, reviewBundle.editHistory.length, treatmentAvailable, workspace]);
   function clearRealCaseReview(reason: string): void {
     setReviewBundle(unavailableReviewBundle(reason));
     setStageIndex(0);
@@ -514,15 +515,57 @@ export function App(): JSX.Element {
   }, [activeCase?.id]);
 
   useEffect(() => {
+    if (!readRememberedActiveCaseId()) workspaceHydrated.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceHydrated.current) return;
     if (activeCase?.id) {
       rememberActiveWorkspace(workspace);
     }
   }, [activeCase?.id, workspace]);
 
   useEffect(() => {
+    const onPop = (event: PopStateEvent) => {
+      const step = workflowStepFromHistory(event.state);
+      if (!step) return;
+      ignoreWorkspaceHistory.current = true;
+      setDependencyNotice(null);
+      setWorkspace(step);
+    };
+    window.addEventListener("popstate", onPop);
+    if (!workflowStepFromHistory(window.history.state)) {
+      window.history.replaceState({ workflowStep: workspace }, "");
+    }
+    return () => window.removeEventListener("popstate", onPop);
+  }, [workspace]);
+
+  useEffect(() => {
+    if (ignoreWorkspaceHistory.current) {
+      ignoreWorkspaceHistory.current = false;
+      historyBoot.current = false;
+      return;
+    }
+    const current = workflowStepFromHistory(window.history.state);
+    if (current === workspace) {
+      historyBoot.current = false;
+      return;
+    }
+    // The first paint is case intake. Do not cover a reloaded step with that default.
+    if (historyBoot.current && current && workspace === "case-intake") {
+      historyBoot.current = false;
+      return;
+    }
+    historyBoot.current = false;
+    window.history.pushState({ workflowStep: workspace }, "");
+  }, [workspace]);
+
+  useEffect(() => {
     let cancelled = false;
     const rememberedId = readRememberedActiveCaseId();
     if (!rememberedId) return;
+    const rememberedWorkspace =
+      readRememberedActiveWorkspace() ?? workflowStepFromHistory(window.history.state);
     void (async () => {
       try {
         const restored = await api.getCase(rememberedId);
@@ -553,12 +596,12 @@ export function App(): JSX.Element {
         } catch {
           // No processing status yet.
         }
-        const rememberedWorkspace = readRememberedActiveWorkspace();
         try {
           const bundle = await api.getTreatment(rememberedId);
           if (cancelled) return;
           setReviewBundle(bundle);
           setBackendTreatment(true);
+          workspaceHydrated.current = true;
           setWorkspace(
             resolveRestoredWorkspace({
               remembered: rememberedWorkspace,
@@ -569,6 +612,7 @@ export function App(): JSX.Element {
         } catch {
           // Treatment not composed yet — case metadata alone is enough to continue intake.
           if (!cancelled) {
+            workspaceHydrated.current = true;
             setWorkspace(
               resolveRestoredWorkspace({
                 remembered: rememberedWorkspace,
@@ -579,6 +623,7 @@ export function App(): JSX.Element {
           }
         }
       } catch {
+        workspaceHydrated.current = true;
         rememberActiveCaseId(null);
       }
     })();
@@ -1350,10 +1395,7 @@ export function App(): JSX.Element {
       return;
     }
     if (action.id === "review-treatment-dependency" || action.id === "open-treatment-plan") {
-      if (action.id === "open-treatment-plan") {
-        void handleGeneratePlan();
-        return;
-      }
+      setDependencyNotice(null);
       setWorkspace("treatment-setup");
       return;
     }
@@ -1505,37 +1547,48 @@ export function App(): JSX.Element {
         ? "Manufacturing capabilities are not available"
         : null,
   });
-  const nextAction = resolveNextAction({
-    workspace,
+  const workflow = resolveWorkflow({
+    activeStep: workspace,
     hasCase: Boolean(activeCase),
     upperReady: archUploads.upper.state === "valid",
     lowerReady: archUploads.lower.state === "valid",
     segmentationKind: segmentationReview.kind,
-    unresolvedIdentityCount: segmentationReview.countsAvailable
-      ? reviewTeeth.filter((tooth) => !toothReviewLabel(tooth).fdiAuthoritative).length
-      : null,
     hasTreatment: treatmentAvailable,
+    hasTarget: targetStage !== null,
     stagingFreshness: asFreshness(stagingFreshnessValue),
+    stagingCount: treatmentAvailable ? reviewBundle.stages.length : 0,
     validationFreshness: asFreshness(validationFreshnessValue),
+    hasValidationRun: reviewBundle.validationCapability != null || reviewBundle.validationSummary != null,
     productionReachable: treatmentAvailable,
-    productionLimited: treatmentAvailable && !reviewBundle.productionCad,
+    productionLimited: !reviewBundle.productionCad,
+    editCount: reviewBundle.editHistory.length,
     isBusy,
     stageStatus: processingStatus?.stage_status ?? null,
     canCancelProcessing: Boolean(activeCase && processingStatus?.job_id),
     canRegenerateStaging: treatmentAvailable,
     canRefreshValidation: treatmentAvailable,
+    unresolvedIdentityCount: segmentationReview.countsAvailable
+      ? reviewTeeth.filter((tooth) => !toothReviewLabel(tooth).fdiAuthoritative).length
+      : null,
   });
+  const workflowSteps = workflow.steps;
+  const nextAction = workflow.nextAction;
+  const activeWorkflowStep = workflowSteps.find((step) => step.current) ?? workflowSteps[0];
   const orientation = workflowOrientation({
-    stepLabel: workspaceLabel,
-    blockReason: workflowBlockReason(workspace, {
-      hasCase: Boolean(activeCase),
-      bothArchesValid,
-      hasSegmentation: pipelineReviewStage !== null,
-      segmentationKind: segmentationReview.kind,
-      hasTreatment: treatmentAvailable,
-    }),
+    stepLabel: activeWorkflowStep?.state.replaceAll("_", " ") ?? workspaceLabel,
+    blockReason: dependencyNotice ?? activeWorkflowStep?.reason ?? activeWorkflowStep?.emptyState.why ?? null,
     next: nextAction,
   });
+  const openWorkflowStep = (id: WorkflowStepId): void => {
+    const decision = resolveWorkflowNavigation(workflowSteps, id);
+    if (decision.intent === "stay") return;
+    if (decision.intent === "explain") {
+      setDependencyNotice(decision.reason);
+      return;
+    }
+    setDependencyNotice(decision.showDependency ? decision.reason : null);
+    setWorkspace(id);
+  };
   const validationFindingCount = reviewBundle.validationCapability
     ? reviewBundle.validationCapability.summary.finding_count
     : reviewBundle.validationSummary
@@ -1648,30 +1701,22 @@ export function App(): JSX.Element {
         <nav className="cad-workflow-nav" aria-label="Clinical CAD workflow">
           {workflowSteps.map((step, index) => {
             const id = step.id;
-            const blocked = step.status === "blocked";
             const environmentBlocked = id === "analysis" && segmentationReview.kind === "blocked_by_environment";
+            const mark = step.satisfied ? "✓" : String(index + 1).padStart(2, "0");
             return (
               <button
-                className={`cad-workflow-step is-${step.status} ${workspace === id ? "is-active" : ""}${environmentBlocked ? " is-environment-blocked" : ""}`}
+                className={`cad-workflow-step is-${step.state} ${step.current ? "is-current" : ""}${environmentBlocked ? " is-environment-blocked" : ""}`}
                 key={id}
-                data-step-visual={environmentBlocked ? "environment" : step.status}
-                onClick={() => {
-                  if (blocked) return;
-                  setWorkspace(id);
-                }}
-                disabled={blocked}
-                aria-current={workspace === id ? "step" : undefined}
-                title={
-                  workflowBlockReason(id, {
-                    hasCase: Boolean(activeCase),
-                    bothArchesValid,
-                    hasSegmentation: pipelineReviewStage !== null,
-                    segmentationKind: segmentationReview.kind,
-                    hasTreatment: treatmentAvailable,
-                  }) ?? step.label
-                }
+                type="button"
+                data-testid={`workflow-step-${id}`}
+                data-step-visual={environmentBlocked ? "environment" : step.state}
+                data-workflow-state={step.state}
+                data-navigation={step.navigationAllowed ? "allowed" : "explain"}
+                onClick={() => openWorkflowStep(id)}
+                aria-current={step.current ? "step" : undefined}
+                title={step.reason ?? step.label}
               >
-                <span>{step.status === "complete" ? "✓" : String(index + 1).padStart(2, "0")}</span>
+                <span>{mark}</span>
                 {step.label}
               </button>
             );
@@ -1708,7 +1753,14 @@ export function App(): JSX.Element {
             </div>
             <span className="panel-index">{String(workflowStepIndex(workspace) + 1).padStart(2, "0")}</span>
           </div>
-          <WorkflowOrientation where={orientation.where} now={orientation.now} next={orientation.next} />
+          <section
+            className="workflow-step-brief"
+            data-testid="workflow-step-brief"
+            data-workflow-state={activeWorkflowStep?.state ?? "not_started"}
+            data-canonical-next-action={nextAction?.id ?? "none"}
+          >
+            <WorkflowOrientation where={orientation.where} now={orientation.now} next={orientation.next} />
+          </section>
           {workspace !== "case-intake" && activeCase && (
             <div className="cad-quick-actions">
               <button
@@ -1741,6 +1793,10 @@ export function App(): JSX.Element {
               onRemoveMesh={(arch) => void handleRemoveMesh(arch)}
               onAnalyzeCase={() => void handleReviewSegmentation()}
               onReviewTreatmentProposal={() => void handleGeneratePlan()}
+              onOpenTreatmentPlan={() => {
+                setDependencyNotice(null);
+                setWorkspace("treatment-setup");
+              }}
               primaryActionId={nextAction?.id ?? null}
             />
           )}
@@ -1753,6 +1809,8 @@ export function App(): JSX.Element {
               validation={validation}
               hiddenToothIds={hiddenToothIds}
               onAnalyzeCase={() => void handleReviewSegmentation()}
+              runBlocked={segmentationReview.kind === "blocked_by_environment"}
+              fixtureOnly={segmentationReview.kind === "fixture_test_only"}
               emphasizeRun={
                 nextAction?.id === "review-segmentation" || nextAction?.id === "retry-segmentation"
               }
@@ -1778,6 +1836,7 @@ export function App(): JSX.Element {
               treatmentAvailable={treatmentAvailable}
               versionCompare={versionCompare}
               onGeneratePlan={() => void handleGeneratePlan()}
+              emphasizeCreate={nextAction?.id === "create-treatment-plan"}
               onToggleInitialPosition={setShowOriginal}
               onToggleTargetPosition={setShowTargetGhost}
               onOriginalOpacityChange={setOriginalOpacity}

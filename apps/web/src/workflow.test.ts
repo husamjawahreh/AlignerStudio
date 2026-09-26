@@ -57,7 +57,9 @@ describe("P2 clinical-CAD workflow", () => {
     });
     expect(ready.find((step) => step.id === "case-intake")?.status).toBe("complete");
     expect(ready.find((step) => step.id === "analysis")?.status).toBe("current");
-    expect(ready.find((step) => step.id === "treatment-setup")?.status).toBe("ready");
+    expect(ready.find((step) => step.id === "treatment-setup")?.state).toBe("unavailable");
+    expect(ready.find((step) => step.id === "treatment-setup")?.navigationAllowed).toBe(true);
+    expect(ready.find((step) => step.id === "treatment-setup")?.status).toBe("blocked");
 
     const treated = buildWorkflowSteps({
       activeStep: "staging",

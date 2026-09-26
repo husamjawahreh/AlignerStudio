@@ -57,6 +57,15 @@ export function StagingPanel({
 
   return (
     <div className="staging-panel case-form" data-testid="staging-panel">
+      {!treatmentAvailable ? (
+        <p className="cad-review-note" data-testid="staging-empty">
+          No treatment target yet. Staging needs a stored treatment setup. Opening this step does not build stages.
+        </p>
+      ) : stages.length === 0 ? (
+        <p className="cad-review-note" data-testid="staging-empty">
+          No stages are stored for this treatment setup. Generate staging only when you choose to.
+        </p>
+      ) : null}
       <section className="analysis-section" aria-labelledby="smart-staging" data-testid="smart-staging-status">
         <h3 id="smart-staging" className="eyebrow">
           Smart Staging

@@ -64,6 +64,12 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
         </div>
       )}
 
+      <p className="cad-review-note">
+        {capability
+          ? "A validation run is stored. Unavailable checks are not a pass, and this is not a clinical approval."
+          : "No validation run for this treatment version. A missing check is not a pass."}
+      </p>
+
       {!capability && (
         <div className="validation-metrics">
           <div>
@@ -157,7 +163,7 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
             <div className="validation-check-row" key={finding.finding_id}>
               <span>
                 {finding.category}
-                {finding.affected_tooth_refs.length
+                {finding.affected_tooth_refs?.length
                   ? ` · ${finding.affected_tooth_refs.join("/")}`
                   : ""}
                 {finding.stage_index != null ? ` · stage ${finding.stage_index}` : ""}

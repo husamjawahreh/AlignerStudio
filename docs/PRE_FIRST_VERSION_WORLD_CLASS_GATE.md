@@ -6,4 +6,6 @@ Wave 5 — Smart UI/UX — is **PASS WITH BLOCKER**. Live ToothInstanceNet infer
 
 Wave 6 — Contextual toolbar and smart widgets — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE6_CONTEXTUAL_TOOLBAR_SMART_WIDGETS.md`](WAVE6_CONTEXTUAL_TOOLBAR_SMART_WIDGETS.md).
 
-WP-14 and WP-15 were not started. Wave 7 and later were not started.
+Wave 7 — Workflow simplification — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE7_WORKFLOW_SIMPLIFICATION.md`](WAVE7_WORKFLOW_SIMPLIFICATION.md).
+
+WP-14 and WP-15 were not started. Wave 8 and later were not started.

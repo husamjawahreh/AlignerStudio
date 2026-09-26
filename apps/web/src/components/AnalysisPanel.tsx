@@ -22,6 +22,9 @@ interface AnalysisPanelProps {
   onAnalyzeCase: () => void;
   onToggleToothVisibility: (instanceId: number) => void;
   emphasizeRun?: boolean;
+  /** Environment blocker. The review button must not look like a retry. */
+  runBlocked?: boolean;
+  fixtureOnly?: boolean;
 }
 
 /** Analysis left tools — Master Plan labels; only existing diagnostic data. */
@@ -35,6 +38,8 @@ export function AnalysisPanel({
   onAnalyzeCase,
   onToggleToothVisibility,
   emphasizeRun = true,
+  runBlocked = false,
+  fixtureOnly = false,
 }: AnalysisPanelProps): JSX.Element {
   const overview = buildAnalysisOverview({ diagnostic, teeth, dentalIntelligence });
   const findings = buildAnalysisFindings({ diagnostic, validation, dentalIntelligence });
@@ -45,17 +50,32 @@ export function AnalysisPanel({
         <h3 id="analysis-run" className="eyebrow">
           Tooth Segmentation
         </h3>
+        {fixtureOnly ? (
+          <p className="cad-review-note" data-testid="analysis-fixture-note">
+            Test-only segmentation. This is not a patient result.
+          </p>
+        ) : null}
+        {runBlocked ? (
+          <p className="cad-review-note" data-testid="analysis-environment-block">
+            Segmentation cannot be completed on this computer. This is not a failed scan and not zero teeth.
+          </p>
+        ) : null}
         <button
           aria-label="Review segmentation"
-          className={emphasizeRun ? "primary-button" : "secondary-button"}
+          className={emphasizeRun && !runBlocked ? "primary-button" : "secondary-button"}
           onClick={onAnalyzeCase}
-          disabled={!bothArchesValid}
-          data-testid="primary-next-action"
+          disabled={!bothArchesValid || runBlocked}
+          data-testid={emphasizeRun && !runBlocked ? "primary-next-action" : undefined}
+          title={
+            runBlocked
+              ? "Retry is unavailable until this computer can run segmentation."
+              : "Runs segmentation review. Opening this step does not start it."
+          }
         >
           Analyze case
         </button>
         <p className="cad-review-note">
-          Segmentation status, counts, and provenance are on the review strip. Identity/data that is not established is not numbered.
+          Segmentation status, counts, and provenance are on the review strip. Identity that is not established is not numbered.
         </p>
         {overview.overallTruthState && (
           <div className="cad-stat-row">
@@ -136,7 +156,11 @@ export function AnalysisPanel({
             </div>
           </AdvancedDetails>
         ) : (
-          <small className="cad-review-note">No tooth meshes available yet.</small>
+          <small className="cad-review-note">
+            {runBlocked
+              ? "Segmentation unavailable on this computer. This is not a list of missing teeth."
+              : "No segmentation meshes are stored yet."}
+          </small>
         )}
       </section>
 

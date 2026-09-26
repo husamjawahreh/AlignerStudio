@@ -100,9 +100,7 @@ export function workflowOrientation(input: {
   return {
     where: input.stepLabel,
     now: input.blockReason ?? "This step can be used with the evidence loaded so far.",
-    next: input.next
-      ? `${input.next.label}. ${input.next.reason}`
-      : "No further action is available from the current evidence.",
+    next: input.next?.label ?? "No further action is available from the current evidence.",
   };
 }
 

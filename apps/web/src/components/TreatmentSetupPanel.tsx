@@ -19,6 +19,8 @@ interface TreatmentSetupPanelProps {
   treatmentAvailable: boolean;
   versionCompare?: TreatmentSetupComparison | null;
   onGeneratePlan: () => void;
+  /** Primary only when this is the canonical next action. */
+  emphasizeCreate?: boolean;
   onToggleInitialPosition: (visible: boolean) => void;
   onToggleTargetPosition: (visible: boolean) => void;
   onOriginalOpacityChange: (value: number) => void;
@@ -39,6 +41,7 @@ export function TreatmentSetupPanel({
   treatmentAvailable,
   versionCompare = null,
   onGeneratePlan,
+  emphasizeCreate = false,
   onToggleInitialPosition,
   onToggleTargetPosition,
   onOriginalOpacityChange,
@@ -60,14 +63,25 @@ export function TreatmentSetupPanel({
         <h3 id="treatment-setup-heading" className="eyebrow">
           Treatment Setup 2.0
         </h3>
-        <button
-          aria-label="Generate Treatment Setup"
-          className="primary-button"
-          onClick={onGeneratePlan}
-          disabled={!bothArchesValid || backendTreatment}
-        >
-          {treatmentAvailable ? "Open Treatment Plan" : "Create Treatment Plan"}
-        </button>
+        {treatmentAvailable ? (
+          <p className="cad-review-note" data-testid="treatment-plan-stored">
+            A treatment plan is stored. Opening this step does not rebuild staging or validation.
+          </p>
+        ) : (
+          <>
+            <p className="cad-review-note" data-testid="treatment-target-empty">
+              No treatment target yet. Opening this step does not create a plan.
+            </p>
+            <button
+              aria-label="Generate Treatment Setup"
+              className={emphasizeCreate ? "primary-button" : "secondary-button"}
+              onClick={onGeneratePlan}
+              disabled={!bothArchesValid || backendTreatment}
+            >
+              Create Treatment Plan
+            </button>
+          </>
+        )}
         <div className="cad-stat-row">
           <span>Target setup</span>
           <strong>{summary.available ? "Available" : "Unavailable"}</strong>
