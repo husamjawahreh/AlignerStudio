@@ -65,7 +65,7 @@ The inspector shows case, blocked segmentation, one tooth, or a group. Advanced 
 
 `processing`, `completed`, `failed`, `blocked_by_environment`, `cancelled`, `interrupted`, `stale`, `requires_review`, `not_available`.
 
-Each state says what happened, what to do next, what is unavailable, and whether a new job is a safe retry. Processing shows elapsed time and phase when the server sent them. Remaining time is always “No reliable remaining-time estimate.”
+Each state says what happened, what to do next, what is unavailable, and whether a new job is a safe retry. Processing shows elapsed time and phase when the server sent them. Remaining time is “No reliable remaining-time estimate” unless this computer has completed the same kind of job often enough to support an estimate. An estimate is labeled estimated and is not a guarantee. See `docs/WAVE8_PERFORMANCE_REMAINING_TIME.md`.
 
 ## Undo
 

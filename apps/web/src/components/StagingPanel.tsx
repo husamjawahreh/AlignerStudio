@@ -98,7 +98,7 @@ export function StagingPanel({
             </strong>
           </div>
         </AdvancedDetails>
-        <small className="cad-review-note">
+        <small className="cad-review-note" data-testid="staging-not-optimal">
           Computational staging proposal — not clinically optimized or approved.
         </small>
         {isStale && (

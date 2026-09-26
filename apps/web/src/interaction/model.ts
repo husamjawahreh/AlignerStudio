@@ -8,6 +8,8 @@
 
 import type { PipelineDiagnostic } from "../api/client";
 import type { ToothLabelMode } from "../viewer/presentation/labelPolicy";
+import type { DurationSample, RemainingTimePayload } from "../performance/remainingTime";
+import { NO_RELIABLE_REMAINING_TIME, estimateRemaining, presentRemainingTime } from "../performance/remainingTime";
 import type { WorkflowStepId } from "../workflow";
 
 export type { ToothLabelMode };
@@ -86,9 +88,9 @@ export interface FeedbackModel {
   retrySafe: boolean;
   provenance: string | null;
   elapsedLabel: string | null;
-  /** Always null. Remaining time is never invented. */
-  remainingEstimate: null;
-  remainingNote: "No reliable remaining-time estimate.";
+  /** Seconds only when an evidence-based estimate exists. Never invented from elapsed time. */
+  remainingEstimate: number | null;
+  remainingNote: string;
   phaseLabel: string | null;
   /** Server percent only when the payload included one. Otherwise indeterminate or none. */
   progressMode: "none" | "indeterminate" | "server-progress";
@@ -415,6 +417,13 @@ export function buildFeedbackModel(input: {
    * Never copied into remainingEstimate.
    */
   benchmarkSeconds?: number | null;
+  /** Server payload. Accepted only when its kind, sample count, and label agree. */
+  remainingTime?: RemainingTimePayload | null;
+  /** Used only when the server did not send a payload. Same rules as the server estimator. */
+  operationSamples?: readonly DurationSample[];
+  operationId?: string;
+  environmentId?: string;
+  inputClass?: string;
 }): FeedbackModel {
   const status = (input.stageStatus ?? "").toUpperCase();
   const interrupted =
@@ -455,6 +464,22 @@ export function buildFeedbackModel(input: {
       ? input.benchmarkSeconds
       : null;
   const phase = input.phase?.trim() || null;
+  const operationId = input.operationId ?? "case-processing";
+  const environmentId = input.environmentId ?? "";
+  const inputClass = input.inputClass ?? "";
+  const remainingPayload =
+    input.remainingTime ??
+    (input.operationSamples
+      ? estimateRemaining({
+          samples: input.operationSamples,
+          elapsedSeconds: typeof input.elapsedSeconds === "number" ? input.elapsedSeconds : null,
+          operationId,
+          environmentId,
+          inputClass,
+        })
+      : null);
+  const presented = presentRemainingTime(remainingPayload);
+  const showRemaining = state === "processing";
 
   return {
     state,
@@ -464,8 +489,8 @@ export function buildFeedbackModel(input: {
     retrySafe: state === "failed" || state === "blocked_by_environment" || state === "cancelled" || state === "interrupted" || state === "stale",
     provenance: fromSegmentation?.provenanceLabel ?? null,
     elapsedLabel: elapsed,
-    remainingEstimate: null,
-    remainingNote: "No reliable remaining-time estimate.",
+    remainingEstimate: showRemaining ? presented.seconds : null,
+    remainingNote: showRemaining ? presented.label : NO_RELIABLE_REMAINING_TIME,
     phaseLabel: phase ? `Phase ${phase}` : null,
     progressMode:
       state !== "processing"
@@ -840,7 +865,6 @@ export function buildInspectorModel(input: {
       rows: [
         { label: "Phase", value: input.phase?.trim() || "Not reported" },
         { label: "Progress", value: "Indeterminate unless the server sent a percent" },
-        { label: "Estimate", value: "No reliable remaining-time estimate" },
       ],
       limitations: ["A spinner is not a result. Fixture geometry is not substituted while this runs."],
       advanced,

@@ -286,7 +286,17 @@ The clinical journey is one resolver, `resolveWorkflow`, over the existing workf
 
 Browser evidence for the full matrix is recorded at 1366×768. The same matrix at 1600×1000 and 1280×800 was not reconfirmed after the refresh-persistence fix.
 
-WP-14 and WP-15 were not started. Wave 8 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 7 result, Wave 8 had not been started.
+
+## Wave 8 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+Long work stays visible. The processing status shows phase and elapsed time. A remaining time is shown only from completed jobs of the same kind on this computer, and it is labeled estimated rather than guaranteed. With no history, the sentence is “No reliable remaining-time estimate.” Elapsed time is not converted into a percent. Opening a step still does not start segmentation, planning, staging, or validation. GeometricValidationEngine was not weakened. The multi-minute validation cost measured in WP-12 remains. Browser QA passed at 1366×768, 1600×1000, and 1280×800. The contract is `docs/WAVE8_PERFORMANCE_REMAINING_TIME.md`.
+
+WP-14 and WP-15 were not started. Wave 9 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery

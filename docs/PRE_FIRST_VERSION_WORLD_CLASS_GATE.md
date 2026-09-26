@@ -8,4 +8,6 @@ Wave 6 — Contextual toolbar and smart widgets — is **PASS WITH BLOCKER**. Li
 
 Wave 7 — Workflow simplification — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE7_WORKFLOW_SIMPLIFICATION.md`](WAVE7_WORKFLOW_SIMPLIFICATION.md).
 
-WP-14 and WP-15 were not started. Wave 8 and later were not started.
+Wave 8 — Performance and remaining time — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE8_PERFORMANCE_REMAINING_TIME.md`](WAVE8_PERFORMANCE_REMAINING_TIME.md).
+
+WP-14 and WP-15 were not started. Wave 9 and later were not started.

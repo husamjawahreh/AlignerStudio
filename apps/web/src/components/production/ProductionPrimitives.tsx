@@ -72,7 +72,7 @@ export function CaseLoadingOverlay({
         <div className="case-loading-meta">
           <span>{presentation.detail}</span>
           {elapsed ? <span>{elapsed}</span> : null}
-          {presentation.mode === "indeterminate" ? <span>No reliable remaining-time estimate</span> : null}
+          <span data-testid="remaining-time">{presentation.remainingLabel}</span>
           {onCancel ? (
             <button type="button" className="secondary-button" onClick={onCancel} data-testid="cancel-processing">
               Cancel processing

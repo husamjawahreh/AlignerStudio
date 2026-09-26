@@ -187,7 +187,20 @@ def live_processing_status(case_id: str) -> dict | None:
     status = _mark_stale_if_needed(status)
     if status.get("stage_status") == "PROCESSING" and status.get("started_at"):
         status = {**status, "elapsed_seconds": _elapsed_seconds(status["started_at"])}
-    return status
+    from app.operation_history import remaining_time_for_case
+    from engines.performance.remaining_time import estimate_remaining
+
+    if status.get("stage_status") == "PROCESSING":
+        remaining = remaining_time_for_case(case_id, status.get("elapsed_seconds"))
+    else:
+        remaining = estimate_remaining(
+            (),
+            elapsed_seconds=None,
+            operation_id="case-processing",
+            environment_id="",
+            input_class="",
+        )
+    return {**status, "remaining_time": remaining}
 
 
 def _status(
@@ -250,6 +263,19 @@ def _status(
         "result": "ok" if stage_status == "COMPLETED" else None,
     }
     case_store.set_processing(case_id, payload)
+    if (
+        stage_status == "COMPLETED"
+        and current.get("job_id") == job_id
+        and current.get("stage_status") != "COMPLETED"
+        and elapsed_seconds > 0
+    ):
+        from app.operation_history import OPERATION_CASE_PROCESSING, input_class_for_case, record_completed_operation
+
+        record_completed_operation(
+            operation_id=OPERATION_CASE_PROCESSING,
+            input_class=input_class_for_case(case_id),
+            duration_seconds=elapsed_seconds,
+        )
     logger.info(
         "PROCESSING_TRANSITION case_id=%s job_id=%s stage=%s status=%s progress=%s message=%s",
         case_id,

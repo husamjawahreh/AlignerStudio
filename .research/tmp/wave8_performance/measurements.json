@@ -1,0 +1,160 @@
+{
+  "wave": 8,
+  "new_measurements": [
+    {
+      "label": "remaining_time_estimator_2000",
+      "provenance": "synthetic_engineering_benchmark",
+      "geometry": "none",
+      "repeats": 2000,
+      "min_s": 8.680500013724668e-05,
+      "median_s": 0.00011395299998184782,
+      "max_s": 0.0052782200000365265
+    },
+    {
+      "label": "fixture_validation_cache_miss",
+      "provenance": "fixture_test_only",
+      "geometry": "two_tetrahedra",
+      "clinical": false,
+      "repeats": 1,
+      "min_s": 0.01428776900002049,
+      "median_s": 0.01428776900002049,
+      "max_s": 0.01428776900002049,
+      "report_id": "17406a2269e1d7d1d71c8dfcd114e11b75c9c9cee769f9795722c82c8b58d852"
+    },
+    {
+      "label": "fixture_validation_cache_hit",
+      "provenance": "fixture_test_only",
+      "geometry": "two_tetrahedra",
+      "clinical": false,
+      "repeats": 20,
+      "min_s": 1.2250000054336851e-05,
+      "median_s": 1.2744000059683458e-05,
+      "max_s": 3.029799995601934e-05,
+      "report_id_match": true,
+      "threshold_change_misses": true
+    }
+  ],
+  "cited_wp12": [
+    {
+      "label": "fixture_load_upper_cold",
+      "median_s": 11.871242169989273,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "fixture_load_upper_warm",
+      "median_s": 0.0009555239812470973,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "fixture_load_lower_cold",
+      "median_s": 6.5823191450035665,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "fixture_load_lower_warm",
+      "median_s": 0.0004939189821016043,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "treatment_setup",
+      "median_s": 1.3891209949797485,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "staging",
+      "median_s": 1.5325975920131896,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "validation_upper_inprocess_cold",
+      "median_s": 214.49314741700073,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "validation_upper_isolated",
+      "median_s": 105.69474732302479,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "validation_isolated_responsiveness",
+      "median_s": 0.0811369150178507,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "session_compose_upper",
+      "median_s": 104.70961849001469,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "session_compose_upper_cached",
+      "median_s": 5.329437318985583,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "review_bundle_serialize",
+      "median_s": 6.595760713011259,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    },
+    {
+      "label": "production_cad_skip",
+      "median_s": null,
+      "provenance": "cited_wp12_not_rerun",
+      "geometry": "real_case_upper_with_fixture_segmentation_backend",
+      "clinical_segmentation_validation": false,
+      "source": ".research/tmp/wp12_performance/benchmark.json"
+    }
+  ],
+  "rss_mb_after": 108.1796875,
+  "optimizations": [
+    {
+      "name": "duplicate_treatment_load_on_completion",
+      "before": "A second processing poll for the same completed job could start another treatment load.",
+      "after": "claimTerminalLoad allows one load per job id.",
+      "delta": "one load instead of a duplicate; not a validation speedup",
+      "correctness": "job id claim; source scans and report semantics unchanged"
+    },
+    {
+      "name": "geometric_validation_cpu",
+      "before": "WP-12 upper real in-process median is cited, not re-run",
+      "after": "unchanged engine",
+      "delta": "no CPU reduction in Wave 8",
+      "reason": "Narrow-phase time is the engine. Isolation and the report cache already exist. Weakening the engine is out of scope."
+    }
+  ]
+}

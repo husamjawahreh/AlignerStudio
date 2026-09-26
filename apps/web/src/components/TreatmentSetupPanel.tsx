@@ -185,6 +185,13 @@ export function TreatmentSetupPanel({
             {(setup?.constraint_availability ?? "unavailable").replaceAll("_", " ")}
           </strong>
         </div>
+        {!setup ||
+        setup.constraint_availability === "unavailable" ||
+        setup.constraint_availability === "not_available" ? (
+          <small className="cad-review-note" data-testid="setup-no-movement-limits">
+            No movement limits are configured. A numeric change is a geometric edit, not a clinical prescription.
+          </small>
+        ) : null}
       </section>
 
       <section className="analysis-section" aria-labelledby="setup-comparison">

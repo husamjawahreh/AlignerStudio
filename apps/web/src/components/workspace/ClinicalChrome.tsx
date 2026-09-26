@@ -379,7 +379,9 @@ export function PrimaryStatus({
       {compact ? null : feedback.phaseLabel ? <span>{feedback.phaseLabel}</span> : null}
       {compact ? null : <span>{feedback.whatHappened}</span>}
       {compact ? null : feedback.elapsedLabel ? <span>{feedback.elapsedLabel}</span> : null}
-      {feedback.state === "processing" && !compact ? <span>{feedback.remainingNote}</span> : null}
+      {feedback.state === "processing" && !compact ? (
+        <span data-testid="remaining-time">{feedback.remainingNote}</span>
+      ) : null}
       {feedback.progressMode === "indeterminate" && !compact ? <span>Progress indeterminate</span> : null}
       {feedback.benchmarkNote ? <span>{feedback.benchmarkNote}</span> : null}
     </div>

@@ -83,7 +83,7 @@ export interface ToolbarMachineInput {
   stageStatus: string | null;
   /** The single next action already has a button. Do not repeat it here. */
   suppressedIds?: readonly string[];
-  /** Refinement tooth toolbar already owns move, rotate, and target. */
+  /** Treatment Setup or Refinement tooth controls already own move and rotate. */
   manipulationOwnedByToothToolbar?: boolean;
 }
 
@@ -526,7 +526,8 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
     );
   }
 
-  if (input.workspace === "refinement") {
+  const editingWorkspace = input.workspace === "refinement" || input.workspace === "treatment-setup";
+  if (editingWorkspace) {
     push(
       action({
         id: "move",
@@ -535,7 +536,7 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
         availability: "unavailable",
         reason: input.manipulationOwnedByToothToolbar
           ? "Move and rotate are on the selected-tooth controls. They use the existing edit stack."
-          : "Select a transformable tooth in Refinement. Move is not a separate clinical engine.",
+          : "Select a transformable tooth in Treatment Setup or Refinement. Move is not a separate clinical engine.",
         effect: "durable-edit",
         reversible: true,
         truthDependency: "refinement-edit",
@@ -548,14 +549,14 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
         label: "Move / transform",
         category: "manipulation",
         availability: "unavailable",
-        reason: "Move is available in Refinement when a transformable tooth is selected.",
+        reason: "Move is available in Treatment Setup or Refinement when a transformable tooth is selected.",
         effect: "durable-edit",
         reversible: true,
       }),
     );
   }
 
-  if (input.workspace === "refinement" && input.canUndo) {
+  if (editingWorkspace && input.canUndo) {
     push(
       action({
         id: "undo",
@@ -569,7 +570,7 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
       }),
     );
   }
-  if (input.workspace === "refinement" && input.canRedo) {
+  if (editingWorkspace && input.canRedo) {
     push(
       action({
         id: "redo",

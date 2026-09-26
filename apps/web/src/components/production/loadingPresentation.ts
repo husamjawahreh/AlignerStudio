@@ -1,4 +1,5 @@
 import type { ProcessingStatus } from "../../api/client";
+import { NO_RELIABLE_REMAINING_TIME, presentRemainingTime } from "../../performance/remainingTime";
 
 export type LoadingMode = "determinate" | "indeterminate";
 
@@ -16,6 +17,8 @@ export interface LoadingPresentation {
   /** Present only when the backend provided a real overall_progress value. */
   progressPercent: number | null;
   elapsedSeconds: number | null;
+  /** Evidence-based remaining sentence, or the explicit no-estimate sentence. */
+  remainingLabel: string;
   currentStageId: string | null;
   stages: LoadingStageChip[];
   source: "backend-processing" | "local-activity";
@@ -77,6 +80,7 @@ export function loadingFromProcessingStatus(status: ProcessingStatus): LoadingPr
       typeof status.elapsed_seconds === "number" && Number.isFinite(status.elapsed_seconds)
         ? status.elapsed_seconds
         : null,
+    remainingLabel: presentRemainingTime(status.remaining_time).label,
     currentStageId: current ?? null,
     stages,
     source: "backend-processing",
@@ -92,6 +96,7 @@ export function loadingFromLocalActivity(activity: string): LoadingPresentation 
     mode: "indeterminate",
     progressPercent: null,
     elapsedSeconds: null,
+    remainingLabel: NO_RELIABLE_REMAINING_TIME,
     currentStageId: null,
     stages: [],
     source: "local-activity",

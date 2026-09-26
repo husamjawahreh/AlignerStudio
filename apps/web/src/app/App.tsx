@@ -24,7 +24,6 @@ import { type ArchIsolationMode } from "../components/WorkspaceViewportChrome";
 import { ProposalPanels } from "../components/ProposalPanels";
 import { StageTimeline } from "../components/StageTimeline";
 import { ValidationPanel } from "../components/ValidationPanel";
-import { engineeringFixtureBundle } from "../review/fixtureData";
 import {
   applyFixtureMovementEdit,
   cancelFixtureEdits,
@@ -77,6 +76,7 @@ import type { NextAction } from "../interaction/nextAction";
 import { dedupeNotice, workflowOrientation } from "../interaction/smartUx";
 import { commandIdForShortcut, resolveToolbar, viewportCommandMutatesClinicalState } from "../interaction/toolbar";
 import { resolveWidgets } from "../interaction/widgets";
+import { claimTerminalLoad } from "../performance/processingLifecycle";
 import { nextLabelMode } from "../viewer/presentation/labelPolicy";
 import {
   beginTransformTransaction,
@@ -425,7 +425,7 @@ export function App(): JSX.Element {
   const originalTooth =
     selectedTooth === null
       ? null
-      : findToothByKey(engineeringFixtureBundle.stages.at(-1)?.teeth, selectedTooth);
+      : findToothByKey(reviewBundle.stages[0]?.teeth, selectedTooth);
   const currentProposalTooth =
     selectedTooth === null
       ? null
@@ -633,6 +633,7 @@ export function App(): JSX.Element {
   }, []);
 
   const processingMounted = useRef(true);
+  const completionLoadJob = useRef<string | null>(null);
   useEffect(() => {
     processingMounted.current = true;
     return () => {
@@ -644,12 +645,17 @@ export function App(): JSX.Element {
     const isProcessing = processingStatus?.stage_status === "PROCESSING";
     if (!activeCase || !isProcessing) return;
     const caseId = activeCase.id;
+    const activeJobId = processingStatus?.job_id ?? null;
+    if (completionLoadJob.current && activeJobId && completionLoadJob.current !== activeJobId) {
+      completionLoadJob.current = null;
+    }
     let cancelled = false;
     const timer = window.setInterval(() => {
       void api.getProcessingStatus(caseId).then((status) => {
         if (cancelled) return;
         setProcessingStatus(status);
         if (status.stage_status === "COMPLETED") {
+          if (!claimTerminalLoad(completionLoadJob, status.job_id)) return;
           setBusyActivity("Loading treatment proposal");
           void Promise.all([
             api.getTreatment(caseId),
@@ -685,7 +691,7 @@ export function App(): JSX.Element {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [activeCase, processingStatus?.stage_status]);
+  }, [activeCase, processingStatus?.stage_status, processingStatus?.job_id]);
 
   function handleSelectTooth(toothNumber: string, options?: { additive?: boolean }): void {
     selectTooth(toothNumber, options);
@@ -1509,6 +1515,7 @@ export function App(): JSX.Element {
     phase: processingStatus?.current_stage ?? null,
     serverProgress:
       processingStatus?.stage_status === "PROCESSING" ? processingStatus.overall_progress : null,
+    remainingTime: processingStatus?.remaining_time ?? null,
     segmentation: segmentationReview,
   });
   const selectedEntries = dentalEntries.filter((entry) => selectedMapKeys.includes(entry.toothRef));
@@ -1628,7 +1635,9 @@ export function App(): JSX.Element {
       ...(workspace === "staging" ? ["regenerate-staging"] : []),
       ...(loadingPresentation ? ["cancel-processing"] : []),
     ],
-    manipulationOwnedByToothToolbar: Boolean(selectedTooth && workspace === "refinement"),
+    manipulationOwnedByToothToolbar: Boolean(
+      selectedTooth && (workspace === "treatment-setup" || workspace === "refinement"),
+    ),
   });
   const widgets = resolveWidgets({
     selectionCount: selectedMapKeys.length,
@@ -1983,7 +1992,7 @@ export function App(): JSX.Element {
                     unavailable={toolbarWithheld}
                     onTool={handleTool}
                     extra={
-                      selectedTooth && workspace === "refinement" ? (
+                      selectedTooth && (workspace === "treatment-setup" || workspace === "refinement") ? (
                         <ContextualToothToolbar
                           embedded
                           label={selectedReviewLabel?.text ?? selectedTooth}
@@ -2139,6 +2148,38 @@ export function App(): JSX.Element {
                 }
                 onReset={() => void handleResetProposals()}
               />
+              {treatmentAvailable ? (
+                <InspectionPanel
+                  tooth={selectedFixtureTooth}
+                  dentalIntelligence={dentalIntelligence}
+                  draftMovement={draftMovement}
+                  originalMovement={currentProposalTooth?.movement ?? null}
+                  isDirty={
+                    draftMovement !== null &&
+                    currentProposalTooth !== null &&
+                    hasMovementChanges(draftMovement, currentProposalTooth.movement)
+                  }
+                  onDraftChange={handleDraftChange}
+                  interactionState={toothInteractionState}
+                  onApply={() => void handleApplyEdit()}
+                  onCancel={handleCancelEdit}
+                  onReset={handleResetTooth}
+                  onToggleLocked={() =>
+                    setDraftMovement((current) =>
+                      current ? { ...current, locked: !current.locked } : current,
+                    )
+                  }
+                  onToggleExcluded={() =>
+                    setDraftMovement((current) =>
+                      current ? { ...current, excluded: !current.excluded } : current,
+                    )
+                  }
+                  onUndo={() => void handleUndo()}
+                  onRedo={() => void handleRedo()}
+                  canUndo={undoStack.length > 0}
+                  canRedo={redoStack.length > 0}
+                />
+              ) : null}
             </TreatmentSetupInspector>
           )}
           {workspace === "staging" && (

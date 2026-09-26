@@ -76,7 +76,7 @@ Local failures render once, in the step column, and only when the sentence is no
 
 ## Processing and failure
 
-Processing shows the server phase and elapsed time when the server sent them. A percent is shown only when `overall_progress` is a real number. Otherwise progress is indeterminate. Remaining time is “No reliable remaining-time estimate.” A historical sample can be labeled as a sample and is never stored as a remaining-time estimate. This workspace does not invent one.
+Processing shows the server phase and elapsed time when the server sent them. A percent is shown only when `overall_progress` is a real number. Otherwise progress is indeterminate. With no measured history, remaining time is “No reliable remaining-time estimate.” A historical sample can be labeled as a sample and is never stored as a remaining-time estimate. Wave 8 may show an estimate only when completed jobs on this computer support it. This workspace does not invent one.
 
 Cancel is available when a processing job id exists. It calls the existing cancel endpoint. Source scans are not deleted.
 
@@ -105,7 +105,7 @@ Next-action resolution, inspector assembly, and toolbar splitting are pure funct
 ## Known limitations
 
 - Live ToothInstanceNet inference did not run. The runtime blocker is unchanged: no NVIDIA driver, torch, or pointops on this host.
-- No measured per-case remaining time is available, so the UI does not show one.
+- At the time of Wave 5, remaining time was always “No reliable remaining-time estimate.” Wave 8 can show an estimate when this computer has completed the same kind of job.
 - Boundary edit, split, merge, identity correction, measure, and IPR are still unavailable.
 - Browser screenshots that use fixture crowns are test meshes, not clinical segmentation validation.
 - WP-14 and WP-15 were not started. Wave 6 and later were not started.

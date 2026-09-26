@@ -1,0 +1,398 @@
+{
+  "wave": 8,
+  "clinicalSegmentationValidation": false,
+  "liveToothInstanceNet": false,
+  "environment": "BLOCKED_BY_ENVIRONMENT",
+  "fixtureEvidence": "non-clinical",
+  "note": "Screenshots are UI evidence. Fixture crowns are generated test meshes. Remaining time is shown only from the mocked evidence payload, never invented by the page. WP-14 and WP-15 were not exercised.",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "name": "1366x768"
+    },
+    {
+      "width": 1600,
+      "height": 1000,
+      "name": "1600x1000"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "name": "1280x800"
+    }
+  ],
+  "images": [
+    {
+      "file": "1366x768_01_launch.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Launch. No case and no processing."
+    },
+    {
+      "file": "1366x768_02_case_intake.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Case intake. Scans imported. No analysis started."
+    },
+    {
+      "file": "1366x768_03_analysis.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Analysis opened without a segmentation run."
+    },
+    {
+      "file": "1366x768_04_analysis_blocked.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Environment blocker. Not zero teeth."
+    },
+    {
+      "file": "1366x768_05_treatment_navigation.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Opening treatment setup did not create a plan."
+    },
+    {
+      "file": "1366x768_06_processing_no_estimate.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Explicit plan creation. No remaining-time estimate without history."
+    },
+    {
+      "file": "1366x768_15_refresh_processing.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Refresh during processing keeps the job and does not invent an estimate."
+    },
+    {
+      "file": "1366x768_07_measured_estimate.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Measured estimate from the status payload. One surface. Not a guarantee."
+    },
+    {
+      "file": "1366x768_08_cancelled.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Cancellation is a cancelled job, not a completed plan."
+    },
+    {
+      "file": "1366x768_09_staging.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Opening staging did not regenerate stages."
+    },
+    {
+      "file": "1366x768_10_staging_regenerate.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Regeneration is an explicit request."
+    },
+    {
+      "file": "1366x768_11_validation.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Validation review. A missing check is not a pass."
+    },
+    {
+      "file": "1366x768_12_production.png",
+      "viewport": "1366x768",
+      "provenance": "unavailable",
+      "geometry": "generated_fixture_crowns",
+      "note": "Production does not claim manufacturing readiness."
+    },
+    {
+      "file": "1366x768_13_back_forward.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Back and forward restore steps without a new run."
+    },
+    {
+      "file": "1366x768_14_refresh_completed.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Refresh after completion restores the production step."
+    },
+    {
+      "file": "1366x768_16_failure.png",
+      "viewport": "1366x768",
+      "provenance": "failure",
+      "geometry": "none",
+      "note": "Failed segmentation stays failed. Opening the step is not a retry."
+    },
+    {
+      "file": "1600x1000_01_launch.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Launch. No case and no processing."
+    },
+    {
+      "file": "1600x1000_02_case_intake.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Case intake. Scans imported. No analysis started."
+    },
+    {
+      "file": "1600x1000_03_analysis.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Analysis opened without a segmentation run."
+    },
+    {
+      "file": "1600x1000_04_analysis_blocked.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Environment blocker. Not zero teeth."
+    },
+    {
+      "file": "1600x1000_05_treatment_navigation.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Opening treatment setup did not create a plan."
+    },
+    {
+      "file": "1600x1000_06_processing_no_estimate.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Explicit plan creation. No remaining-time estimate without history."
+    },
+    {
+      "file": "1600x1000_15_refresh_processing.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Refresh during processing keeps the job and does not invent an estimate."
+    },
+    {
+      "file": "1600x1000_07_measured_estimate.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Measured estimate from the status payload. One surface. Not a guarantee."
+    },
+    {
+      "file": "1600x1000_08_cancelled.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Cancellation is a cancelled job, not a completed plan."
+    },
+    {
+      "file": "1600x1000_09_staging.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Opening staging did not regenerate stages."
+    },
+    {
+      "file": "1600x1000_10_staging_regenerate.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Regeneration is an explicit request."
+    },
+    {
+      "file": "1600x1000_11_validation.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Validation review. A missing check is not a pass."
+    },
+    {
+      "file": "1600x1000_12_production.png",
+      "viewport": "1600x1000",
+      "provenance": "unavailable",
+      "geometry": "generated_fixture_crowns",
+      "note": "Production does not claim manufacturing readiness."
+    },
+    {
+      "file": "1600x1000_13_back_forward.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Back and forward restore steps without a new run."
+    },
+    {
+      "file": "1600x1000_14_refresh_completed.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Refresh after completion restores the production step."
+    },
+    {
+      "file": "1600x1000_16_failure.png",
+      "viewport": "1600x1000",
+      "provenance": "failure",
+      "geometry": "none",
+      "note": "Failed segmentation stays failed. Opening the step is not a retry."
+    },
+    {
+      "file": "1280x800_01_launch.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Launch. No case and no processing."
+    },
+    {
+      "file": "1280x800_02_case_intake.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Case intake. Scans imported. No analysis started."
+    },
+    {
+      "file": "1280x800_03_analysis.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Analysis opened without a segmentation run."
+    },
+    {
+      "file": "1280x800_04_analysis_blocked.png",
+      "viewport": "1280x800",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Environment blocker. Not zero teeth."
+    },
+    {
+      "file": "1280x800_05_treatment_navigation.png",
+      "viewport": "1280x800",
+      "provenance": "blocked",
+      "geometry": "none",
+      "note": "Opening treatment setup did not create a plan."
+    },
+    {
+      "file": "1280x800_06_processing_no_estimate.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Explicit plan creation. No remaining-time estimate without history."
+    },
+    {
+      "file": "1280x800_15_refresh_processing.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Refresh during processing keeps the job and does not invent an estimate."
+    },
+    {
+      "file": "1280x800_07_measured_estimate.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Measured estimate from the status payload. One surface. Not a guarantee."
+    },
+    {
+      "file": "1280x800_08_cancelled.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "note": "Cancellation is a cancelled job, not a completed plan."
+    },
+    {
+      "file": "1280x800_09_staging.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Opening staging did not regenerate stages."
+    },
+    {
+      "file": "1280x800_10_staging_regenerate.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Regeneration is an explicit request."
+    },
+    {
+      "file": "1280x800_11_validation.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Validation review. A missing check is not a pass."
+    },
+    {
+      "file": "1280x800_12_production.png",
+      "viewport": "1280x800",
+      "provenance": "unavailable",
+      "geometry": "generated_fixture_crowns",
+      "note": "Production does not claim manufacturing readiness."
+    },
+    {
+      "file": "1280x800_13_back_forward.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Back and forward restore steps without a new run."
+    },
+    {
+      "file": "1280x800_14_refresh_completed.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "note": "Refresh after completion restores the production step."
+    },
+    {
+      "file": "1280x800_16_failure.png",
+      "viewport": "1280x800",
+      "provenance": "failure",
+      "geometry": "none",
+      "note": "Failed segmentation stays failed. Opening the step is not a retry."
+    }
+  ],
+  "timings": [
+    {
+      "viewport": "1366x768",
+      "name": "launch",
+      "ms": 395
+    },
+    {
+      "viewport": "1366x768",
+      "name": "analysis-navigation",
+      "ms": 104,
+      "pipelinePosts": 0
+    },
+    {
+      "viewport": "1600x1000",
+      "name": "launch",
+      "ms": 338
+    },
+    {
+      "viewport": "1600x1000",
+      "name": "analysis-navigation",
+      "ms": 96,
+      "pipelinePosts": 0
+    },
+    {
+      "viewport": "1280x800",
+      "name": "launch",
+      "ms": 401
+    },
+    {
+      "viewport": "1280x800",
+      "name": "analysis-navigation",
+      "ms": 91,
+      "pipelinePosts": 0
+    }
+  ]
+}

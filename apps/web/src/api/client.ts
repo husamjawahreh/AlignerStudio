@@ -8,6 +8,7 @@ import type {
   ToothLandmarksPayload,
   TreatmentPlan,
 } from "@alignerstudio/contracts";
+import type { RemainingTimePayload } from "../performance/remainingTime";
 import type { MovementSummary, ReviewBundle, TreatmentSetupComparison, TreatmentSetupVersionMeta } from "../review/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -67,6 +68,8 @@ export interface ProcessingStatus {
   heartbeat_at?: string;
   completed_at: string | null;
   elapsed_seconds?: number;
+  /** Present when the API computed an evidence-based estimate. Absence means no estimate. */
+  remaining_time?: RemainingTimePayload | null;
   upper_status?: string;
   lower_status?: string;
   planning_status?: string;
