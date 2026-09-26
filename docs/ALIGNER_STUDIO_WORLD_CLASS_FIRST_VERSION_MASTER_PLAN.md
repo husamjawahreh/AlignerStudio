@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Document ID | `AS-FV-MASTER-1.7` |
+| Document ID | `AS-FV-MASTER-1.10` |
 | Status | Authoritative roadmap |
 | Audit date | 2026-09-26 |
 | Repository | Current working tree at audit time |
@@ -345,6 +345,14 @@ The command `scripts/fv03_1_segmentation_runtime.py` runs the self-test and the 
 
 The FV-03 timings and the 529.3 MB peak stay the blocked-run record. The appended probe in `.research/tmp/fv03_1_report.json` measured prepared load 34.1 ms, input gate 80.2 ms, capability detection 340.6 ms, and peak RSS 421.0 MB in a process that had already imported trimesh. Those figures do not replace the FV-03 record. B1 stays unproven and environment-blocked. B4 and B5 stay partial. Status counts are unchanged. Anatomical intelligence and FV-04 were not started.
 
+### FV-03.2 — Real segmentation evidence gate and provenance foundation
+
+Measured on 2026-09-26. Verdict: **PARTIAL / EVIDENCE-PROVEN** for repository contracts and preprocessing reproducibility. Live inference on this host remains environment-blocked unless self-test reaches `READY_FOR_INFERENCE`. Clinical accuracy, FDI mapping, ground-truth segmentation quality, and doctor clinical approval stay **NOT ESTABLISHED**. Detail: `docs/FV03_2_SEGMENTATION_EVIDENCE_GATE.md`.
+
+External A100 Colab qualification demonstrated a usable PyTorch CUDA + pointops runtime against the pinned checkpoint. Repository preprocessing reproducibility with explicit seed `123456` is recorded immutably in `fv032_exact_repository_preprocessing_reproducibility.json` (`REPOSITORY_PREPROCESSING_FIXED_SEED_REPRODUCIBLE`; upper and lower exact). That file is historical evidence and must not be rewritten. It is not clinical accuracy.
+
+The repository now seals FV-03.2 run contracts and evidence bundles with preprocessing metadata, GeometricValidationEngine topology checks, immutable model-output linkage, and review authorship that does not promote doctor acceptance to clinical verification. An external CUDA evidence bundle can be imported and sealed as `EXTERNAL_CUDA` only after server-side hash and geometry checks. That importer is `READY_FOR_EXTERNAL_INFERENCE_SEALING`. The Colab runner in `scripts/fv03_2_external_inference_run.py` is `READY_FOR_EXTERNAL_INFERENCE_RUN`. `GENUINE_EXTERNAL_INFERENCE_COMPLETED` stays false until that command actually returns a forward pass. It does not execute the network on this host and does not relabel external evidence as local native inference. Split stays unavailable. Historical FV-03 / FV-03.1 blocked-run records are preserved. FV-04 was not started.
+
 ### FV-03 remaining — Anatomical intelligence
 
 Not started. Keep computed PCA frames labeled `COMPUTED`. Add landmarks only from a measured model or from doctor placement. Clinical axes stay `NOT_AVAILABLE` until a defined method exists. Arch form becomes a descriptive and then an editable curve with provenance. Missing teeth stay a reviewed state, never a silent gap in the numbering. Observed gingiva, when the scan actually contains it, stays `OBSERVED` or `SEGMENTED`. The current synthetic gum remains `PRESENTATION_ONLY`.
@@ -678,6 +686,9 @@ When the plan changes, bump the document ID (`AS-FV-MASTER-1.1`, …) and add a 
 | 1.5 | 2026-09-26 | FV-02.2 preparation jobs. Local worker, cache, cancellation, lineage cleanup, and a technical acceptance gate. A5 and A11 stay `IMPLEMENTED_BUT_PARTIAL`. Status counts are unchanged. `READY_FOR_SEGMENTATION` is not clinical readiness. FV-03 was not started. See `docs/FV02_2_SCAN_PREPARATION.md`. |
 | 1.6 | 2026-09-26 | FV-03 segmentation boundary. Real inference is `ENVIRONMENT_BLOCKED` (`DRIVER_UNAVAILABLE`). No fixture and no FDI. B4 becomes `IMPLEMENTED_BUT_PARTIAL` for mock-tested review edits. B1 stays unproven. Anatomical intelligence and FV-04 were not started. See `docs/FV03_SEGMENTATION.md`. |
 | 1.7 | 2026-09-26 | FV-03.1 runtime manifest, self-test, and evidence seal. Host self-test is `ENVIRONMENT_UNAVAILABLE`. Real segmentation stays unverified. Clinical accuracy stays not established. Split is unavailable. B1 stays unproven. B4 and B5 stay partial. Status counts are unchanged. FV-04 was not started. See `docs/FV03_1_SEGMENTATION_RUNTIME.md`. |
+| 1.8 | 2026-09-26 | FV-03.2 evidence gate and provenance foundation. External A100/pointops qualification and fixed-seed preprocessing reproducibility are recorded. Clinical accuracy, FDI, and doctor approval stay not established. Live inference on this host remains blocked unless `READY_FOR_INFERENCE`. See `docs/FV03_2_SEGMENTATION_EVIDENCE_GATE.md`. |
+| 1.9 | 2026-09-26 | FV-03.2 external CUDA evidence import/seal. Server verifies hashes and geometry. Origin stays `EXTERNAL_CUDA`. Importer is ready for a genuine external bundle. No A100 forward pass was executed in this change. Clinical accuracy stays not established. FV-04 was not started. |
+| 1.10 | 2026-09-26 | FV-03.2 external-run protocol. Official TeethSegDataset preprocessing command is ready to copy to the qualified CUDA host. `GENUINE_EXTERNAL_INFERENCE_COMPLETED` stays false. FV-04 was not started. See `docs/FV03_2_EXTERNAL_INFERENCE_RUN.md`. |
 
 ---
 

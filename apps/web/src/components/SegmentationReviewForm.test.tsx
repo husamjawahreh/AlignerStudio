@@ -62,12 +62,19 @@ describe("SegmentationReviewForm", () => {
     expect(screen.getByTestId("upper-segmentation-identity").textContent).toContain("NOT_ESTABLISHED");
     expect(screen.getByTestId("upper-segmentation-identity").textContent).toMatch(/not established/i);
     expect(screen.getByText(/FDI not assigned/)).toBeTruthy();
+    expect(screen.getByText(/model confidence NOT_AVAILABLE/)).toBeTruthy();
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "Execution origin UNKNOWN",
+    );
     expect(screen.getByText(/mock contract is not real inference/)).toBeTruthy();
     expect(screen.getByText(/MODEL_PREDICTION/)).toBeTruthy();
     expect(screen.getByTestId("upper-segmentation-outcome").textContent).toBe("SEGMENTATION_NOT_RUN");
     expect(screen.queryByRole("button", { name: "Accept candidate" })).toBeNull();
     expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
       "QUALITY_EVALUATION NOT_AVAILABLE",
+    );
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "Doctor acceptance is not clinical verification",
     );
     expect(screen.getByTestId("upper-segmentation-split").textContent).toBe("SPLIT_UNAVAILABLE");
   });

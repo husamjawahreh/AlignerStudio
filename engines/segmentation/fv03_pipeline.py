@@ -28,7 +28,6 @@ from domain.tooth.segmentation_review import (
     candidate_instance,
     empty_segmentation,
     segmentation_input_reasons,
-    validate_segmentation_run,
 )
 from engines.geometry.scan_preparation import (
     PreparationError,
@@ -466,9 +465,17 @@ def _public_job(job: dict[str, Any], *, duplicate: bool = False) -> dict[str, An
         "fdi_assigned": False,
         "clinically_segmented": False,
         "clinical_accuracy_claim": False,
+        "clinically_verified": False,
         "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
         "self_test_state": job.get("self_test_state"),
         "quality_evaluation": "NOT_AVAILABLE",
+        "validation_status": job.get("validation_status"),
+        "instance_count": job.get("instance_count"),
+        "evidence_bundle_sha256": job.get("evidence_bundle_sha256"),
+        "review_state": job.get("review_state"),
+        "requires_review": job.get("requires_review", True),
+        "execution_origin": job.get("execution_origin"),
+        "native_execution": bool(job.get("native_execution")),
         "split_available": False,
         "manual_segmentation_correction": "NOT_IMPLEMENTED",
     }
@@ -763,6 +770,12 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
         "inference_kind": produced.get("inference_kind") or (
             "not_run" if blocked else "toothinstancenet"
         ),
+        "execution_origin": (
+            "SIMULATED"
+            if produced.get("inference_kind") == "mock_contract"
+            else ("LOCAL_NATIVE" if real_inference and not blocked else "UNKNOWN")
+        ),
+        "native_execution": bool(real_inference and not blocked and produced.get("inference_kind") != "mock_contract"),
         "fixture": False,
         "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
         "fdi_assigned": False,
@@ -791,22 +804,34 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
             "Seven model classes are not FDI, arch identity, or left/right identity.",
         ],
     }
-    validate_segmentation_run(
-        run,
+    from engines.segmentation.fv03_1_runtime import quality_evaluation
+    from engines.segmentation.fv03_2_evidence import (
+        build_fv03_2_evidence_bundle,
+        build_segmentation_run_contract,
+        preprocessing_configuration,
+        preprocessing_reproducibility_evidence_reference,
+        validate_segmentation_geometry_gate,
+    )
+
+    geometry_gate = validate_segmentation_geometry_gate(
+        run=run,
         face_count=gate.get("face_count"),
         finite=gate.get("finite"),
     )
-    from engines.segmentation.fv03_1_runtime import (
-        build_evidence_bundle,
-        quality_evaluation,
-    )
-
     self_test = capability.get("self_test") or {}
     job["self_test_state"] = self_test.get("state")
     quality = quality_evaluation(ground_truth_present=False)
     run["quality_evaluation"] = quality
     run["split_available"] = False
     run["clinically_verified"] = False
+    runtime_manifest = capability.get("runtime_manifest") or {}
+    rng_seed = produced.get("rng_seed")
+    if rng_seed is None and isinstance(capability.get("rng_seed"), int):
+        rng_seed = capability.get("rng_seed")
+    preprocessing = preprocessing_configuration(
+        rng_seed=rng_seed if isinstance(rng_seed, int) else None,
+        executed=bool(real_inference and not blocked),
+    )
     groups = list(produced.get("groups") or [])
     output_reference = None
     instance_generation = None
@@ -821,8 +846,45 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
             "algorithm": "learned_region_cluster",
             "version": str(backend_version),
             "real_model": True,
+            "parameters": produced.get("clustering_parameters"),
         }
-    run["evidence"] = build_evidence_bundle(
+    peak_rss = produced.get("peak_rss_bytes")
+    peak_gpu = produced.get("peak_gpu_memory_bytes")
+    run_contract = build_segmentation_run_contract(
+        run_id=run_id,
+        case_id=str(job.get("case_id") or ""),
+        prepared_input_artifact_id=job.get("prepared_input_sha"),
+        prepared_input_sha256=job.get("prepared_input_sha"),
+        prepared_mesh_statistics=mesh_stats,
+        model_identifier=str(model_id) if model_id else None,
+        checkpoint_sha256=model_sha,
+        model_version=str(backend_version) if backend_version else None,
+        backend_name=str(backend_name),
+        backend_version=str(backend_version),
+        python_version=runtime_manifest.get("python_version"),
+        pytorch_version=runtime_manifest.get("pytorch_version"),
+        cuda_version=runtime_manifest.get("cuda_version"),
+        pointops_identity=(
+            runtime_manifest.get("pointops_version")
+            if runtime_manifest.get("pointops_available")
+            else None
+        ),
+        execution_device=produced.get("device"),
+        preprocessing=preprocessing,
+        inference_duration_ms=produced.get("duration_ms"),
+        peak_rss_bytes=peak_rss if isinstance(peak_rss, int) else None,
+        peak_gpu_memory_bytes=peak_gpu if isinstance(peak_gpu, int) else None,
+        raw_model_output_reference=output_reference,
+        instance_clustering_parameters=instance_generation,
+        instances=instances,
+        deterministic_validation=geometry_gate,
+        evidence_bundle_sha256=None,
+        immutable_run_status="blocked" if blocked else "completed",
+        real_inference=real_inference,
+        created_at=run.get("created_at"),
+        execution_origin=str(run.get("execution_origin") or "UNKNOWN"),
+    )
+    run["evidence"] = build_fv03_2_evidence_bundle(
         run_id=run_id,
         case_id=str(job.get("case_id") or ""),
         prepared_input_sha256=job.get("prepared_input_sha"),
@@ -830,20 +892,38 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
         model_sha256=model_sha,
         backend_name=str(backend_name),
         backend_version=str(backend_version),
-        runtime_manifest=capability.get("runtime_manifest"),
+        runtime_manifest=runtime_manifest or None,
         device=produced.get("device"),
-        preprocessing_executed=False,
+        preprocessing=preprocessing,
         inference_duration_ms=produced.get("duration_ms"),
-        peak_memory_bytes=None,
+        peak_rss_bytes=peak_rss if isinstance(peak_rss, int) else None,
+        peak_gpu_memory_bytes=peak_gpu if isinstance(peak_gpu, int) else None,
         raw_model_output_reference=output_reference,
         instance_generation=instance_generation,
-        output_statistics={"instance_count": 0 if blocked else len(instances)},
+        instances=instances,
         technical_validation=run.get("technical_validation") or {},
         real_inference=real_inference,
         blocked=blocked,
         blocker=run.get("blocker"),
         inference_kind=str(run.get("inference_kind") or ""),
+        run_contract=run_contract,
     )
+    evidence_sha = run["evidence"].get("evidence_sha256")
+    run_contract["evidence_bundle_sha256"] = evidence_sha
+    run["run_contract"] = run_contract
+    run["preprocessing"] = preprocessing
+    run["preprocessing_reproducibility_evidence"] = (
+        preprocessing_reproducibility_evidence_reference()
+    )
+    run["validation_status"] = geometry_gate.get("status")
+    run["evidence_bundle_sha256"] = evidence_sha
+    job["validation_status"] = geometry_gate.get("status")
+    job["instance_count"] = 0 if blocked else len(instances)
+    job["evidence_bundle_sha256"] = evidence_sha
+    job["review_state"] = "MODEL_PREDICTION" if not blocked and instances else "REQUIRES_REVIEW"
+    job["requires_review"] = True
+    job["execution_origin"] = run.get("execution_origin")
+    job["native_execution"] = bool(run.get("native_execution"))
     with _LOCK:
         if int(session.get("generation") or 0) != int(job["expected_generation"]):
             raise SegmentationInputError("stale segmentation job; a newer run was not overwritten.")
@@ -883,6 +963,14 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
             "blocker": run.get("blocker"),
             "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
             "inference_kind": run["inference_kind"],
+            "execution_origin": run.get("execution_origin"),
+            "native_execution": bool(run.get("native_execution")),
+            "validation_status": run.get("validation_status"),
+            "instance_count": 0 if blocked else len(instances),
+            "evidence_bundle_sha256": evidence_sha,
+            "requires_review": True,
+            "clinically_verified": False,
+            "quality_evaluation": "NOT_AVAILABLE",
         }
         if run["reviewable"]:
             session["review"] = {
@@ -920,6 +1008,181 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
             _finish(job, "failed", run["blocker"])
         else:
             _finish(job, "completed", None)
+
+
+def import_external_segmentation_evidence(
+    artifact: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    case_id: str,
+) -> dict[str, Any]:
+    """Seal a transferred external CUDA evidence bundle onto an accepted prepared artifact.
+
+    Does not execute ToothInstanceNet. Does not relabel the run as local native execution.
+    """
+    from engines.segmentation.fv03_2_evidence import (
+        evaluate_external_inference_seal,
+        external_evidence_intact,
+    )
+
+    gate = assess_segmentation_input(artifact)
+    vertices = None
+    faces = None
+    derived = Path(_prepared_path_from_artifact(artifact))
+    if derived.is_file():
+        try:
+            mesh = _load_mesh(derived)
+        except PreparationError:
+            mesh = None
+        if mesh is not None:
+            vertices = np.asarray(mesh.vertices, dtype=np.float64)
+            faces = np.asarray(mesh.faces, dtype=np.int64)
+    decision = evaluate_external_inference_seal(
+        payload,
+        case_id=case_id,
+        prepared_artifact_present=bool(gate.get("accepted")),
+        prepared_sha256=str(gate.get("prepared_sha256") or "") or None,
+        prepared_vertices=vertices,
+        prepared_faces=faces,
+        source_sha256=str(gate.get("source_sha256") or "") or None,
+    )
+    decision["prepared_gate_accepted"] = bool(gate.get("accepted"))
+    if not decision["sealed"]:
+        decision["persisted"] = False
+        decision["review_state"] = None
+        return decision
+    _persist_external_sealed_run(artifact, decision, payload)
+    decision["persisted"] = True
+    decision["review_state"] = "MODEL_PREDICTION"
+    decision["evidence_intact"] = external_evidence_intact(
+        artifact["segmentation"]["runs"][-1]["evidence"]
+    )
+    return decision
+
+
+def _prepared_path_from_artifact(artifact: dict[str, Any]) -> str:
+    session = artifact.get("preparation") if isinstance(artifact.get("preparation"), dict) else {}
+    active = session.get("active") if isinstance(session.get("active"), dict) else {}
+    return str(active.get("output_path") or "")
+
+
+def _persist_external_sealed_run(
+    artifact: dict[str, Any],
+    decision: dict[str, Any],
+    payload: dict[str, Any],
+) -> None:
+    session = _session(artifact)
+    run_id = str(payload.get("run_id"))
+    prepared = str(decision.get("prepared_input_sha256") or "")
+    runtime = decision.get("runtime") or {}
+    instances = []
+    for spec in decision.get("instance_specs") or []:
+        available = bool(spec.get("confidence_available"))
+        instances.append(
+            candidate_instance(
+                instance_id=str(spec.get("instance_id")),
+                run_id=run_id,
+                prepared_sha256=prepared,
+                face_indices=list(spec.get("face_indices") or []),
+                backend_name="toothinstancenet",
+                backend_version=str(decision.get("model_version") or ""),
+                model_id=str(decision.get("model_identifier") or "instseg_full.ckpt"),
+                model_sha256=decision.get("checkpoint_sha256"),
+                raw_model_class=spec.get("raw_model_class"),
+                confidence=spec.get("confidence") if available else None,
+                confidence_available=available,
+                real_inference=True,
+            )
+        )
+    evidence = decision.get("evidence") or {}
+    run = {
+        "run_id": run_id,
+        "status": "completed",
+        "blocked": False,
+        "sealed": True,
+        "input": {
+            "source_sha256": decision.get("source_sha256"),
+            "prepared_sha256": prepared,
+        },
+        "source_sha256": decision.get("source_sha256"),
+        "prepared_sha256": prepared,
+        "backend": {
+            "name": "toothinstancenet",
+            "version": decision.get("model_version"),
+            "model_id": decision.get("model_identifier"),
+            "model_sha256": decision.get("checkpoint_sha256"),
+        },
+        "execution_origin": "EXTERNAL_CUDA",
+        "native_execution": False,
+        "local_native": False,
+        "real_inference": True,
+        "inference_executed_by_this_process": False,
+        "inference_kind": "external_cuda",
+        "fixture": False,
+        "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
+        "fdi_assigned": False,
+        "clinically_segmented": False,
+        "clinical_accuracy_claim": False,
+        "clinically_verified": False,
+        "instances": instances,
+        "raw_model_output": copy.deepcopy(decision.get("raw_model_output")),
+        "evidence": evidence,
+        "evidence_bundle_sha256": decision.get("evidence_sha256"),
+        "validation_status": "PASSED",
+        "technical_validation": decision.get("validation"),
+        "preprocessing": decision.get("preprocessing"),
+        "reproducibility_status": decision.get("reproducibility_status"),
+        "runtime": runtime,
+        "reviewable": True,
+        "quality_evaluation": "NOT_AVAILABLE",
+        "split_available": False,
+    }
+    with _LOCK:
+        session["generation"] = int(session.get("generation") or 0) + 1
+        session.setdefault("runs", []).append(run)
+        session["active_run_id"] = run_id
+        session["semantic_identity"] = SEMANTIC_IDENTITY_NOT_ESTABLISHED
+        session["fdi_assigned"] = False
+        session["clinically_segmented"] = False
+        session["clinical_accuracy_claim"] = False
+        session["clinical_validation"] = False
+        session["quality_evaluation"] = "NOT_AVAILABLE"
+        session["split_available"] = False
+        session["execution_origin"] = "EXTERNAL_CUDA"
+        session["active_run"] = {
+            "run_id": run_id,
+            "status": "completed",
+            "reviewable": True,
+            "real_inference": True,
+            "native_execution": False,
+            "execution_origin": "EXTERNAL_CUDA",
+            "prepared_sha256": prepared,
+            "source_sha256": decision.get("source_sha256"),
+            "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
+            "inference_kind": "external_cuda",
+            "validation_status": "PASSED",
+            "instance_count": len(instances),
+            "evidence_bundle_sha256": decision.get("evidence_sha256"),
+            "requires_review": True,
+            "clinically_verified": False,
+            "quality_evaluation": "NOT_AVAILABLE",
+        }
+        session["review"] = {
+            "run_id": run_id,
+            "instances": copy.deepcopy(instances),
+            "model_instances": copy.deepcopy(instances),
+            "undo": [],
+            "redo": [],
+            "events": [
+                {
+                    "action": "external_cuda_model_prediction_sealed",
+                    "detail": {"run_id": run_id, "execution_origin": "EXTERNAL_CUDA"},
+                    "mutates_model_prediction": False,
+                }
+            ],
+            "selected_instance_id": None,
+            "id_counter": 0,
+        }
 
 
 def review_segmentation(

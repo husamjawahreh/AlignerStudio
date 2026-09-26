@@ -128,6 +128,8 @@ Semantic identity stays `NOT_ESTABLISHED`. Model class labels, when a real run e
 
 The review form shows `ENVIRONMENT_BLOCKED` or `SEGMENTATION_COMPLETED` as mutually exclusive outcomes. Review controls appear only when a completed result has `real_inference` true. A blocked run has no accept, merge, or undo controls. `QUALITY_EVALUATION NOT_AVAILABLE` is shown in either case.
 
+FV-03.2 extends sealed runs with a provenance run contract, GeometricValidationEngine topology checks, preprocessing metadata (including optional RNG seed), and an immutable reference to `fv032_exact_repository_preprocessing_reproducibility.json`. See `docs/FV03_2_SEGMENTATION_EVIDENCE_GATE.md`. Historical blocked-run measurements in this document stay unchanged.
+
 Playwright `tests/e2e/fv03_segmentation.spec.ts` passed in 45.9 s against `http://127.0.0.1:5177` and `http://127.0.0.1:8000`. The stored case `b491cd67-60c9-4a0e-a663-65181e607812` is `blocked`, self-test `ENVIRONMENT_UNAVAILABLE`, capability `DRIVER_UNAVAILABLE`, availability `ENVIRONMENT_BLOCKED`, semantic identity `NOT_ESTABLISHED`, zero instances, `real_inference` false, and quality `NOT_AVAILABLE`. The sealed bundle kind is `blocked_run` and its inference duration is null. The form showed `ENVIRONMENT_BLOCKED` and did not show `SEGMENTATION_COMPLETED` or review controls.
 
 ## Current host limitation

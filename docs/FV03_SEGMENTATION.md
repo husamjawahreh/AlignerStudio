@@ -10,7 +10,7 @@
 
 This is not a clinical-accuracy claim. A completed job, if one is ever produced, is a segmentation candidate. It is not FDI, tooth identity, arch identity, left/right identity, or doctor verification. FV-04 was not started. Landmarks, clinical axes, roots, occlusion, setup, staging, IPR, attachments, manufacturing, and export were not implemented.
 
-FV-03.1 keeps this blocked verdict and adds the runtime manifest, self-test, evidence seal, and review provenance in `docs/FV03_1_SEGMENTATION_RUNTIME.md`. The face-index split control from this phase is withdrawn there: split is `SPLIT_UNAVAILABLE`. The timings in this file stay the FV-03 blocked-run record.
+FV-03.1 keeps this blocked verdict and adds the runtime manifest, self-test, evidence seal, and review provenance in `docs/FV03_1_SEGMENTATION_RUNTIME.md`. FV-03.2 adds the real-run evidence gate and immutable preprocessing reproducibility reference in `docs/FV03_2_SEGMENTATION_EVIDENCE_GATE.md` without claiming clinical accuracy. The face-index split control from this phase is withdrawn there: split is `SPLIT_UNAVAILABLE`. The timings in this file stay the FV-03 blocked-run record.
 
 ## Architecture
 

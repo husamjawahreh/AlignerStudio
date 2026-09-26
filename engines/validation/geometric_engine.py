@@ -130,6 +130,43 @@ def _faces_for_state(state: StageToothState) -> tuple[tuple[int, int, int], ...]
     return None
 
 
+def validate_mesh_geometry(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+) -> dict[str, object]:
+    """Authoritative deterministic mesh topology checks used by GeometricValidationEngine.
+
+    Does not repair geometry. Does not invent FDI, roots, or clinical accuracy.
+    """
+    points = np.asarray(vertices, dtype=np.float64)
+    triangles = np.asarray(faces, dtype=np.int64)
+    if points.ndim != 2 or points.shape[1] != 3 or len(points) == 0:
+        return {"passed": False, "reason": "empty or malformed vertex array", "repaired": False}
+    if triangles.ndim != 2 or triangles.shape[1] != 3 or len(triangles) == 0:
+        return {"passed": False, "reason": "empty or malformed face array", "repaired": False}
+    if not np.all(np.isfinite(points)):
+        return {"passed": False, "reason": "non-finite vertex coordinate", "repaired": False}
+    if np.any(triangles < 0) or np.any(triangles >= len(points)):
+        return {"passed": False, "reason": "face references an invalid vertex", "repaired": False}
+    face_vertices = points[triangles]
+    areas = np.linalg.norm(
+        np.cross(
+            face_vertices[:, 1] - face_vertices[:, 0],
+            face_vertices[:, 2] - face_vertices[:, 0],
+        ),
+        axis=1,
+    )
+    if np.any(areas <= np.finfo(float).eps):
+        return {"passed": False, "reason": "degenerate triangle", "repaired": False}
+    return {
+        "passed": True,
+        "reason": None,
+        "repaired": False,
+        "vertex_count": int(len(points)),
+        "face_count": int(len(triangles)),
+    }
+
+
 def _mesh_for_state(state: StageToothState) -> _ValidatedMesh:
     vertices = np.asarray(state.vertices, dtype=np.float64)
     faces_source = _faces_for_state(state)
@@ -138,23 +175,9 @@ def _mesh_for_state(state: StageToothState) -> _ValidatedMesh:
             _empty_mesh(), "source/target face topology mismatch for interpolated stage"
         )
     faces = np.asarray(faces_source, dtype=np.int64)
-    if vertices.ndim != 2 or vertices.shape[1] != 3 or len(vertices) == 0:
-        return _ValidatedMesh(_empty_mesh(), "empty or malformed vertex array")
-    if faces.ndim != 2 or faces.shape[1] != 3 or len(faces) == 0:
-        return _ValidatedMesh(_empty_mesh(), "empty or malformed face array")
-    if not np.all(np.isfinite(vertices)):
-        return _ValidatedMesh(_empty_mesh(), "non-finite vertex coordinate")
-    if np.any(faces < 0) or np.any(faces >= len(vertices)):
-        return _ValidatedMesh(_empty_mesh(), "face references an invalid vertex")
-    face_vertices = vertices[faces]
-    areas = np.linalg.norm(
-        np.cross(
-            face_vertices[:, 1] - face_vertices[:, 0], face_vertices[:, 2] - face_vertices[:, 0]
-        ),
-        axis=1,
-    )
-    if np.any(areas <= np.finfo(float).eps):
-        return _ValidatedMesh(_empty_mesh(), "degenerate triangle")
+    check = validate_mesh_geometry(vertices, faces)
+    if not check["passed"]:
+        return _ValidatedMesh(_empty_mesh(), str(check["reason"]))
     return _ValidatedMesh(trimesh.Trimesh(vertices=vertices, faces=faces, process=False))
 
 

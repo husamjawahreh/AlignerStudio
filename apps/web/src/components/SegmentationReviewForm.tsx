@@ -64,7 +64,14 @@ export function SegmentationReviewForm({
         Semantic identity {identity}. Self-test {selfTest}. QUALITY_EVALUATION NOT_AVAILABLE. Split
         is unavailable. Manual segmentation correction is not available and does not replace the
         model. {realInference ? "Real inference recorded." : "Real inference not claimed."} Clinical
-        accuracy is not established.
+        accuracy is not established. Validation{" "}
+        {segmentation?.active_run?.validation_status ?? job?.validation_status ?? "NOT_AVAILABLE"}.
+        Evidence {shortHash(segmentation?.active_run?.evidence_bundle_sha256 ?? job?.evidence_bundle_sha256)}.
+        Execution origin {segmentation?.active_run?.execution_origin ?? job?.execution_origin ?? "UNKNOWN"}.
+        {segmentation?.active_run?.execution_origin === "EXTERNAL_CUDA"
+          ? "External CUDA is not local native execution."
+          : ""}
+        Doctor acceptance is not clinical verification.
       </p>
       {job ? (
         <p data-testid={`${arch}-segmentation-job`}>
@@ -113,6 +120,9 @@ export function SegmentationReviewForm({
                 {instance.review_state} · {instance.truth_state} ·{" "}
                 {instance.model_class_label ?? "model-defined class"} {instance.raw_model_class ?? "none"} ·
                 mapping {instance.model_class_mapping ?? "NOT_ESTABLISHED"}
+                {instance.confidence_available
+                  ? ` · model confidence ${instance.confidence}`
+                  : " · model confidence NOT_AVAILABLE"}
                 {instance.real_inference ? "" : " · mock contract is not real inference"}
                 {instance.fdi == null ? " · FDI not assigned" : ""}
                 {instance.visible === false ? " · hidden" : ""}

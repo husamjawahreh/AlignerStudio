@@ -2,6 +2,7 @@ from engines.validation.geometric_engine import (
     GeometricValidationConfiguration,
     GeometricValidationEngine,
     GeometricValidationError,
+    validate_mesh_geometry,
 )
 from engines.validation.hooks import (
     AnatomicalConstraintValidator,
@@ -31,5 +32,6 @@ __all__ = [
     "GeometricValidationConfiguration",
     "GeometricValidationEngine",
     "GeometricValidationError",
+    "validate_mesh_geometry",
     "build_validation_run",
 ]

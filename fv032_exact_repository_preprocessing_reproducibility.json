@@ -1,0 +1,148 @@
+{
+  "status": "REPOSITORY_PREPROCESSING_FIXED_SEED_REPRODUCIBLE",
+  "seed": 123456,
+  "repository": "/content/3dteethland",
+  "case_root": "/content/official_real_case_stage2_verified_v1/official_real_case_stage2_verified_v1",
+  "checkpoint": "/content/drive/MyDrive/instseg_full.ckpt",
+  "prediction_pipeline": [
+    "ZScoreNormalize(norm=True)",
+    "PoseNormalize(clean=True)",
+    "InstanceCentroids",
+    "UniformDensityDownsample(0.025)",
+    "XYZAsFeatures",
+    "NormalAsFeatures",
+    "ToTensor"
+  ],
+  "with_color": false,
+  "upper": {
+    "exact_reproducible": true,
+    "comparison": {
+      "affine": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "colors": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "features": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "is_lower": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "normals": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "point_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "points": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "scan_file": {
+        "exact": true
+      },
+      "triangle_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "triangles": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "ud_downsample_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "ud_downsample_idxs": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      }
+    }
+  },
+  "lower": {
+    "exact_reproducible": true,
+    "comparison": {
+      "affine": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "colors": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "features": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "is_lower": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "normals": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "point_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "points": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "scan_file": {
+        "exact": true
+      },
+      "triangle_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "triangles": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "ud_downsample_count": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      },
+      "ud_downsample_idxs": {
+        "same_shape": true,
+        "exact": true,
+        "max_abs_diff": 0.0
+      }
+    }
+  },
+  "model_changed": false,
+  "checkpoint_changed": false,
+  "thresholds_changed": false,
+  "kernel_changed": false,
+  "fixed_seed_only": true
+}

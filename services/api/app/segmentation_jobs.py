@@ -11,6 +11,7 @@ from engines.segmentation.fv03_pipeline import (
     SegmentationJobConflict,
     cancel_segmentation_job,
     get_segmentation_job,
+    import_external_segmentation_evidence,
     review_segmentation,
     submit_segmentation_job,
 )
@@ -81,10 +82,24 @@ def review_case_segmentation(case: Any, arch: str, action: str, payload: dict[st
     return case
 
 
+def import_case_external_segmentation_evidence(
+    case: Any,
+    arch: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Server-side seal. A client verified flag is not authority."""
+    artifact = _artifact(case, arch)
+    decision = import_external_segmentation_evidence(artifact, payload, case_id=case.id)
+    if decision.get("persisted"):
+        case_store.update(case)
+    return decision
+
+
 __all__ = [
     "SegmentationInputError",
     "SegmentationJobConflict",
     "cancel_case_segmentation_job",
+    "import_case_external_segmentation_evidence",
     "review_case_segmentation",
     "segmentation_job_for_case",
     "submit_case_segmentation_job",

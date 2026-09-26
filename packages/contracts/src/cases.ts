@@ -98,6 +98,12 @@ export interface SegmentationJob {
   clinical_accuracy_claim?: boolean;
   self_test_state?: string | null;
   quality_evaluation?: string | null;
+  validation_status?: string | null;
+  instance_count?: number | null;
+  evidence_bundle_sha256?: string | null;
+  review_state?: string | null;
+  requires_review?: boolean;
+  clinically_verified?: boolean;
   split_available?: boolean;
 }
 
@@ -134,6 +140,14 @@ export interface SegmentationState {
     source_sha256?: string;
     inference_kind?: string;
     semantic_identity?: string;
+    execution_origin?: string | null;
+    native_execution?: boolean;
+    validation_status?: string | null;
+    instance_count?: number | null;
+    evidence_bundle_sha256?: string | null;
+    requires_review?: boolean;
+    clinically_verified?: boolean;
+    quality_evaluation?: string | null;
     blocker?: { code?: string; message?: string; availability?: string } | null;
   } | null;
   review?: {

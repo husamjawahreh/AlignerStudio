@@ -515,6 +515,24 @@ def review_segmentation_route(
     return _to_case_response(updated)
 
 
+@router.post("/{case_id}/uploads/{arch}/segmentation/external-evidence")
+def import_external_segmentation_evidence_route(case_id: str, arch: str, payload: dict) -> dict:
+    """Import external CUDA evidence. Verification is computed here, not taken from the client."""
+    from engines.geometry.scan_preparation import PreparationError
+
+    from app.segmentation_jobs import import_case_external_segmentation_evidence
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        return import_case_external_segmentation_evidence(case, arch, payload)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/{case_id}/uploads/{arch}/validate", response_model=MeshValidationResponse)
 def validate_case_mesh(case_id: str, arch: str) -> MeshValidationResponse:
     case = case_store.get(case_id)
