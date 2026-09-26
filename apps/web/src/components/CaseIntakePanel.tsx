@@ -1,3 +1,4 @@
+import type { IntakeArtifact, PreparationJob, SegmentationJob, SegmentationState } from "@alignerstudio/contracts";
 import type { ProcessingStatus } from "../api/client";
 import {
   buildArchStatuses,
@@ -7,12 +8,22 @@ import {
   formatIntakeUploadState,
   type IntakeUploadState,
 } from "../caseIntake";
+import {
+  ScanPreparationForm,
+  type PreparationPreview,
+  type PreparationRequest,
+} from "./ScanPreparationForm";
+import {
+  SegmentationReviewForm,
+  type SegmentationReviewRequest,
+} from "./SegmentationReviewForm";
 
 interface ArchUploadView {
   filename: string;
   size: number;
   state: IntakeUploadState;
   validation?: { triangle_count: number; is_watertight: boolean; errors: string[] } | null;
+  intake?: IntakeArtifact | null;
 }
 
 interface CaseIntakePanelProps {
@@ -39,6 +50,14 @@ interface CaseIntakePanelProps {
   segmentationReviewed?: boolean;
   /** Wave 5 resolver id. When set, only that action uses the primary button. */
   primaryActionId?: string | null;
+  preparationPreview?: { arch: "upper" | "lower"; body: PreparationPreview } | null;
+  preparationJob?: { arch: "upper" | "lower"; job: PreparationJob } | null;
+  onPrepare?: (arch: "upper" | "lower", request: PreparationRequest) => void;
+  onDismissPreview?: () => void;
+  onCancelPreparationJob?: () => void;
+  segmentationJob?: { arch: "upper" | "lower"; job: SegmentationJob } | null;
+  onStartSegmentation?: (arch: "upper" | "lower") => void;
+  onReviewSegmentation?: (arch: "upper" | "lower", request: SegmentationReviewRequest) => void;
 }
 
 /** Case Intake — creation flow before case; active-case workspace after creation. */
@@ -61,6 +80,14 @@ export function CaseIntakePanel({
   onRequestNewCase,
   segmentationReviewed = false,
   primaryActionId = null,
+  preparationPreview = null,
+  preparationJob = null,
+  onPrepare,
+  onDismissPreview,
+  onCancelPreparationJob,
+  segmentationJob = null,
+  onStartSegmentation,
+  onReviewSegmentation,
 }: CaseIntakePanelProps): JSX.Element {
   const arches = buildArchStatuses(archUploads);
   const hasCase = caseId !== null;
@@ -76,7 +103,7 @@ export function CaseIntakePanel({
           <h3 id="case-intake-create" className="eyebrow">
             New Case
           </h3>
-          <p className="cad-review-note">Create a case, then import upper and lower scans.</p>
+          <p className="cad-review-note">Create a case, then import one or both arches.</p>
           <label htmlFor="patient-reference">Patient reference</label>
           <input
             id="patient-reference"
@@ -125,19 +152,20 @@ export function CaseIntakePanel({
           Scan Import
         </h3>
         <p className="cad-review-note" data-testid="crown-stl-limitation">
-          Crown STL only. Roots, bite registration, and occlusion are not established from these files.
+          STL, PLY, or OBJ. One arch is enough. A second arch does not establish bite, contact, or occlusion.
+          Roots and FDI are not read from these files.
         </p>
         {arches.map((arch) => {
           const upload = archUploads[arch.arch];
           const validation = upload.validation;
           return (
             <div className="mesh-upload" key={arch.arch}>
-              <label htmlFor={`${arch.arch}-stl`}>{arch.label} STL</label>
+              <label htmlFor={`${arch.arch}-stl`}>{arch.label} scan</label>
               <input
                 id={`${arch.arch}-stl`}
                 key={fileInputKeys[arch.arch]}
                 type="file"
-                accept=".stl"
+                accept=".stl,.ply,.obj"
                 disabled={scanImportDisabled}
                 onChange={(event) => {
                   const file = event.target.files?.[0];
@@ -159,13 +187,49 @@ export function CaseIntakePanel({
                   </button>
                   <details className="intake-file-details">
                     <summary>File details</summary>
-                    <small>
-                      {validation
-                        ? `${validation.triangle_count} triangles · ${validation.is_watertight ? "closed mesh" : "not watertight"}`
-                        : "Triangle count is not available yet."}
+                    <small data-testid={`${arch.arch}-intake-quality`}>
+                      {upload.intake
+                        ? `${upload.intake.format ?? "mesh"} · ${upload.intake.vertex_count ?? "?"} vertices · ${upload.intake.face_count ?? "?"} faces · ${upload.intake.readiness ?? "unmeasured"}`
+                        : validation
+                          ? `${validation.triangle_count} triangles · ${validation.is_watertight ? "closed mesh" : "not watertight"}`
+                          : "Mesh quality is not available yet."}
+                      {upload.intake?.arch?.truth ? ` · arch ${upload.intake.arch.truth}` : ""}
                       {" "}
                       A content hash is kept with the stored upload and is not repeated here.
                     </small>
+                    {upload.intake?.warnings?.length ? (
+                      <small>{upload.intake.warnings.join(", ")}</small>
+                    ) : null}
+                    {upload.intake ? (
+                      <small>Occlusion is not inferred. FDI is not assigned.</small>
+                    ) : null}
+                    {upload.intake && onPrepare && onDismissPreview ? (
+                      <ScanPreparationForm
+                        arch={arch.arch}
+                        preparation={upload.intake.preparation}
+                        sourceVertexCount={upload.intake.vertex_count}
+                        sourceFaceCount={upload.intake.face_count}
+                        preview={
+                          preparationPreview?.arch === arch.arch ? preparationPreview.body : null
+                        }
+                        activeJob={preparationJob?.arch === arch.arch ? preparationJob.job : null}
+                        disabled={isBusy}
+                        onPrepare={onPrepare}
+                        onDismissPreview={onDismissPreview}
+                        onCancelJob={onCancelPreparationJob}
+                      />
+                    ) : null}
+                    {upload.intake?.preparation && onStartSegmentation && onReviewSegmentation ? (
+                      <SegmentationReviewForm
+                        arch={arch.arch}
+                        readiness={upload.intake.preparation.readiness}
+                        segmentation={upload.intake.segmentation as SegmentationState | null | undefined}
+                        job={segmentationJob?.arch === arch.arch ? segmentationJob.job : null}
+                        disabled={isBusy}
+                        onStart={() => onStartSegmentation(arch.arch)}
+                        onReview={(request) => onReviewSegmentation(arch.arch, request)}
+                      />
+                    ) : null}
                     {validation?.errors.length ? (
                       <small>{validation.errors.join(" ")}</small>
                     ) : null}

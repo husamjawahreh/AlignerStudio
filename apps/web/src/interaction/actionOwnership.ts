@@ -26,6 +26,18 @@ export const ACTION_OWNERSHIP: readonly ActionOwnership[] = [
     duplicateRemoved: "Inspector next row is text, not a second Create Case button",
   },
   {
+    action: "scan-preparation",
+    owner: "left-step-form",
+    condition: "case intake with an uploaded scan",
+    duplicateRemoved: "Inspector shows preparation status and does not apply orientation, trim, or cleanup",
+  },
+  {
+    action: "segmentation-candidate-review",
+    owner: "left-step-form",
+    condition: "case intake after an accepted prepared artifact",
+    duplicateRemoved: "Inspector shows segmentation status and does not start segmentation or edit instances",
+  },
+  {
     action: "review-segmentation",
     owner: "left-step-form",
     condition: "analysis",

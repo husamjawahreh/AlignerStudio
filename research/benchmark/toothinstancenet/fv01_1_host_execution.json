@@ -1,0 +1,215 @@
+{
+  "applicable_states": [
+    "DRIVER_UNAVAILABLE",
+    "PYTORCH_UNAVAILABLE",
+    "POINTOPS_UNAVAILABLE",
+    "ONNX_UNAVAILABLE",
+    "ONNX_BACKEND_NOT_READY"
+  ],
+  "architecture_recommendation": "B",
+  "backend_selected": "onnx",
+  "checkpoint": {
+    "bytes": 111127353,
+    "matches_pinned_digest": true,
+    "path": "/home/hjawahreh/.cache/alignerstudio-research/toothinstancenet/checkpoints/instseg_full.ckpt",
+    "present": true,
+    "sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803"
+  },
+  "clinical_accuracy": "NOT_ESTABLISHED",
+  "clinical_accuracy_claim": false,
+  "config_yaml": {
+    "distinguish_left_right_true": true,
+    "m3_as_m2_false": true,
+    "matches_seven_class_formula": false,
+    "path": "/home/hjawahreh/.cache/alignerstudio-research/toothinstancenet/source/teethland/config/config.yaml",
+    "present": true,
+    "reason": "This yaml sets distinguish_left_right true and m3_as_m2 false. TeethInstSegDataModule.num_classes would not return 7 for that pair. The yaml is not the stored config of instseg_full.ckpt."
+  },
+  "contract": {
+    "architecture": {
+      "epoch": 499,
+      "evidence": "state_dict prefixes instance_model.* and identify_model.*",
+      "global_step": 112000,
+      "hyper_parameters_present": false,
+      "lightning_version": "2.3.3",
+      "name": "DentalNet"
+    },
+    "class_count_formula": {
+      "matches_that_setting": true,
+      "observed_outputs": 7,
+      "only_setting_that_returns_7": {
+        "distinguish_left_right": false,
+        "m3_as_m2": true,
+        "upper_lower_doubled": false
+      },
+      "source": "teethland/datamodules/teethinstseg.py num_classes",
+      "stored_in_checkpoint": false
+    },
+    "evidence_keys": [
+      "instance_model.point_embedding.0.kpconv.weight",
+      "instance_model.point_embedding.0.kpconv.K_points",
+      "instance_model.heads.0.linear.weight",
+      "instance_model.heads.1.linear.weight",
+      "identify_model.mlp.0.weight",
+      "identify_model.mlp.2.weight",
+      "identify_model.mlp.4.weight",
+      "identify_model.mlp.4.bias"
+    ],
+    "identify_head": {
+      "applied_to": "masked average of instance features, not a per-vertex semantic map",
+      "mlp_shapes": [
+        [
+          64,
+          48
+        ],
+        [
+          64,
+          64
+        ],
+        [
+          7,
+          64
+        ]
+      ],
+      "out_channels": 7,
+      "source": "teethland/nn/modules/pooling.py MaskedAveragePooling"
+    },
+    "input": {
+      "first_kpconv_weight_shape": [
+        15,
+        6,
+        48
+      ],
+      "fixed_point_count": null,
+      "in_channels": 6,
+      "kernel_points": 15,
+      "representation": "variable-size point cloud",
+      "spatial_dimension": 3,
+      "weight_layout": "[n_kernel_points, num_inputs, num_outputs]",
+      "weight_layout_source": "teethland/nn/modules/torch_points3d.py KPConvLayer at the pinned source revision"
+    },
+    "instance_head": {
+      "feature_head_weights_present": false,
+      "feature_width": 48,
+      "head0_meaning": "3 spatial offsets concatenated with 3 sigmas",
+      "head0_meaning_source": "teethland/models/dentalnet.py out_channels=[6, 1, None]",
+      "head0_shape": [
+        6,
+        48
+      ],
+      "head1_meaning": "one seed logit",
+      "head1_shape": [
+        1,
+        48
+      ]
+    },
+    "label_names_stored_in_checkpoint": false,
+    "output": {
+      "arch_encoded": false,
+      "fdi_encoded": false,
+      "identity_key_matches": [],
+      "instance_ids_generated_by": "teethland.cluster.learned_region_cluster",
+      "instance_ids_generated_by_network": false,
+      "kind": "instance segmentation plus a per-instance classification head",
+      "left_right_encoded": false,
+      "semantic_segmentation_map": false,
+      "tooth_identity_encoded": false
+    },
+    "path": "/home/hjawahreh/.cache/alignerstudio-research/toothinstancenet/checkpoints/instseg_full.ckpt",
+    "preprocessing_stored_in_checkpoint": false,
+    "reason": "Tensor shapes were read from the checkpoint state dict. Class names are not stored in the file.",
+    "state": "TENSOR_CONTRACT_ESTABLISHED",
+    "tensor_contract_rederived": true,
+    "tensor_count": 410
+  },
+  "cpu": "Intel(R) Core(TM) i5-10500H CPU @ 2.50GHz",
+  "cpu_fallback": {
+    "cpp_extension": false,
+    "cuda_extension": true,
+    "cuda_source_mentions": 12,
+    "decision": "RULED_OUT",
+    "implemented": false,
+    "meaningful_on_cpu": false,
+    "reason": "pointops is built only as a CUDAExtension. The pinned setup.py has no CppExtension. A CPU forward of the network is not available. No CPU fallback was added.",
+    "setup_path": "/home/hjawahreh/.cache/alignerstudio-research/toothinstancenet/source/setup.py"
+  },
+  "cuda": {
+    "cuda_device": null,
+    "cuda_tensor_executed": false,
+    "gpu_name": null,
+    "nvidia_driver_visible": false,
+    "nvidia_smi_present": true,
+    "nvidia_smi_returncode": 9,
+    "nvidia_smi_stderr": "",
+    "nvidia_smi_stdout": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.",
+    "torch_cuda_available": false,
+    "torch_cuda_version": null
+  },
+  "driver": {
+    "message": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.",
+    "nvidia_smi_present": true,
+    "returncode": 9,
+    "visible": false
+  },
+  "exit_code": 2,
+  "fixture_selected": false,
+  "inference": {
+    "attempted": false,
+    "reason": "Inference was not requested.",
+    "succeeded": false
+  },
+  "nvcc_present": false,
+  "onnx": {
+    "contract_env_set": false,
+    "generated_this_phase": false,
+    "is_toothinstancenet_substitute": false,
+    "model_env_set": false,
+    "model_file_present": false,
+    "onnx_artifact_present": false,
+    "reason": "No ToothInstanceNet ONNX artifact is configured, and ONNX Runtime is not installed. The default onnx backend is not a measured fallback. An ONNX model was not exported.",
+    "runtime_present": false,
+    "runtime_version": null,
+    "states": [
+      "ONNX_UNAVAILABLE",
+      "ONNX_BACKEND_NOT_READY"
+    ]
+  },
+  "os": "Linux-7.0.0-34-generic-x86_64-with-glibc2.39",
+  "output_class": "ENGINEERING_OUTPUT",
+  "performance": {
+    "contract_extraction_ms": 20.62901899626013,
+    "inference_ms": null,
+    "peak_gpu_memory_bytes": null,
+    "peak_rss_kb_delta": 3816,
+    "persistence_ms": null,
+    "postprocess_ms": null,
+    "preprocess_ms": null,
+    "reason": "Inference did not execute. The runner and contract extraction were measured.",
+    "runner_ms": 328.3186479966389
+  },
+  "pinned_checkpoint_sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+  "pointops": {
+    "available": false,
+    "location": null,
+    "version": null
+  },
+  "primary_state": "DRIVER_UNAVAILABLE",
+  "python": "3.12.3",
+  "pytorch": {
+    "available": false,
+    "cuda_available": false,
+    "cuda_compiled": null,
+    "cuda_tensor_executed": false,
+    "cuda_version": null,
+    "version": null
+  },
+  "ram_bytes": 16571219968,
+  "ready": false,
+  "source": {
+    "env_set": false,
+    "matches_pin": true,
+    "path": "/home/hjawahreh/.cache/alignerstudio-research/toothinstancenet/source",
+    "pinned_revision": "424252e3d94a1565c8c2090eb5bb456b76386b93",
+    "revision": "424252e3d94a1565c8c2090eb5bb456b76386b93"
+  }
+}

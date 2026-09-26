@@ -20,6 +20,25 @@ export interface CaseIntakeReadiness {
   completenessLabel: string;
 }
 
+/** Technical preparation state. Missing means no preparation has been committed. */
+export function formatPreparationReadiness(readiness: string | null | undefined): string {
+  return readiness && readiness.trim() ? readiness : "NOT_PREPARED";
+}
+
+export function preparationNextStep(readiness: string | null | undefined): string {
+  switch (formatPreparationReadiness(readiness)) {
+    case "PREPARED":
+      return "Accept for a later segmentation step, or keep editing.";
+    case "READY_FOR_SEGMENTATION":
+    case "READY_WITH_WARNINGS":
+      return "Technically ready for a later processing step. Not clinically segmented.";
+    case "BLOCKED":
+      return "This mesh cannot be accepted.";
+    default:
+      return "Apply a preparation step, or accept the source as technically ready.";
+  }
+}
+
 /** Human label for an arch upload state — presentation only. */
 export function formatIntakeUploadState(state: IntakeUploadState): string {
   switch (state) {

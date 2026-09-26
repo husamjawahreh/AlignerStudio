@@ -7,11 +7,22 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
+from domain.case.intake import case_arch_summary
 from domain.case.models import Case, MeshAsset
 from domain.tooth.identification import ArchType, ToothIdentificationResult
 from domain.treatment_plan.input import TreatmentPlanningInput, TreatmentPlanningMode
 from domain.treatment_plan.setup import ToothMovement, TreatmentObjective, TreatmentObjectiveType
+from engines.geometry.intake_inspection import derive_cleaned_mesh, inspect_source_file
 from engines.geometry.mesh_validation import validate_mesh_file
+from engines.geometry.preparation_jobs import PreparationJobConflict
+from engines.geometry.scan_preparation import (
+    PreparationError,
+    accept_preparation,
+    apply_operation,
+    preview_operation,
+    reset_preparation,
+    undo_preparation,
+)
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -30,7 +41,6 @@ from app.store import case_store
 from app.toothinstancenet_configuration import (
     ToothInstanceNetConfigurationError,
     load_validated_fixture_result,
-    selected_backend,
 )
 from app.treatment_sessions import (
     TreatmentSessionError,
@@ -42,6 +52,7 @@ from app.treatment_sessions import (
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 ALLOWED_ARCHES = {"upper", "lower"}
+ALLOWED_SCAN_SUFFIXES = {".stl", ".ply", ".obj"}
 
 
 def _combined_fixture_identification() -> tuple[ToothIdentificationResult, tuple[str, ...]]:
@@ -133,7 +144,19 @@ class StagingVersionRestoreRequest(BaseModel):
     staging_version_id: str
 
 
+class PreparationOperationRequest(BaseModel):
+    operation: str
+    parameters: dict = {}
+
+
+class PreparationJobRequest(BaseModel):
+    operation: str
+    parameters: dict = {}
+    mode: str = "apply"
+
+
 def _to_case_response(case: Case) -> CaseResponse:
+    artifacts = list(case.intake_artifacts)
     return CaseResponse(
         id=case.id,
         patient_reference=case.patient_reference,
@@ -148,6 +171,8 @@ def _to_case_response(case: Case) -> CaseResponse:
             for mesh in case.meshes
         ],
         created_at=case.created_at,
+        intake_artifacts=artifacts,
+        intake_summary=case_arch_summary(artifacts),
     )
 
 
@@ -178,13 +203,36 @@ async def upload_mesh(case_id: str, arch: str, file: UploadFile) -> CaseResponse
         raise HTTPException(status_code=404, detail="Case not found")
     if arch not in ALLOWED_ARCHES:
         raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
-    if not file.filename or not file.filename.lower().endswith(".stl"):
-        raise HTTPException(status_code=400, detail="Only .stl files are accepted")
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in ALLOWED_SCAN_SUFFIXES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .stl, .ply, and .obj files are accepted",
+        )
 
-    dest_path = UPLOAD_DIR / f"{case_id}-{arch}-{uuid4().hex}.stl"
+    dest_path = UPLOAD_DIR / f"{case_id}-{arch}-{uuid4().hex}{suffix}"
     contents = await file.read()
     dest_path.write_bytes(contents)
-    case.add_mesh(MeshAsset(arch=arch, file_path=str(dest_path), original_filename=file.filename))
+    case.add_mesh(
+        MeshAsset(
+            arch=arch,
+            file_path=str(dest_path),
+            original_filename=file.filename or dest_path.name,
+        )
+    )
+    record = inspect_source_file(
+        dest_path,
+        case_id=case.id,
+        explicit_arch=arch,
+        original_filename=file.filename,
+    )
+    artifacts = [
+        item
+        for item in case.intake_artifacts
+        if item.get("arch", {}).get("arch") != arch
+    ]
+    artifacts.append(record)
+    case.intake_artifacts = artifacts
     case_store.update(case)
     from app.failure_injection import maybe_fail
 
@@ -203,8 +251,268 @@ def remove_mesh(case_id: str, arch: str) -> CaseResponse:
     if mesh is None:
         raise HTTPException(status_code=404, detail=f"No uploaded mesh for arch '{arch}'")
     Path(mesh.file_path).unlink(missing_ok=True)
+    case.intake_artifacts = [
+        item for item in case.intake_artifacts if item.get("arch", {}).get("arch") != arch
+    ]
     case_store.update(case)
     return _to_case_response(case)
+
+
+@router.post("/{case_id}/uploads/{arch}/derive-clean")
+def derive_clean_mesh(case_id: str, arch: str) -> dict:
+    """Write an optional derived cleanup. The stored source file is not replaced."""
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    artifacts = list(case.intake_artifacts)
+    source = next((item for item in artifacts if item.get("arch", {}).get("arch") == arch), None)
+    if source is None:
+        raise HTTPException(status_code=404, detail=f"No intake artifact for arch '{arch}'")
+    if source.get("readiness") == "BLOCKED_INVALID_INPUT":
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid source is not repaired in place or replaced.",
+        )
+    source_path = Path(str(source.get("source_path") or ""))
+    if not source_path.is_file():
+        raise HTTPException(status_code=404, detail="Source file is missing")
+    destination = source_path.with_name(f"{source_path.stem}-derived-{uuid4().hex}.stl")
+    derived = derive_cleaned_mesh(source_path, destination)
+    source.setdefault("derived_artifacts", []).append(derived)
+    source["segmentation_input"] = {
+        "role": "SEGMENTATION_INPUT",
+        "sha256": source.get("sha256"),
+        "source_sha256": source.get("sha256"),
+        "derived_sha256": derived["output_sha256"],
+        "uses_derived_hash_as_source": False,
+    }
+    case.intake_artifacts = artifacts
+    case_store.update(case)
+    return {"source_sha256": source.get("sha256"), "derived": derived}
+
+
+def _intake_artifact(case: Case, arch: str) -> dict:
+    source = next(
+        (item for item in case.intake_artifacts if item.get("arch", {}).get("arch") == arch),
+        None,
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail=f"No intake artifact for arch '{arch}'")
+    return source
+
+
+def _prepare(case_id: str, arch: str, action):
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    artifact = _intake_artifact(case, arch)
+    try:
+        action(artifact)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    case_store.update(case)
+    return _to_case_response(case)
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/preview")
+def preview_scan_preparation(
+    case_id: str, arch: str, request: PreparationOperationRequest
+) -> dict:
+    """Preview one preparation step. The source file and the case record stay unchanged."""
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    artifact = _intake_artifact(case, arch)
+    try:
+        return preview_operation(artifact, request.operation, request.parameters)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/apply", response_model=CaseResponse)
+def apply_scan_preparation(
+    case_id: str, arch: str, request: PreparationOperationRequest
+) -> CaseResponse:
+    return _prepare(
+        case_id,
+        arch,
+        lambda artifact: apply_operation(artifact, request.operation, request.parameters),
+    )
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/undo", response_model=CaseResponse)
+def undo_scan_preparation(case_id: str, arch: str) -> CaseResponse:
+    return _prepare(case_id, arch, undo_preparation)
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/reset", response_model=CaseResponse)
+def reset_scan_preparation(case_id: str, arch: str) -> CaseResponse:
+    return _prepare(case_id, arch, reset_preparation)
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/accept", response_model=CaseResponse)
+def accept_scan_preparation(case_id: str, arch: str) -> CaseResponse:
+    return _prepare(case_id, arch, accept_preparation)
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/jobs")
+def submit_preparation_job_route(
+    case_id: str, arch: str, request: PreparationJobRequest
+) -> dict:
+    """Queue orientation, trim, or cleanup. The mesh work does not run on this thread."""
+    from app.preparation_jobs import submit_case_preparation_job
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        return submit_case_preparation_job(
+            case, arch, request.operation, request.parameters, request.mode
+        )
+    except PreparationJobConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/uploads/{arch}/preparation/jobs/{job_id}")
+def get_preparation_job_route(case_id: str, arch: str, job_id: str) -> dict:
+    from app.preparation_jobs import preparation_job_for_case
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        job = preparation_job_for_case(case, arch, job_id)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if job is None:
+        raise HTTPException(status_code=404, detail="Preparation job not found")
+    return job
+
+
+@router.post("/{case_id}/uploads/{arch}/preparation/jobs/{job_id}/cancel")
+def cancel_preparation_job_route(case_id: str, arch: str, job_id: str) -> dict:
+    from app.preparation_jobs import cancel_case_preparation_job
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        job = cancel_case_preparation_job(case, arch, job_id)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if job is None:
+        raise HTTPException(status_code=404, detail="Preparation job not found")
+    return job
+
+
+class SegmentationReviewRequest(BaseModel):
+    action: str
+    instance_id: str | None = None
+    other_instance_id: str | None = None
+    face_indices: list[int] = []
+
+
+@router.post("/{case_id}/uploads/{arch}/segmentation/jobs")
+def submit_segmentation_job_route(case_id: str, arch: str) -> dict:
+    """Queue segmentation of an accepted prepared artifact. Inference stays off this thread."""
+    from app.segmentation_jobs import (
+        SegmentationInputError,
+        SegmentationJobConflict,
+        submit_case_segmentation_job,
+    )
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        return submit_case_segmentation_job(case, arch)
+    except SegmentationJobConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except SegmentationInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/uploads/{arch}/segmentation/jobs/{job_id}")
+def get_segmentation_job_route(case_id: str, arch: str, job_id: str) -> dict:
+    from engines.geometry.scan_preparation import PreparationError
+
+    from app.segmentation_jobs import segmentation_job_for_case
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        job = segmentation_job_for_case(case, arch, job_id)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if job is None:
+        raise HTTPException(status_code=404, detail="Segmentation job not found")
+    return job
+
+
+@router.post("/{case_id}/uploads/{arch}/segmentation/jobs/{job_id}/cancel")
+def cancel_segmentation_job_route(case_id: str, arch: str, job_id: str) -> dict:
+    from engines.geometry.scan_preparation import PreparationError
+
+    from app.segmentation_jobs import cancel_case_segmentation_job
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        job = cancel_case_segmentation_job(case, arch, job_id)
+    except PreparationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if job is None:
+        raise HTTPException(status_code=404, detail="Segmentation job not found")
+    return job
+
+
+@router.post("/{case_id}/uploads/{arch}/segmentation/review", response_model=CaseResponse)
+def review_segmentation_route(
+    case_id: str, arch: str, request: SegmentationReviewRequest
+) -> CaseResponse:
+    from domain.tooth.segmentation_review import SegmentationReviewError
+
+    from app.segmentation_jobs import review_case_segmentation
+
+    case = case_store.get(case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if arch not in ALLOWED_ARCHES:
+        raise HTTPException(status_code=400, detail=f"arch must be one of {sorted(ALLOWED_ARCHES)}")
+    try:
+        updated = review_case_segmentation(
+            case,
+            arch,
+            request.action,
+            {
+                "instance_id": request.instance_id,
+                "other_instance_id": request.other_instance_id,
+                "face_indices": request.face_indices,
+            },
+        )
+    except SegmentationReviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _to_case_response(updated)
 
 
 @router.post("/{case_id}/uploads/{arch}/validate", response_model=MeshValidationResponse)
@@ -319,7 +627,9 @@ def generate_plan_with_progress(
                 status_code=409,
                 detail={
                     "code": "planning_unavailable",
-                    "message": "Planning could not be completed for the current semantic-only data.",
+                    "message": (
+                        "Planning could not be completed for the current semantic-only data."
+                    ),
                     "reason": str(error),
                     "case_id": case_id,
                 },

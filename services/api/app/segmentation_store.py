@@ -6,6 +6,11 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
+from domain.tooth.segmentation_proof import (
+    SegmentationProofError,
+    refuse_fixture_on_real_record,
+)
+
 from app.store import case_store
 
 
@@ -25,7 +30,7 @@ def clear_segmentation_record(case_id: str) -> None:
     case = case_store.get(case_id)
     if case is None:
         return
-    setattr(case, "segmentation_results", None)
+    case.segmentation_results = None
     case_store.update(case)
 
 
@@ -60,7 +65,7 @@ def begin_segmentation_record(
     case = case_store.get(case_id)
     if case is None:
         raise KeyError(f"Case {case_id} is not present")
-    setattr(case, "segmentation_results", record)
+    case.segmentation_results = record
     case_store.update(case)
     return deepcopy(record)
 
@@ -81,6 +86,31 @@ def store_arch_result(
     record = getattr(case, "segmentation_results", None)
     if not isinstance(record, dict):
         raise KeyError(f"No segmentation record for case {case_id}")
+    try:
+        refuse_fixture_on_real_record(
+            processing_mode=record.get("processing_mode"),
+            payload=payload,
+        )
+    except SegmentationProofError as error:
+        raise ValueError(str(error)) from error
+    contract = payload.get("segmentation_contract") or {}
+    source_hash = payload.get("source_mesh_sha256")
+    if (
+        contract.get("source_mesh_hash")
+        and source_hash
+        and contract["source_mesh_hash"] != source_hash
+    ):
+        raise ValueError(
+            "Refusing to persist a segmentation whose source hash does not match the upload."
+        )
+    if (
+        contract.get("case_input_hash")
+        and record.get("input_hash")
+        and contract["case_input_hash"] != record["input_hash"]
+    ):
+        raise ValueError(
+            "Refusing to persist a segmentation whose input hash does not match the case."
+        )
     arches = dict(record.get("arches") or {})
     arches[arch] = {
         **payload,
@@ -100,7 +130,7 @@ def store_arch_result(
     if preprocess_ms is not None:
         timings[f"preprocess_{arch}"] = preprocess_ms
     record["timings_ms"] = timings
-    setattr(case, "segmentation_results", record)
+    case.segmentation_results = record
     case_store.update(case)
     return deepcopy(record)
 
@@ -129,6 +159,6 @@ def complete_segmentation_record(
     if persist_ms is not None:
         timings["persist"] = persist_ms
     record["timings_ms"] = timings
-    setattr(case, "segmentation_results", record)
+    case.segmentation_results = record
     case_store.update(case)
     return deepcopy(record)

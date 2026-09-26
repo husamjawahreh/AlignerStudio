@@ -2,6 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import trimesh
 
 from adapters.toothinstancenet.contract import ToothInstanceNetRawOutput
@@ -36,10 +37,20 @@ def test_zero_face_fragment_is_excluded_and_duplicates_are_diagnostic() -> None:
     )
     result = engine._map(raw_output(), str(FIXTURE))
     assert result.segmentation.instances
-    assert result.diagnostics.duplicate_fdi_numbers == (11,)
+    assert result.diagnostics.duplicate_fdi_numbers == ()
+    assert result.diagnostics.missing_fdi_numbers == ()
     assert result.diagnostics.empty_instance_ids == (2,)
-    assert result.diagnostics.missing_fdi_numbers == (12, 13, 14, 15, 16, 17)
+    assert result.diagnostics.fdi_authoritative is False
+    assert result.diagnostics.clinical_accuracy_claim is False
+    assert result.diagnostics.output_class == "ENGINEERING_OUTPUT"
     assert result.status == "identification_incomplete"
+    assert all(tooth.identity is None for tooth in result.identification.teeth)
+    modes = {tooth.planning_mode for tooth in result.identification.teeth}
+    assert modes == {"semantic_only_experimental"}
+    assert [tooth.semantic_label for tooth in result.identification.teeth] == [0, 0]
+    scores = [tooth.confidence.score for tooth in result.identification.teeth]
+    assert scores == pytest.approx([0.8, 0.7])
+    assert all(tooth.confidence_available for tooth in result.identification.teeth)
 
 
 def test_model_unavailable_is_explicit() -> None:

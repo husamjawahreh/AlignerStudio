@@ -1,0 +1,50 @@
+{
+  "file_size": 8557034,
+  "vertex_count": 513417,
+  "face_count": 171139,
+  "source_sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48",
+  "source_unchanged": true,
+  "orientation_preview_ms": 2020.2644230012083,
+  "trim_preview_ms": 1292.882620000455,
+  "cleanup_preview_ms": 1500.8849629957695,
+  "commit_ms": 4783.751474002202,
+  "quality_recheck_ms": 1658.6139840001124,
+  "cache_hit_ms": 149.29910100181587,
+  "cache_hit": true,
+  "commit_state": "completed",
+  "quality_recheck_included_in_operations": true,
+  "self_intersection": "not_run",
+  "prepared_readiness": "PREPARED",
+  "cache_readiness": "PREPARED",
+  "clinical_axes": false,
+  "fdi_assigned": false,
+  "clinically_ready": false,
+  "rss_before_mb": 267.55078125,
+  "rss_after_mb": 563.88671875,
+  "peak_rss_mb": 661.18359375,
+  "step_rss_mb": {
+    "orientation_preview": 407.25390625,
+    "trim_preview": 449.6328125,
+    "cleanup_preview": 449.6328125,
+    "quality_recheck": 461.5546875,
+    "commit": 580.0625,
+    "cache_hit": 563.88671875
+  },
+  "preview_output_hashes": {
+    "orient": "d7475b7e7b71066d70188303f5c7357c7049126159d7441b69f2b7f81d84a9fa",
+    "trim": "f4be503d023f0f79e34e8a18c8c906f6e939690395cd37ddd07583d524082806",
+    "cleanup": "276617151f7cac8b622dd9b09768b830d51972b97850d821c1803bf05f9a2b13"
+  },
+  "recheck_face_count": 171139,
+  "copies_avoided": [
+    "Source quality reuses intake inspection instead of a second load and weld.",
+    "Orientation, trim, and cleanup mutate the working mesh instead of cloning it."
+  ],
+  "copies_retained": [
+    "The prepared STL topology recheck still welds one copy. STL has no shared vertices.",
+    "Publishing still allocates the STL byte buffer."
+  ],
+  "library": "trimesh 5.1.0",
+  "manifold3d_used": false,
+  "meshlib_used": false
+}

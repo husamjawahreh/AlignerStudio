@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Case,
   CaseDentalIntelligencePayload,
+  IntakeArtifact,
   MeshValidationResult,
+  PreparationJob,
+  SegmentationJob,
 } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
@@ -10,6 +13,8 @@ import { buildCaseIntakeReadiness } from "../caseIntake";
 import { ConfirmDialog } from "../design-system";
 import { AnalysisPanel } from "../components/AnalysisPanel";
 import { CaseIntakePanel } from "../components/CaseIntakePanel";
+import type { PreparationPreview, PreparationRequest } from "../components/ScanPreparationForm";
+import type { SegmentationReviewRequest } from "../components/SegmentationReviewForm";
 import { ProductionPanel } from "../components/ProductionPanel";
 import { RefinementPanel } from "../components/RefinementPanel";
 import { StagingPanel } from "../components/StagingPanel";
@@ -121,6 +126,7 @@ interface ArchUpload {
   size: number;
   state: UploadState;
   validation: MeshValidationResult | null;
+  intake?: IntakeArtifact | null;
 }
 
 interface EditSnapshot {
@@ -288,6 +294,16 @@ export function App(): JSX.Element {
     lower: EMPTY_UPLOAD,
   });
   const [fileInputKeys, setFileInputKeys] = useState<Record<Arch, number>>({ upper: 0, lower: 0 });
+  const [preparationPreview, setPreparationPreview] = useState<{
+    arch: Arch;
+    body: PreparationPreview;
+  } | null>(null);
+  const [preparationJob, setPreparationJob] = useState<{ arch: Arch; job: PreparationJob } | null>(
+    null,
+  );
+  const [segmentationJob, setSegmentationJob] = useState<{ arch: Arch; job: SegmentationJob } | null>(
+    null,
+  );
   const [pipelineDiagnostic, setPipelineDiagnostic] = useState<PipelineDiagnostic | null>(null);
   const [dentalIntelligence, setDentalIntelligence] =
     useState<CaseDentalIntelligencePayload | null>(null);
@@ -1205,6 +1221,7 @@ export function App(): JSX.Element {
         });
       }
       setValidation(meshValidation);
+      const intake = updated.intake_artifacts?.find((item) => item.arch?.arch === arch) ?? null;
       setArchUploads((current) => ({
         ...current,
         [arch]: {
@@ -1212,6 +1229,7 @@ export function App(): JSX.Element {
           size: file.size,
           state: meshValidation.is_valid ? "valid" : "invalid",
           validation: meshValidation,
+          intake,
         },
       }));
     } catch (err) {
@@ -1222,6 +1240,128 @@ export function App(): JSX.Element {
       }));
     } finally {
       stopBusy();
+    }
+  }
+
+  function rememberIntake(arch: Arch, updated: Case): void {
+    const intake = updated.intake_artifacts?.find((item) => item.arch?.arch === arch) ?? null;
+    setArchUploads((current) => ({
+      ...current,
+      [arch]: { ...current[arch], intake },
+    }));
+  }
+
+  async function handlePrepare(arch: Arch, request: PreparationRequest): Promise<void> {
+    if (!activeCase) return;
+    setError(null);
+    const background =
+      (request.action === "preview" || request.action === "apply") &&
+      (request.operation === "orient" || request.operation === "trim" || request.operation === "cleanup");
+    if (background) {
+      try {
+        const mode = request.action === "preview" ? "preview" : "apply";
+        const queued = await api.submitPreparationJob(
+          activeCase.id,
+          arch,
+          request.operation ?? "",
+          request.parameters ?? {},
+          mode,
+        );
+        setPreparationJob({ arch, job: queued });
+        const finished = await api.waitForPreparationJob(activeCase.id, arch, queued.job_id, (job) => {
+          setPreparationJob({ arch, job });
+        });
+        setPreparationJob({ arch, job: finished });
+        if (finished.state === "failed") {
+          setError(finished.error?.message ?? "Preparation failed.");
+          return;
+        }
+        if (finished.state === "cancelled") return;
+        if (mode === "preview") {
+          setPreparationPreview({
+            arch,
+            body: (finished.result ?? {}) as PreparationPreview,
+          });
+          return;
+        }
+        const updated = await api.getCase(activeCase.id);
+        setActiveCase(updated);
+        setPreparationPreview(null);
+        rememberIntake(arch, updated);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
+    startBusy(`Preparing ${arch} scan`);
+    try {
+      const updated =
+        request.action === "undo"
+          ? await api.undoPreparation(activeCase.id, arch)
+          : request.action === "reset"
+            ? await api.resetPreparation(activeCase.id, arch)
+            : request.action === "accept"
+              ? await api.acceptPreparation(activeCase.id, arch)
+              : await api.applyPreparation(
+                  activeCase.id,
+                  arch,
+                  request.operation ?? "",
+                  request.parameters ?? {},
+                );
+      setActiveCase(updated);
+      setPreparationPreview(null);
+      rememberIntake(arch, updated);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      stopBusy();
+    }
+  }
+
+  async function handleStartSegmentation(arch: Arch): Promise<void> {
+    if (!activeCase) return;
+    setError(null);
+    try {
+      const queued = await api.submitSegmentationJob(activeCase.id, arch);
+      setSegmentationJob({ arch, job: queued });
+      const finished = await api.waitForSegmentationJob(activeCase.id, arch, queued.job_id, (job) => {
+        setSegmentationJob({ arch, job });
+      });
+      setSegmentationJob({ arch, job: finished });
+      const updated = await api.getCase(activeCase.id);
+      setActiveCase(updated);
+      rememberIntake(arch, updated);
+      if (finished.state === "failed" && !finished.blocked) {
+        setError(finished.error?.message ?? "Segmentation failed.");
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function handleSegmentationReview(arch: Arch, request: SegmentationReviewRequest): Promise<void> {
+    if (!activeCase) return;
+    setError(null);
+    try {
+      const updated = await api.reviewSegmentation(activeCase.id, arch, request.action, request);
+      setActiveCase(updated);
+      rememberIntake(arch, updated);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function handleCancelPreparationJob(): Promise<void> {
+    if (!activeCase || !preparationJob) return;
+    try {
+      const cancelled = await api.cancelPreparationJob(
+        activeCase.id,
+        preparationJob.arch,
+        preparationJob.job.job_id,
+      );
+      setPreparationJob({ arch: preparationJob.arch, job: cancelled });
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
@@ -1236,6 +1376,7 @@ export function App(): JSX.Element {
         delete next[arch];
         return next;
       });
+      setPreparationPreview((current) => (current?.arch === arch ? null : current));
       setArchUploads((current) => ({ ...current, [arch]: EMPTY_UPLOAD }));
       setFileInputKeys((current) => ({ ...current, [arch]: current[arch] + 1 }));
       setPipelineDiagnostic(null);
@@ -1671,6 +1812,40 @@ export function App(): JSX.Element {
       severity: reviewBundle.validationCapability?.overall_check_state ?? null,
       source: reviewBundle.productionCad?.binding.source_kind ?? null,
       qc: reviewBundle.productionCad?.export_state ?? null,
+      preparation:
+        (["upper", "lower"] as const)
+          .flatMap((arch) => {
+            if (archUploads[arch].state === "empty") return [];
+            const readiness = archUploads[arch].intake?.preparation?.readiness ?? "NOT_PREPARED";
+            return [`${arch} ${readiness}`];
+          })
+          .join(" · ") || null,
+      preparationJob: preparationJob
+        ? [
+            preparationJob.arch,
+            preparationJob.job.operation ?? "preparation",
+            preparationJob.job.state ?? "queued",
+            typeof preparationJob.job.progress === "number"
+              ? `${Math.round(preparationJob.job.progress * 100)}%`
+              : null,
+            typeof preparationJob.job.duration_ms === "number"
+              ? `${Math.round(preparationJob.job.duration_ms)} ms`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        : null,
+      segmentation: (["upper", "lower"] as const)
+        .flatMap((arch) => {
+          const record = archUploads[arch].intake?.segmentation;
+          if (!record?.capability_state && !record?.active_run && !segmentationJob) return [];
+          const state = record?.availability ?? record?.capability_state ?? segmentationJob?.job.state;
+          return state ? [`${arch} ${state}`] : [];
+        })
+        .join(" · ") || (segmentationJob ? `${segmentationJob.arch} ${segmentationJob.job.state ?? "queued"}` : null),
+      segmentationIdentity: (["upper", "lower"] as const)
+        .map((arch) => archUploads[arch].intake?.segmentation?.semantic_identity)
+        .find(Boolean) ?? (segmentationJob ? "NOT_ESTABLISHED" : null),
     },
     productionNote: reviewBundle.productionCad
       ? reviewBundle.productionCad.overall_truth_state.replaceAll("_", " ")
@@ -1887,6 +2062,14 @@ export function App(): JSX.Element {
                 setWorkspace("treatment-setup");
               }}
               primaryActionId={nextAction?.id ?? null}
+              preparationPreview={preparationPreview}
+              preparationJob={preparationJob}
+              onPrepare={(arch, request) => void handlePrepare(arch, request)}
+              onDismissPreview={() => setPreparationPreview(null)}
+              onCancelPreparationJob={() => void handleCancelPreparationJob()}
+              segmentationJob={segmentationJob}
+              onStartSegmentation={(arch) => void handleStartSegmentation(arch)}
+              onReviewSegmentation={(arch, request) => void handleSegmentationReview(arch, request)}
             />
           )}
           {workspace === "analysis" && (

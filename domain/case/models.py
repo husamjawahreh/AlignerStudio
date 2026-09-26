@@ -36,6 +36,7 @@ class Case:
     patient_reference: str = ""
     status: CaseStatus = CaseStatus.CREATED
     meshes: list[MeshAsset] = field(default_factory=list)
+    intake_artifacts: list = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def add_mesh(self, mesh: MeshAsset) -> None:

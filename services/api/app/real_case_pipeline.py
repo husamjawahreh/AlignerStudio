@@ -6,10 +6,16 @@ Never loads fixture geometry. Failures are returned as honest diagnostic states.
 from __future__ import annotations
 
 import hashlib
+from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
 from domain.tooth.identification import ArchType
+from domain.tooth.segmentation_proof import (
+    InferenceProofState,
+    build_review_instance,
+    build_segmentation_contract,
+)
 from engines.arrangement.anatomical_intelligence import (
     build_anatomical_intelligence_summary,
     serialize_arch_measurements,
@@ -17,6 +23,7 @@ from engines.arrangement.anatomical_intelligence import (
 )
 from engines.arrangement.arch_analysis import ArchAnalysisEngine, ArchAnalysisError
 from engines.arrangement.identification import ToothIdentificationEngine
+from engines.segmentation.fv01_probe import run_fv01_probe
 from engines.segmentation.onnx_engine import OnnxSegmentationEngine
 
 from app.pipeline_diagnostics import (
@@ -70,7 +77,87 @@ def _source_context(
     }
 
 
+def _with_segmentation_contract(diagnostic: CasePipelineDiagnostic) -> CasePipelineDiagnostic:
+    """Attach the FV-01 contract. Does not hash checkpoints on the request path."""
+    probe = run_fv01_probe(hash_checkpoint=False)
+    notes = " ".join(diagnostic.notes).lower()
+    if "inference failed" in notes:
+        inference_status = InferenceProofState.INFERENCE_FAILED.value
+    elif diagnostic.tooth_instance_count and diagnostic.fixture is False:
+        inference_status = InferenceProofState.INFERENCE_READY.value
+    else:
+        inference_status = probe["primary_state"]
+    review_rows = []
+    for tooth in diagnostic.tooth_instances:
+        confidence_available = bool(tooth.get("confidence_available"))
+        centroid = tooth.get("centroid")
+        review_rows.append(
+            build_review_instance(
+                tooth_ref=str(tooth.get("tooth_ref") or ""),
+                arch=str(tooth.get("arch") or diagnostic.arch or ""),
+                source_mesh_hash=diagnostic.source_mesh_sha256,
+                model_label=tooth.get("semantic_label"),
+                confidence=tooth.get("confidence") if confidence_available else None,
+                confidence_available=confidence_available,
+                fdi=None,
+                fdi_authoritative=False,
+                vertex_count=len(tooth.get("vertices") or ()),
+                face_count=len(tooth.get("faces") or ()),
+                centroid=tuple(centroid) if centroid else None,
+            )
+        )
+    limitations = tuple(diagnostic.limitations) + (
+        "clinical_accuracy_claim=false.",
+        "FDI is not assigned from seven-class labels.",
+        "Output class is ENGINEERING_OUTPUT until a reviewed clinical metric exists.",
+    )
+    contract = build_segmentation_contract(
+        case_id=diagnostic.case_id,
+        job_id=diagnostic.job_id,
+        case_input_hash=diagnostic.input_hash,
+        source_mesh_hash=diagnostic.source_mesh_sha256,
+        arch=diagnostic.arch,
+        model_name=diagnostic.model_name,
+        model_version=diagnostic.model_version,
+        checkpoint_sha256=None,
+        backend=diagnostic.backend,
+        algorithm_version=diagnostic.model_version or "toothinstancenet-segmentation",
+        inference_status=inference_status,
+        instances=review_rows,
+        truth_state=diagnostic.segmentation_truth_state or "not_available",
+        limitations=limitations,
+        provenance=diagnostic.provenance,
+        created_at=datetime.now(UTC).isoformat(),
+        fixture=False,
+        clinical_accuracy_claim=False,
+        fdi_authoritative=False,
+        timings_ms=diagnostic.timings_ms,
+    )
+    contract["environment_probe_state"] = probe["primary_state"]
+    contract["inference_can_execute"] = probe["inference_can_execute"]
+    return CasePipelineDiagnostic(**{**diagnostic.__dict__, "segmentation_contract": contract})
+
+
 def process_real_uploaded_arch(
+    mesh_path: str,
+    arch: ArchType,
+    *,
+    case_id: str | None = None,
+    job_id: str | None = None,
+    input_hash: str | None = None,
+) -> CasePipelineDiagnostic:
+    """Process a real uploaded mesh and stamp an explicit segmentation contract."""
+    diagnostic = _segment_real_uploaded_arch(
+        mesh_path,
+        arch,
+        case_id=case_id,
+        job_id=job_id,
+        input_hash=input_hash,
+    )
+    return _with_segmentation_contract(diagnostic)
+
+
+def _segment_real_uploaded_arch(
     mesh_path: str,
     arch: ArchType,
     *,

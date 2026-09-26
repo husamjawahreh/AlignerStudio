@@ -106,6 +106,7 @@ class IdentifiedTooth:
     tooth_ref: str | None = None
     semantic_label: int | None = None
     planning_mode: str = "clinical_fdi"
+    confidence_available: bool = True
 
 
 @dataclass(frozen=True)

@@ -173,8 +173,8 @@ describe("App engineering demo", () => {
       notes: [],
     });
     render(<App />);
-    expect(screen.getByLabelText("Upper Arch STL")).toBeInTheDocument();
-    expect(screen.getByLabelText("Lower Arch STL")).toBeInTheDocument();
+    expect(screen.getByLabelText("Upper Arch scan")).toBeInTheDocument();
+    expect(screen.getByLabelText("Lower Arch scan")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Generate Treatment Setup" })).not.toBeInTheDocument();
 
     await act(async () => {
@@ -184,13 +184,13 @@ describe("App engineering demo", () => {
       expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeDisabled(),
     );
     const upper = new File(["upper"], "upper.stl", { type: "model/stl" });
-    fireEvent.change(screen.getByLabelText("Upper Arch STL"), { target: { files: [upper] } });
+    fireEvent.change(screen.getByLabelText("Upper Arch scan"), { target: { files: [upper] } });
     await waitFor(() => expect(screen.getByText("upper.stl")).toBeInTheDocument());
     expect(screen.getByText(/0\.0 KB · Valid/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeDisabled();
 
     const lower = new File(["lower"], "lower.stl", { type: "model/stl" });
-    fireEvent.change(screen.getByLabelText("Lower Arch STL"), { target: { files: [lower] } });
+    fireEvent.change(screen.getByLabelText("Lower Arch scan"), { target: { files: [lower] } });
     await waitFor(() => expect(screen.getByText("lower.stl")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeEnabled();
 
@@ -265,10 +265,10 @@ describe("App engineering demo", () => {
     }));
     render(<App />);
     await act(async () => screen.getByRole("button", { name: "Create case" }).click());
-    fireEvent.change(screen.getByLabelText("Upper Arch STL"), {
+    fireEvent.change(screen.getByLabelText("Upper Arch scan"), {
       target: { files: [new File(["upper"], "upper.stl", { type: "model/stl" })] },
     });
-    fireEvent.change(screen.getByLabelText("Lower Arch STL"), {
+    fireEvent.change(screen.getByLabelText("Lower Arch scan"), {
       target: { files: [new File(["lower"], "lower.stl", { type: "model/stl" })] },
     });
     await waitFor(() => expect(screen.getByRole("button", { name: "Review segmentation" })).toBeEnabled());
@@ -354,10 +354,10 @@ describe("App engineering demo", () => {
 
     render(<App />);
     await act(async () => screen.getByRole("button", { name: "Create case" }).click());
-    fireEvent.change(screen.getByLabelText("Upper Arch STL"), {
+    fireEvent.change(screen.getByLabelText("Upper Arch scan"), {
       target: { files: [new File(["upper"], "upper.stl", { type: "model/stl" })] },
     });
-    fireEvent.change(screen.getByLabelText("Lower Arch STL"), {
+    fireEvent.change(screen.getByLabelText("Lower Arch scan"), {
       target: { files: [new File(["lower"], "lower.stl", { type: "model/stl" })] },
     });
     await waitFor(() => expect(screen.getByRole("button", { name: "Generate Treatment Setup" })).toBeEnabled());

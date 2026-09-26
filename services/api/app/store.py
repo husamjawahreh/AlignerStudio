@@ -81,6 +81,7 @@ class InMemoryCaseStore:
                 setattr(case, "processing_status", record.get("processing_status"))
                 setattr(case, "segmentation_results", record.get("segmentation_results"))
                 setattr(case, "dental_intelligence", record.get("dental_intelligence"))
+                case.intake_artifacts = record.get("intake_artifacts") or []
             except (KeyError, TypeError, ValueError):
                 continue
             self._cases[case.id] = case
@@ -146,6 +147,7 @@ class InMemoryCaseStore:
                 "processing_status": getattr(case, "processing_status", None),
                 "segmentation_results": getattr(case, "segmentation_results", None),
                 "dental_intelligence": getattr(case, "dental_intelligence", None),
+                "intake_artifacts": case.intake_artifacts,
             }
             for case in self._cases.values()
         ]

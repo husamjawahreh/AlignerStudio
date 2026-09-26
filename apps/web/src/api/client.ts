@@ -4,6 +4,8 @@ import type {
   Case,
   CaseDentalIntelligencePayload,
   MeshValidationResult,
+  PreparationJob,
+  SegmentationJob,
   ToothCoordinateSystemPayload,
   ToothLandmarksPayload,
   TreatmentPlan,
@@ -182,6 +184,123 @@ export const api = {
     return requestJson<MeshValidationResult>(`/cases/${caseId}/uploads/${arch}/validate`, {
       method: "POST",
     });
+  },
+
+  previewPreparation(
+    caseId: string,
+    arch: "upper" | "lower",
+    operation: string,
+    parameters: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return requestJson(`/cases/${caseId}/uploads/${arch}/preparation/preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation, parameters }),
+    });
+  },
+
+  applyPreparation(
+    caseId: string,
+    arch: "upper" | "lower",
+    operation: string,
+    parameters: Record<string, unknown>,
+  ): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}/uploads/${arch}/preparation/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation, parameters }),
+    });
+  },
+
+  undoPreparation(caseId: string, arch: "upper" | "lower"): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}/uploads/${arch}/preparation/undo`, { method: "POST" });
+  },
+
+  resetPreparation(caseId: string, arch: "upper" | "lower"): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}/uploads/${arch}/preparation/reset`, { method: "POST" });
+  },
+
+  acceptPreparation(caseId: string, arch: "upper" | "lower"): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}/uploads/${arch}/preparation/accept`, { method: "POST" });
+  },
+
+  submitPreparationJob(
+    caseId: string,
+    arch: "upper" | "lower",
+    operation: string,
+    parameters: Record<string, unknown>,
+    mode: "preview" | "apply",
+  ): Promise<PreparationJob> {
+    return requestJson<PreparationJob>(`/cases/${caseId}/uploads/${arch}/preparation/jobs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation, parameters, mode }),
+    });
+  },
+
+  getPreparationJob(caseId: string, arch: "upper" | "lower", jobId: string): Promise<PreparationJob> {
+    return requestJson<PreparationJob>(`/cases/${caseId}/uploads/${arch}/preparation/jobs/${jobId}`);
+  },
+
+  cancelPreparationJob(caseId: string, arch: "upper" | "lower", jobId: string): Promise<PreparationJob> {
+    return requestJson<PreparationJob>(`/cases/${caseId}/uploads/${arch}/preparation/jobs/${jobId}/cancel`, {
+      method: "POST",
+    });
+  },
+
+  async waitForPreparationJob(
+    caseId: string,
+    arch: "upper" | "lower",
+    jobId: string,
+    onUpdate?: (job: PreparationJob) => void,
+  ): Promise<PreparationJob> {
+    const started = Date.now();
+    while (Date.now() - started < 180000) {
+      const job = await this.getPreparationJob(caseId, arch, jobId);
+      onUpdate?.(job);
+      if (job.state === "completed" || job.state === "failed" || job.state === "cancelled") return job;
+      await new Promise((resolve) => window.setTimeout(resolve, 300));
+    }
+    throw new Error("Preparation job did not finish.");
+  },
+
+  submitSegmentationJob(caseId: string, arch: "upper" | "lower"): Promise<SegmentationJob> {
+    return requestJson<SegmentationJob>(`/cases/${caseId}/uploads/${arch}/segmentation/jobs`, {
+      method: "POST",
+    });
+  },
+
+  getSegmentationJob(caseId: string, arch: "upper" | "lower", jobId: string): Promise<SegmentationJob> {
+    return requestJson<SegmentationJob>(`/cases/${caseId}/uploads/${arch}/segmentation/jobs/${jobId}`);
+  },
+
+  reviewSegmentation(
+    caseId: string,
+    arch: "upper" | "lower",
+    action: string,
+    payload: { instance_id?: string; other_instance_id?: string; face_indices?: number[] } = {},
+  ): Promise<Case> {
+    return requestJson<Case>(`/cases/${caseId}/uploads/${arch}/segmentation/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...payload }),
+    });
+  },
+
+  async waitForSegmentationJob(
+    caseId: string,
+    arch: "upper" | "lower",
+    jobId: string,
+    onUpdate?: (job: SegmentationJob) => void,
+  ): Promise<SegmentationJob> {
+    const started = Date.now();
+    while (Date.now() - started < 180000) {
+      const job = await this.getSegmentationJob(caseId, arch, jobId);
+      onUpdate?.(job);
+      if (job.state === "completed" || job.state === "failed" || job.state === "cancelled") return job;
+      await new Promise((resolve) => window.setTimeout(resolve, 300));
+    }
+    throw new Error("Segmentation job did not finish.");
   },
 
   processPipeline(caseId: string, arch: "upper" | "lower"): Promise<PipelineDiagnostic> {

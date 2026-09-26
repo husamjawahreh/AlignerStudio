@@ -5,6 +5,8 @@ import {
   formatCaseStatus,
   formatIntakeProcessingState,
   formatIntakeUploadState,
+  formatPreparationReadiness,
+  preparationNextStep,
 } from "./caseIntake";
 import type { ProcessingStatus } from "./api/client";
 
@@ -17,6 +19,9 @@ describe("Case Intake presentation helpers", () => {
     expect(arches.map((arch) => arch.label)).toEqual(["Upper Arch", "Lower Arch"]);
     expect(formatIntakeUploadState("valid")).toBe("Valid");
     expect(formatIntakeUploadState("empty")).toBe("Not imported");
+    expect(formatPreparationReadiness(null)).toBe("NOT_PREPARED");
+    expect(preparationNextStep("READY_WITH_WARNINGS")).toMatch(/Not clinically segmented/);
+    expect(preparationNextStep("READY_FOR_SEGMENTATION")).toMatch(/Not clinically segmented/);
   });
 
   it("reports data completeness from real arch and case state", () => {

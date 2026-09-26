@@ -72,6 +72,8 @@ class CasePipelineDiagnostic:
     preprocessing: dict | None = None
     runtime: dict | None = None
     limitations: tuple[str, ...] = ()
+    segmentation_contract: dict | None = None
+    timings_ms: dict | None = None
 
     def payload(self) -> dict:
         return {**asdict(self), "state": self.state.value}
@@ -202,6 +204,8 @@ def _diagnostic(state: PipelineState, started: float, **values) -> CasePipelineD
         preprocessing=values.get("preprocessing"),
         runtime=values.get("runtime"),
         limitations=values.get("limitations", ()),
+        segmentation_contract=values.get("segmentation_contract"),
+        timings_ms=values.get("timings_ms"),
     )
 
 
@@ -217,7 +221,12 @@ def _diagnostic_from_result(result, started: float, *, source_kind: str):
         for tooth in identification.teeth
     )
     arch_measurements = None
-    if identification.identified and not identification.uncertain and not identification.unidentified:
+    fully_identified = (
+        identification.identified
+        and not identification.uncertain
+        and not identification.unidentified
+    )
+    if fully_identified:
         try:
             arch_measurements = ArchAnalysisEngine().analyze(identification)
         except ArchAnalysisError:
@@ -246,6 +255,7 @@ def _diagnostic_from_result(result, started: float, *, source_kind: str):
         "arch_analysis_available": arch_measurements is not None,
         "arch_measurements": serialize_arch_measurements(arch_measurements),
         "anatomical_intelligence": summary.payload(),
+        "timings_ms": getattr(result, "timings_ms", None),
     }
     state = PipelineState(result.status)
     return _diagnostic(state, started, source_kind=source_kind, **base)

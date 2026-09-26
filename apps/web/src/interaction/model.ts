@@ -170,6 +170,14 @@ export interface InspectorFacts {
   occlusion?: string | null;
   landmarks?: string | null;
   axes?: string | null;
+  /** Technical scan-preparation readiness. Not clinical orientation or segmentation. */
+  preparation?: string | null;
+  /** Live preparation job. Presentation only. */
+  preparationJob?: string | null;
+  /** Segmentation capability or job. Not clinical readiness. */
+  segmentation?: string | null;
+  /** Model semantic identity. NOT_ESTABLISHED until a method exists. */
+  segmentationIdentity?: string | null;
 }
 
 /** Stored geometric edit. Target is omitted unless a target is actually stored. */
@@ -938,8 +946,32 @@ function workspaceInspector(
     mode: "case",
     workspace: input.workspace,
     title: "Case Intake",
-    rows: shared,
-    limitations: [input.segmentation.missingToothStatement, "No tooth is selected."].filter(Boolean),
+    rows: inspectorRows([
+      ...shared,
+      facts.preparation
+        ? { label: "Preparation", value: facts.preparation, testId: "inspector-preparation" }
+        : null,
+      facts.preparationJob
+        ? { label: "Preparation job", value: facts.preparationJob, testId: "inspector-preparation-job" }
+        : null,
+      facts.segmentation
+        ? { label: "Segmentation run", value: facts.segmentation, testId: "inspector-segmentation" }
+        : null,
+      facts.segmentationIdentity
+        ? {
+            label: "Semantic identity",
+            value: facts.segmentationIdentity,
+            testId: "inspector-segmentation-identity",
+          }
+        : null,
+    ]),
+    limitations: [
+      input.segmentation.missingToothStatement,
+      "No tooth is selected.",
+      facts.preparation
+        ? "Preparation readiness is not clinical segmentation, FDI, clinical axes, or occlusion."
+        : "",
+    ].filter(Boolean),
     advanced,
     actions: [],
     recovery: null,

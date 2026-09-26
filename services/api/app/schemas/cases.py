@@ -27,6 +27,8 @@ class CaseResponse(BaseModel):
     status: CaseStatus
     meshes: list[MeshAssetResponse]
     created_at: datetime
+    intake_artifacts: list[dict] = []
+    intake_summary: dict = {}
 
 
 class CreateCaseRequest(BaseModel):

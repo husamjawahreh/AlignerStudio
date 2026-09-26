@@ -283,6 +283,51 @@ describe("Wave 10 adaptive inspector", () => {
     expect(ownersFor("remaining-time")).toEqual(["processing-overlay"]);
     expect(ownersFor("move-rotate")).toEqual(["tooth-toolbar"]);
     expect(ownersFor("numeric-edit-lock-exclude-apply-reset-undo-redo")).toEqual(["inspector"]);
+    expect(ownersFor("scan-preparation")).toEqual(["left-step-form"]);
+  });
+
+  it("shows preparation status in the inspector without preparation buttons", () => {
+    const built = model({
+      workspace: "case-intake",
+      facts: { preparation: "upper PREPARED" },
+    });
+    expect(built.actions).toEqual([]);
+    expect(built.rows.find((row) => row.label === "Preparation")?.value).toBe("upper PREPARED");
+    expect(built.limitations.join(" ")).toMatch(/not clinical segmentation/i);
+    render(<AdaptiveInspector model={built} minimized={false} onToggle={() => undefined} />);
+    expect(screen.getByTestId("inspector-preparation").textContent).toContain("upper PREPARED");
+    expect(screen.queryByRole("button", { name: /Rotate 90/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Apply trim/i })).toBeNull();
+  });
+
+  it("shows a preparation job in the inspector without preparation buttons", () => {
+    const built = model({
+      workspace: "case-intake",
+      facts: { preparation: "upper PREPARED", preparationJob: "upper orient running 50%" },
+    });
+    expect(built.actions).toEqual([]);
+    render(<AdaptiveInspector model={built} minimized={false} onToggle={() => undefined} />);
+    expect(screen.getByTestId("inspector-preparation-job").textContent).toContain("orient running");
+    expect(screen.queryByRole("button", { name: /Rotate 90/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Cancel job/i })).toBeNull();
+  });
+
+  it("shows segmentation status in the inspector without segmentation buttons", () => {
+    const built = model({
+      workspace: "case-intake",
+      facts: {
+        segmentation: "upper ENVIRONMENT_BLOCKED",
+        segmentationIdentity: "NOT_ESTABLISHED",
+      },
+    });
+    expect(built.actions).toEqual([]);
+    render(<AdaptiveInspector model={built} minimized={false} onToggle={() => undefined} />);
+    expect(screen.getByTestId("inspector-segmentation").textContent).toContain("ENVIRONMENT_BLOCKED");
+    expect(screen.getByTestId("inspector-segmentation-identity").textContent).toContain(
+      "NOT_ESTABLISHED",
+    );
+    expect(screen.queryByRole("button", { name: /Start segmentation/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Accept candidate/i })).toBeNull();
   });
 
   it("keeps undo on the inspector when a tooth edit is open and retry on the toolbar after cancel", () => {

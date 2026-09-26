@@ -160,14 +160,20 @@ class ToothInstanceNetDiagnostics:
     missing_fdi_numbers: tuple[int, ...]
     empty_instance_ids: tuple[int, ...]
     notes: tuple[str, ...] = ()
+    model_class_by_instance: tuple[tuple[int, int | None], ...] = ()
+    label_semantics: str = "seven_class_semantic_not_unique_fdi"
+    fdi_authoritative: bool = False
+    output_class: str = "ENGINEERING_OUTPUT"
+    clinical_accuracy_claim: bool = False
 
 
 def verified_fdi_number(model_class: int, *, lower: bool) -> int | None:
-    """Apply the historical seven-class mapping without geometric repair.
+    """Historical seven-class code, not an authoritative FDI number.
 
-    The seven-class model represents positions 1 through 7 for one jaw. The
-    caller supplies jaw context; no side, missing tooth, or duplicate repair is
-    inferred here.
+    The model emits one of seven semantic classes. This helper maps class 0–6
+    onto 11–17 or 31–37 so older diagnostics can name that code. It does not
+    distinguish left from right, and callers must not persist the result as
+    FDIToothIdentity or as planning mode clinical_fdi.
     """
     if not 0 <= model_class < 7:
         return None
