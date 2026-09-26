@@ -96,6 +96,9 @@ export interface SegmentationJob {
   fdi_assigned?: boolean;
   clinically_segmented?: boolean;
   clinical_accuracy_claim?: boolean;
+  self_test_state?: string | null;
+  quality_evaluation?: string | null;
+  split_available?: boolean;
 }
 
 export interface SegmentationInstance {
@@ -119,6 +122,9 @@ export interface SegmentationState {
   fdi_assigned?: boolean;
   clinically_segmented?: boolean;
   clinical_accuracy_claim?: boolean;
+  self_test_state?: string | null;
+  quality_evaluation?: string | null;
+  split_available?: boolean;
   active_run?: {
     run_id?: string;
     status?: string;

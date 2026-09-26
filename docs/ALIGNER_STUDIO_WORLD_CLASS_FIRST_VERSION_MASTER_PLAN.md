@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Document ID | `AS-FV-MASTER-1.6` |
+| Document ID | `AS-FV-MASTER-1.7` |
 | Status | Authoritative roadmap |
 | Audit date | 2026-09-26 |
 | Repository | Current working tree at audit time |
@@ -281,7 +281,7 @@ Full records, evidence, and acceptance lines are in the [capability matrix](ALIG
 ### 7.3 Missing as systems
 
 - Clinical scan orientation, landmarks, and hole-closing cleanup. User transforms, trim, and safe cleanup exist as derived preparation and stay partial (FV-02.1, FV-02.2). PLY and OBJ intake exist. Privacy is a local log view, not a clinic policy.
-- A doctor review record for segmentation instances exists and was tested with a deterministic mock, not with live inference. Brush correction, landmarks, and clinical identity remain missing. Real ToothInstanceNet execution is environment-blocked on this host (FV-03).
+- A doctor review record for segmentation instances exists and was tested with a deterministic mock, not with live inference. Split is unavailable. Brush correction, landmarks, and clinical identity remain missing. Real ToothInstanceNet execution is environment-blocked on this host (FV-03.1 self-test `ENVIRONMENT_UNAVAILABLE`).
 - Authoritative numbering, anatomical landmarks, clinical axes, real gingiva, roots
 - Measurement, cross-section, 3D contact and collision display
 - Movement-rate staging, sequencing, overcorrection, anchorage
@@ -333,7 +333,17 @@ Measured on 2026-09-26. Real inference verdict: **ENVIRONMENT_BLOCKED**. Review 
 
 A segmentation job starts only from an accepted prepared artifact whose source and derived hashes match provenance. ToothInstanceNet stays behind a backend interface. On this host the probe primary state is `DRIVER_UNAVAILABLE`, with `PYTORCH_UNAVAILABLE` and `CUDA_EXTENSION_UNAVAILABLE` also applicable. No inference was attempted. No fixture was substituted. The seven identify logits stay `NOT_ESTABLISHED` as a clinical mapping. `fdi_assigned` and `clinically_segmented` stay false.
 
-On the same 8,557,034-byte STL, after one accepted 90° preparation: prepared load 145.5 ms, input gate 326.3 ms and accepted, capability detection 1511.3 ms, inference not run. Peak RSS (`VmHWM`) for that process was 529.3 MB from 447.0 MB after the preparation commit. A live Playwright run on this host accepted that prepared mesh and showed the blocked segmentation state. B1 stays `IMPLEMENTED_BUT_NOT_PROVEN` + `ENVIRONMENT_BLOCKED`. B4 moves to `IMPLEMENTED_BUT_PARTIAL` because accept, reject, merge, split, undo, and reset exist on a candidate and were tested with a deterministic mock. That mock is not real inference. Landmarks, clinical axes, and arch form were not started. FV-04 was not started.
+On the same 8,557,034-byte STL, after one accepted 90° preparation: prepared load 145.5 ms, input gate 326.3 ms and accepted, capability detection 1511.3 ms, inference not run. Peak RSS (`VmHWM`) for that process was 529.3 MB from 447.0 MB after the preparation commit. A live Playwright run on this host accepted that prepared mesh and showed the blocked segmentation state. B1 stays `IMPLEMENTED_BUT_NOT_PROVEN` + `ENVIRONMENT_BLOCKED`. B4 is `IMPLEMENTED_BUT_PARTIAL` because accept, reject, merge, undo, and reset exist on a candidate and were tested with a deterministic mock. That mock is not real inference. Landmarks, clinical axes, and arch form were not started. FV-04 was not started.
+
+### FV-03.1 — Reproducible segmentation runtime and review evidence
+
+Measured on 2026-09-26. Runtime reproducibility: **implemented**. Review contract: **partial**. Real segmentation: **unverified**. Clinical accuracy: **not established**. Detail: `docs/FV03_1_SEGMENTATION_RUNTIME.md`.
+
+The case-free self-test reads the checkpoint state dict and does not run a forward pass. On this host the self-test is `ENVIRONMENT_UNAVAILABLE`. Applicable blockers are `DRIVER_UNAVAILABLE`, `PYTORCH_UNAVAILABLE`, and `CUDA_EXTENSION_UNAVAILABLE`. GPU, driver, CUDA, and PyTorch are null in the manifest. The checkpoint SHA matches the pin and the tensor contract is `TENSOR_CONTRACT_ESTABLISHED`. That metadata is not readiness. PyTorch is not a dependency of application startup.
+
+The command `scripts/fv03_1_segmentation_runtime.py` runs the self-test and the prepared-input probe. Inference is entered only when every gate passes. This run did not enter inference. `real_inference` is false. The sealed evidence bundle for a blocked run keeps inference measurements null. `QUALITY_EVALUATION` is `NOT_AVAILABLE`. Split is `SPLIT_UNAVAILABLE`. Manual segmentation correction is `NOT_IMPLEMENTED` and is not a substitute for the model.
+
+The FV-03 timings and the 529.3 MB peak stay the blocked-run record. The appended probe in `.research/tmp/fv03_1_report.json` measured prepared load 34.1 ms, input gate 80.2 ms, capability detection 340.6 ms, and peak RSS 421.0 MB in a process that had already imported trimesh. Those figures do not replace the FV-03 record. B1 stays unproven and environment-blocked. B4 and B5 stay partial. Status counts are unchanged. Anatomical intelligence and FV-04 were not started.
 
 ### FV-03 remaining — Anatomical intelligence
 
@@ -667,6 +677,7 @@ When the plan changes, bump the document ID (`AS-FV-MASTER-1.1`, …) and add a 
 | 1.4 | 2026-09-26 | FV-02.1 preparation. User transforms, trim, and safe cleanup are derived artifacts. A5 and A11 stay `IMPLEMENTED_BUT_PARTIAL`. Status counts are unchanged. See `docs/FV02_1_SCAN_PREPARATION.md`. |
 | 1.5 | 2026-09-26 | FV-02.2 preparation jobs. Local worker, cache, cancellation, lineage cleanup, and a technical acceptance gate. A5 and A11 stay `IMPLEMENTED_BUT_PARTIAL`. Status counts are unchanged. `READY_FOR_SEGMENTATION` is not clinical readiness. FV-03 was not started. See `docs/FV02_2_SCAN_PREPARATION.md`. |
 | 1.6 | 2026-09-26 | FV-03 segmentation boundary. Real inference is `ENVIRONMENT_BLOCKED` (`DRIVER_UNAVAILABLE`). No fixture and no FDI. B4 becomes `IMPLEMENTED_BUT_PARTIAL` for mock-tested review edits. B1 stays unproven. Anatomical intelligence and FV-04 were not started. See `docs/FV03_SEGMENTATION.md`. |
+| 1.7 | 2026-09-26 | FV-03.1 runtime manifest, self-test, and evidence seal. Host self-test is `ENVIRONMENT_UNAVAILABLE`. Real segmentation stays unverified. Clinical accuracy stays not established. Split is unavailable. B1 stays unproven. B4 and B5 stay partial. Status counts are unchanged. FV-04 was not started. See `docs/FV03_1_SEGMENTATION_RUNTIME.md`. |
 
 ---
 

@@ -277,6 +277,17 @@ def detect_tin_capability(*, refresh: bool = False) -> dict[str, Any]:
     mapped = _map_capability(report)
     mapped["fv01_primary_state"] = report.get("primary_state")
     mapped["checkpoint_contract_state"] = (report.get("contract") or {}).get("state")
+    from engines.segmentation.fv03_1_runtime import (
+        build_runtime_manifest,
+        classify_self_test,
+    )
+
+    manifest = build_runtime_manifest(report, capability_state=mapped["capability_state"])
+    self_test = classify_self_test(mapped)
+    manifest["self_test_state"] = self_test["state"]
+    manifest["runtime_capability_state"] = mapped["capability_state"]
+    mapped["runtime_manifest"] = manifest
+    mapped["self_test"] = self_test
     with _LOCK:
         _CAPABILITY = mapped
     return copy.deepcopy(mapped)
@@ -456,6 +467,10 @@ def _public_job(job: dict[str, Any], *, duplicate: bool = False) -> dict[str, An
         "clinically_segmented": False,
         "clinical_accuracy_claim": False,
         "semantic_identity": SEMANTIC_IDENTITY_NOT_ESTABLISHED,
+        "self_test_state": job.get("self_test_state"),
+        "quality_evaluation": "NOT_AVAILABLE",
+        "split_available": False,
+        "manual_segmentation_correction": "NOT_IMPLEMENTED",
     }
 
 
@@ -781,6 +796,54 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
         face_count=gate.get("face_count"),
         finite=gate.get("finite"),
     )
+    from engines.segmentation.fv03_1_runtime import (
+        build_evidence_bundle,
+        quality_evaluation,
+    )
+
+    self_test = capability.get("self_test") or {}
+    job["self_test_state"] = self_test.get("state")
+    quality = quality_evaluation(ground_truth_present=False)
+    run["quality_evaluation"] = quality
+    run["split_available"] = False
+    run["clinically_verified"] = False
+    groups = list(produced.get("groups") or [])
+    output_reference = None
+    instance_generation = None
+    if real_inference and not blocked:
+        import hashlib
+        import json
+
+        output_reference = hashlib.sha256(
+            json.dumps(groups, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        instance_generation = {
+            "algorithm": "learned_region_cluster",
+            "version": str(backend_version),
+            "real_model": True,
+        }
+    run["evidence"] = build_evidence_bundle(
+        run_id=run_id,
+        case_id=str(job.get("case_id") or ""),
+        prepared_input_sha256=job.get("prepared_input_sha"),
+        input_mesh=mesh_stats,
+        model_sha256=model_sha,
+        backend_name=str(backend_name),
+        backend_version=str(backend_version),
+        runtime_manifest=capability.get("runtime_manifest"),
+        device=produced.get("device"),
+        preprocessing_executed=False,
+        inference_duration_ms=produced.get("duration_ms"),
+        peak_memory_bytes=None,
+        raw_model_output_reference=output_reference,
+        instance_generation=instance_generation,
+        output_statistics={"instance_count": 0 if blocked else len(instances)},
+        technical_validation=run.get("technical_validation") or {},
+        real_inference=real_inference,
+        blocked=blocked,
+        blocker=run.get("blocker"),
+        inference_kind=str(run.get("inference_kind") or ""),
+    )
     with _LOCK:
         if int(session.get("generation") or 0) != int(job["expected_generation"]):
             raise SegmentationInputError("stale segmentation job; a newer run was not overwritten.")
@@ -806,6 +869,10 @@ def _commit_run(job: dict[str, Any], produced: dict[str, Any], gate: dict[str, A
         session["clinical_validation"] = False
         session["availability"] = run.get("availability")
         session["capability_state"] = run.get("capability_state")
+        session["self_test_state"] = job.get("self_test_state")
+        session["quality_evaluation"] = "NOT_AVAILABLE"
+        session["split_available"] = False
+        session["runtime_manifest"] = capability.get("runtime_manifest")
         session["active_run"] = {
             "run_id": run_id,
             "status": run["status"],
@@ -898,14 +965,16 @@ def measure_segmentation_capability(path: str | Path, work_dir: str | Path) -> d
     capability_ms = (perf_counter() - cap_started) * 1000.0
     inference_ms = None
     inference_attempted = False
+    real_inference = False
     if capability["executable"]:
         inference_attempted = True
         infer_started = perf_counter()
-        ToothInstanceNetBackend().execute(
+        produced = ToothInstanceNetBackend().execute(
             Path(str((artifact.get("preparation") or {}).get("active", {}).get("output_path"))),
             prepared_sha256=str(gate["prepared_sha256"]),
         )
         inference_ms = (perf_counter() - infer_started) * 1000.0
+        real_inference = bool(produced.get("real_inference")) and not produced.get("blocked")
     after = _memory_mb()
     return {
         "file_size": original.stat().st_size,
@@ -925,6 +994,7 @@ def measure_segmentation_capability(path: str | Path, work_dir: str | Path) -> d
         "executable": capability["executable"],
         "inference_attempted": inference_attempted,
         "inference_ms": inference_ms,
+        "real_inference": real_inference,
         "fixture_selected": False,
         "fdi_assigned": False,
         "clinically_segmented": False,

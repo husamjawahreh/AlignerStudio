@@ -64,6 +64,12 @@ describe("SegmentationReviewForm", () => {
     expect(screen.getByText(/FDI not assigned/)).toBeTruthy();
     expect(screen.getByText(/mock contract is not real inference/)).toBeTruthy();
     expect(screen.getByText(/MODEL_PREDICTION/)).toBeTruthy();
+    expect(screen.getByTestId("upper-segmentation-outcome").textContent).toBe("SEGMENTATION_NOT_RUN");
+    expect(screen.queryByRole("button", { name: "Accept candidate" })).toBeNull();
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "QUALITY_EVALUATION NOT_AVAILABLE",
+    );
+    expect(screen.getByTestId("upper-segmentation-split").textContent).toBe("SPLIT_UNAVAILABLE");
   });
 
   it("shows a blocked runtime without a candidate", () => {
@@ -109,11 +115,23 @@ describe("SegmentationReviewForm", () => {
     expect(screen.getByTestId("upper-segmentation-status").textContent).toContain("blocked");
     expect(screen.getByTestId("upper-segmentation-status").textContent).toContain("DRIVER_UNAVAILABLE");
     expect(screen.getByTestId("upper-segmentation-job").textContent).toContain("ENVIRONMENT_BLOCKED");
+    expect(screen.getByTestId("upper-segmentation-outcome").textContent).toBe("ENVIRONMENT_BLOCKED");
+    expect(screen.getByTestId("upper-segmentation-outcome").textContent).not.toContain(
+      "SEGMENTATION_COMPLETED",
+    );
+    expect(screen.getByTestId("upper-segmentation-identity").textContent).toContain("NOT_ESTABLISHED");
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "QUALITY_EVALUATION NOT_AVAILABLE",
+    );
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "Real inference not claimed",
+    );
     expect(screen.getByText(/No segmentation candidate/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Accept candidate" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Merge first two" })).toBeNull();
   });
 
-  it("keeps review controls on the form and disables a second start while a job is active", () => {
+  it("disables a second start and hides review controls while inference is not genuine", () => {
     const onStart = vi.fn();
     const onReview = vi.fn();
     render(
@@ -127,8 +145,47 @@ describe("SegmentationReviewForm", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Start segmentation" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Accept candidate" })).toBeNull();
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onReview).not.toHaveBeenCalled();
+  });
+
+  it("shows review controls only for a genuine completed inference", () => {
+    const onReview = vi.fn();
+    render(
+      <SegmentationReviewForm
+        arch="upper"
+        readiness="READY_FOR_SEGMENTATION"
+        segmentation={{
+          ...candidate,
+          active_run: { ...candidate.active_run, real_inference: true, status: "completed" },
+          review: {
+            ...candidate.review,
+            instances: [{ ...candidate.review.instances[0], real_inference: true }],
+          },
+        }}
+        job={{
+          job_id: "job-real",
+          state: "completed",
+          blocked: false,
+          real_inference: true,
+          backend: "toothinstancenet",
+          self_test_state: "READY_FOR_INFERENCE",
+        }}
+        onStart={vi.fn()}
+        onReview={onReview}
+      />,
+    );
+    expect(screen.getByTestId("upper-segmentation-outcome").textContent).toBe(
+      "SEGMENTATION_COMPLETED",
+    );
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "NOT_ESTABLISHED",
+    );
+    expect(screen.getByTestId("upper-segmentation-provenance").textContent).toContain(
+      "QUALITY_EVALUATION NOT_AVAILABLE",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Accept candidate" }));
     expect(onReview).toHaveBeenCalledWith({ action: "accept", instance_id: "inst-0" });
-    expect(onStart).not.toHaveBeenCalled();
   });
 });

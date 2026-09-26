@@ -1,5 +1,4 @@
 import type { SegmentationJob, SegmentationState } from "@alignerstudio/contracts";
-import { useState } from "react";
 
 const ACCEPTED = new Set(["READY_FOR_SEGMENTATION", "READY_WITH_WARNINGS"]);
 
@@ -34,13 +33,20 @@ export function SegmentationReviewForm({
   onStart,
   onReview,
 }: SegmentationReviewFormProps) {
-  const [faceText, setFaceText] = useState("");
   if (!ACCEPTED.has(readiness ?? "")) return null;
   const active = job?.state === "queued" || job?.state === "running";
   const blocked = Boolean(job?.blocked || segmentation?.active_run?.status === "blocked");
   const instances = segmentation?.review?.instances ?? [];
-  const selected = segmentation?.review?.selected_instance_id ?? instances[0]?.instance_id ?? "";
   const identity = segmentation?.semantic_identity ?? job?.semantic_identity ?? "NOT_ESTABLISHED";
+  const realInference = Boolean(job?.real_inference || segmentation?.active_run?.real_inference);
+  const completed = job?.state === "completed" || segmentation?.active_run?.status === "completed";
+  const genuine = !blocked && realInference && completed && instances.length > 0;
+  const outcome = genuine
+    ? "SEGMENTATION_COMPLETED"
+    : blocked
+      ? "ENVIRONMENT_BLOCKED"
+      : "SEGMENTATION_NOT_RUN";
+  const selfTest = job?.self_test_state ?? segmentation?.self_test_state ?? "not probed";
   const status = blocked
     ? `blocked ${job?.error?.code ?? segmentation?.capability_state ?? ""}`.trim()
     : job
@@ -53,6 +59,13 @@ export function SegmentationReviewForm({
         established. Review is required. This is not clinical validation or an FDI assignment.
       </p>
       <p data-testid={`${arch}-segmentation-status`}>{status}</p>
+      <p data-testid={`${arch}-segmentation-outcome`}>{outcome}</p>
+      <p data-testid={`${arch}-segmentation-provenance`}>
+        Semantic identity {identity}. Self-test {selfTest}. QUALITY_EVALUATION NOT_AVAILABLE. Split
+        is unavailable. Manual segmentation correction is not available and does not replace the
+        model. {realInference ? "Real inference recorded." : "Real inference not claimed."} Clinical
+        accuracy is not established.
+      </p>
       {job ? (
         <p data-testid={`${arch}-segmentation-job`}>
           {job.backend ?? "backend"} {job.state}
@@ -85,13 +98,17 @@ export function SegmentationReviewForm({
         ) : (
           instances.map((instance) => (
             <div key={instance.instance_id}>
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onReview({ action: "select", instance_id: instance.instance_id })}
-              >
-                {instance.instance_id}
-              </button>
+              {genuine ? (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => onReview({ action: "select", instance_id: instance.instance_id })}
+                >
+                  {instance.instance_id}
+                </button>
+              ) : (
+                <span>{instance.instance_id}</span>
+              )}
               <small>
                 {instance.review_state} · {instance.truth_state} ·{" "}
                 {instance.model_class_label ?? "model-defined class"} {instance.raw_model_class ?? "none"} ·
@@ -100,6 +117,8 @@ export function SegmentationReviewForm({
                 {instance.fdi == null ? " · FDI not assigned" : ""}
                 {instance.visible === false ? " · hidden" : ""}
               </small>
+              {genuine ? (
+                <>
               <button
                 type="button"
                 className="text-button"
@@ -137,11 +156,13 @@ export function SegmentationReviewForm({
               >
                 Reject candidate
               </button>
+                </>
+              ) : null}
             </div>
           ))
         )}
       </div>
-      {instances.length >= 2 ? (
+      {genuine && instances.length >= 2 ? (
         <button
           type="button"
           className="text-button"
@@ -157,36 +178,8 @@ export function SegmentationReviewForm({
           Merge first two
         </button>
       ) : null}
-      {selected && instances.length > 0 ? (
-        <div className="cad-quick-actions">
-          <label htmlFor={`${arch}-split-faces`}>Split face indices</label>
-          <input
-            id={`${arch}-split-faces`}
-            value={faceText}
-            disabled={disabled}
-            placeholder="0 1 2"
-            onChange={(event) => setFaceText(event.target.value)}
-          />
-          <button
-            type="button"
-            className="text-button"
-            disabled={disabled}
-            onClick={() =>
-              onReview({
-                action: "split",
-                instance_id: selected,
-                face_indices: faceText
-                  .trim()
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .map((item) => Number(item)),
-              })
-            }
-          >
-            Split instance
-          </button>
-        </div>
-      ) : null}
+      <p data-testid={`${arch}-segmentation-split`}>SPLIT_UNAVAILABLE</p>
+      {genuine ? (
       <div className="cad-quick-actions">
         <button type="button" className="text-button" disabled={disabled || instances.length === 0} onClick={() => onReview({ action: "undo" })}>
           Undo review
@@ -195,6 +188,7 @@ export function SegmentationReviewForm({
           Reset review
         </button>
       </div>
+      ) : null}
     </section>
   );
 }

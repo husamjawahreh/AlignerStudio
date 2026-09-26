@@ -10,6 +10,8 @@
 
 This is not a clinical-accuracy claim. A completed job, if one is ever produced, is a segmentation candidate. It is not FDI, tooth identity, arch identity, left/right identity, or doctor verification. FV-04 was not started. Landmarks, clinical axes, roots, occlusion, setup, staging, IPR, attachments, manufacturing, and export were not implemented.
 
+FV-03.1 keeps this blocked verdict and adds the runtime manifest, self-test, evidence seal, and review provenance in `docs/FV03_1_SEGMENTATION_RUNTIME.md`. The face-index split control from this phase is withdrawn there: split is `SPLIT_UNAVAILABLE`. The timings in this file stay the FV-03 blocked-run record.
+
 ## Architecture
 
 A segmentation job may start only from an accepted prepared artifact. The source file and the prepared file stay immutable. The candidate stores face-index partitions that point at the prepared SHA-256. It does not replace that mesh, fill holes, or turn an open crown into a solid.
@@ -77,7 +79,7 @@ Each instance has a stable internal id (`inst-0`, not an FDI number), the run id
 
 Truth states used: `PREDICTED` for a model partition, `PROPOSED` for a doctor merge or split, `INVALID` for a doctor rejection. `VERIFIED` is not assigned by the pipeline or by accepting a candidate. Review authorship is `MODEL_PREDICTION`, `DOCTOR_MODIFIED`, `DOCTOR_ACCEPTED`, `DOCTOR_REJECTED`, or `REQUIRES_REVIEW`.
 
-Review can select, inspect, hide, show, mark for review, accept, reject, merge disjoint instances of the same prepared mesh, split by an explicit face subset, undo, and reset. The model snapshot is not rewritten. Split without a real subset is refused. A rejected instance is not merged.
+Review can select, inspect, hide, show, mark for review, accept, reject, and merge disjoint instances of the same prepared mesh. Undo, redo, and reset restore recorded operations. The model snapshot is not rewritten. FV-03.1 marks split `SPLIT_UNAVAILABLE` because the form cannot pick a safe face partition. A rejected instance is not merged.
 
 Before a run is reviewable, deterministic checks cover input provenance, output references, finite geometry, unique instance ids, face-index range, lineage, backend provenance, and the ban on fabricated FDI, confidence, and automatic verification. That check is not clinical validation. A blocked run is not reviewable.
 

@@ -6,6 +6,10 @@ It is not FDI, clinical tooth identity, or clinical validation.
 
 from __future__ import annotations
 
+import copy
+import hashlib
+import json
+from datetime import UTC, datetime
 from typing import Any
 
 from domain.case.preparation import (
@@ -60,6 +64,23 @@ class SegmentationReviewError(ValueError):
     """A review edit is not a valid change of the candidate partition."""
 
 
+def manual_segmentation_contract() -> dict[str, Any]:
+    """Manual correction is not a substitute for model segmentation or verification."""
+    return {
+        "capability": "manual_segmentation_correction",
+        "status": "NOT_IMPLEMENTED",
+        "substitutes_automatic_segmentation": False,
+        "substitutes_model_prediction": False,
+        "clinical_verification": False,
+        "editor": False,
+        "distinct_from": [
+            "automatic_model_segmentation",
+            "MODEL_PREDICTION",
+            "clinical_verification",
+        ],
+    }
+
+
 def empty_segmentation() -> dict[str, Any]:
     return {
         "generation": 0,
@@ -76,6 +97,9 @@ def empty_segmentation() -> dict[str, Any]:
         "clinical_validation": False,
         "availability": None,
         "capability_state": None,
+        "split_available": False,
+        "split_unavailable_reason": "SPLIT_UNAVAILABLE",
+        "manual_segmentation": manual_segmentation_contract(),
     }
 
 
@@ -307,21 +331,98 @@ def _review(session: dict[str, Any]) -> dict[str, Any]:
     return review
 
 
-def _snapshot(review: dict[str, Any]) -> None:
-    import copy
-
-    review.setdefault("undo", []).append(copy.deepcopy(review.get("instances") or []))
-    review["redo"] = []
+def _canonical_hash(payload: Any) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
-def _event(review: dict[str, Any], action: str, detail: dict[str, Any]) -> None:
-    review.setdefault("events", []).append(
+def _instance_state(instances: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
         {
-            "action": action,
-            "detail": detail,
-            "mutates_model_prediction": False,
+            "instance_id": item.get("instance_id"),
+            "review_state": item.get("review_state"),
+            "truth_state": item.get("truth_state"),
+            "visible": item.get("visible"),
+            "faces": list((item.get("geometry_ref") or {}).get("face_indices") or []),
         }
-    )
+        for item in instances
+    ]
+
+
+def _geometry_state(instances: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "instance_id": item.get("instance_id"),
+            "prepared_sha256": (item.get("geometry_ref") or {}).get("prepared_sha256"),
+            "faces": list((item.get("geometry_ref") or {}).get("face_indices") or []),
+        }
+        for item in instances
+    ]
+
+
+def _prepare(review: dict[str, Any]) -> None:
+    instances = list(review.get("instances") or [])
+    review["_pending"] = {
+        "previous": _canonical_hash(_instance_state(instances)),
+        "geometry": _canonical_hash(_geometry_state(instances)),
+        "before": copy.deepcopy(instances),
+    }
+
+
+def _operation_id(review: dict[str, Any]) -> str:
+    counter = int(review.get("operation_counter") or 0) + 1
+    review["operation_counter"] = counter
+    return f"op-{counter}"
+
+
+def _event(
+    review: dict[str, Any],
+    action: str,
+    detail: dict[str, Any],
+    *,
+    affected: list[str] | None = None,
+    restore: bool = False,
+) -> dict[str, Any]:
+    pending = review.pop("_pending", None) or {}
+    instances = list(review.get("instances") or [])
+    geometry_now = _canonical_hash(_geometry_state(instances))
+    previous_geometry = pending.get("geometry")
+    geometry_changed = previous_geometry is not None and geometry_now != previous_geometry
+    operation_id = _operation_id(review)
+    record = {
+        "operation_id": operation_id,
+        "operation": action,
+        "action": action,
+        "parameters": detail,
+        "detail": detail,
+        "affected_instance_ids": list(affected or []),
+        "previous_segmentation_state": pending.get("previous"),
+        "resulting_geometry_hash": geometry_now if geometry_changed else None,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "mutates_model_prediction": False,
+    }
+    if pending.get("before") is not None and not restore:
+        record["before_instances"] = pending["before"]
+        review.setdefault("undo", []).append(operation_id)
+        if action != "redo":
+            review["redo"] = []
+    review.setdefault("events", []).append(record)
+    review.pop("_pending", None)
+    return record
+
+
+def _geometry_reference_ok(instance: dict[str, Any]) -> bool:
+    geometry = instance.get("geometry_ref") or {}
+    faces = geometry.get("face_indices")
+    if not isinstance(faces, list) or not faces:
+        return False
+    if geometry.get("face_count") != len(faces):
+        return False
+    if not geometry.get("prepared_sha256"):
+        return False
+    if geometry.get("replaces_prepared_mesh") is True:
+        return False
+    return all(isinstance(index, int) and not isinstance(index, bool) for index in faces)
 
 
 def _find(review: dict[str, Any], instance_id: str) -> dict[str, Any]:
@@ -345,7 +446,7 @@ def apply_review_action(
 ) -> dict[str, Any]:
     """Apply one doctor review edit. The stored model prediction is not rewritten."""
     session = _session(artifact)
-    if action in {"undo", "reset"}:
+    if action in {"undo", "redo", "reset"}:
         review = session.get("review")
         if not isinstance(review, dict):
             raise SegmentationReviewError("There is no review state to change.")
@@ -353,59 +454,122 @@ def apply_review_action(
             stack = list(review.get("undo") or [])
             if not stack:
                 raise SegmentationReviewError("There is no review edit to undo.")
-            import copy
-
-            review.setdefault("redo", []).append(copy.deepcopy(review.get("instances") or []))
-            review["instances"] = stack.pop()
+            operation_id = stack.pop()
             review["undo"] = stack
-            _event(review, "undo", {})
+            event = next(
+                (
+                    item
+                    for item in review.get("events") or []
+                    if item.get("operation_id") == operation_id
+                ),
+                None,
+            )
+            if not isinstance(event, dict) or "before_instances" not in event:
+                raise SegmentationReviewError("The review operation cannot be restored.")
+            review.setdefault("redo", []).append(
+                {
+                    "operation_id": operation_id,
+                    "instances": copy.deepcopy(review.get("instances") or []),
+                }
+            )
+            _prepare(review)
+            review["instances"] = copy.deepcopy(event["before_instances"])
+            _event(
+                review,
+                "undo",
+                {"restores_operation_id": operation_id},
+                affected=list(event.get("affected_instance_ids") or []),
+                restore=True,
+            )
+        elif action == "redo":
+            stack = list(review.get("redo") or [])
+            if not stack:
+                raise SegmentationReviewError("There is no review edit to redo.")
+            item = stack.pop()
+            review["redo"] = stack
+            _prepare(review)
+            review["instances"] = copy.deepcopy(item.get("instances") or [])
+            _event(
+                review,
+                "redo",
+                {"restores_operation_id": item.get("operation_id")},
+                affected=[],
+                restore=False,
+            )
         else:
-            import copy
-
-            _snapshot(review)
+            _prepare(review)
+            affected = [
+                str(item.get("instance_id"))
+                for item in review.get("instances") or []
+                if item.get("instance_id")
+            ]
             review["instances"] = copy.deepcopy(review.get("model_instances") or [])
-            _event(review, "reset", {})
+            _event(review, "reset", {}, affected=affected)
         return session
     review = _review(session)
     if action == "select":
         instance_id = str(payload.get("instance_id") or "")
         _find(review, instance_id)
         review["selected_instance_id"] = instance_id
-        _event(review, "select", {"instance_id": instance_id})
+        _prepare(review)
+        _event(review, "select", {"instance_id": instance_id}, affected=[instance_id], restore=True)
         return session
     if action == "inspect":
         instance_id = str(payload.get("instance_id") or "")
         _find(review, instance_id)
         review["inspected_instance_id"] = instance_id
-        _event(review, "inspect", {"instance_id": instance_id})
+        _prepare(review)
+        _event(
+            review, "inspect", {"instance_id": instance_id}, affected=[instance_id], restore=True
+        )
         return session
     if action in {"hide", "show"}:
         instance = _find(review, str(payload.get("instance_id") or ""))
-        _snapshot(review)
+        _prepare(review)
         instance["visible"] = action == "show"
-        _event(review, action, {"instance_id": instance["instance_id"]})
+        _event(
+            review,
+            action,
+            {"instance_id": instance["instance_id"]},
+            affected=[instance["instance_id"]],
+        )
         return session
     if action == "mark_review":
         instance = _find(review, str(payload.get("instance_id") or ""))
-        _snapshot(review)
+        _prepare(review)
         instance["review_state"] = "REQUIRES_REVIEW"
         instance["validation_state"] = "REQUIRES_REVIEW"
-        _event(review, "mark_review", {"instance_id": instance["instance_id"]})
+        _event(
+            review,
+            "mark_review",
+            {"instance_id": instance["instance_id"]},
+            affected=[instance["instance_id"]],
+        )
         return session
     if action == "accept":
         instance = _find(review, str(payload.get("instance_id") or ""))
-        _snapshot(review)
+        _prepare(review)
         instance["review_state"] = "DOCTOR_ACCEPTED"
         if instance.get("truth_state") == "VERIFIED":
             instance["truth_state"] = "PREDICTED"
-        _event(review, "accept", {"instance_id": instance["instance_id"]})
+        _event(
+            review,
+            "accept",
+            {"instance_id": instance["instance_id"]},
+            affected=[instance["instance_id"]],
+        )
         return session
     if action == "reject":
         instance = _find(review, str(payload.get("instance_id") or ""))
-        _snapshot(review)
+        _prepare(review)
         instance["review_state"] = "DOCTOR_REJECTED"
         instance["truth_state"] = "INVALID"
-        _event(review, "reject", {"instance_id": instance["instance_id"]})
+        _event(
+            review,
+            "reject",
+            {"instance_id": instance["instance_id"]},
+            affected=[instance["instance_id"]],
+        )
         return session
     if action == "merge":
         left = _find(review, str(payload.get("instance_id") or ""))
@@ -413,9 +577,9 @@ def apply_review_action(
         _merge_instances(review, left, right)
         return session
     if action == "split":
-        instance = _find(review, str(payload.get("instance_id") or ""))
-        _split_instance(review, instance, list(payload.get("face_indices") or []))
-        return session
+        raise SegmentationReviewError(
+            "SPLIT_UNAVAILABLE: no safe split control is exposed. No geometry was changed."
+        )
     raise SegmentationReviewError("Unknown review action.")
 
 
@@ -435,7 +599,9 @@ def _merge_instances(review: dict[str, Any], left: dict[str, Any], right: dict[s
     right_sha = (right.get("geometry_ref") or {}).get("prepared_sha256")
     if not left_sha or left_sha != right_sha:
         raise SegmentationReviewError("Merge requires the same prepared artifact.")
-    _snapshot(review)
+    if not _geometry_reference_ok(left) or not _geometry_reference_ok(right):
+        raise SegmentationReviewError("Merge requires valid geometry references.")
+    _prepare(review)
     merged = candidate_instance(
         instance_id=_next_id(review, "inst-m"),
         run_id=left["run_id"],
@@ -463,57 +629,10 @@ def _merge_instances(review: dict[str, Any], left: dict[str, Any], right: dict[s
     _event(
         review,
         "merge",
-        {"instance_id": merged["instance_id"], "parents": merged["parent_instance_ids"]},
-    )
-
-
-def _split_instance(review: dict[str, Any], instance: dict[str, Any], requested: list[int]) -> None:
-    faces = _faces(instance)
-    face_set = set(faces)
-    if len(requested) != len(set(requested)):
-        raise SegmentationReviewError("Split face indices must be unique.")
-    subset = set(requested)
-    if not subset or not subset < face_set:
-        raise SegmentationReviewError(
-            "Split requires an explicit non-empty proper subset of this instance."
-        )
-    prepared = str((instance.get("geometry_ref") or {}).get("prepared_sha256") or "")
-    remainder = [index for index in faces if index not in subset]
-    _snapshot(review)
-    backend = instance.get("backend") or {}
-    shared = {
-        "run_id": instance["run_id"],
-        "prepared_sha256": prepared,
-        "backend_name": backend.get("name") or "",
-        "backend_version": backend.get("version") or "",
-        "model_id": backend.get("model_id") or "",
-        "model_sha256": backend.get("model_sha256"),
-        "raw_model_class": instance.get("raw_model_class"),
-        "confidence": None,
-        "confidence_available": False,
-        "truth_state": "PROPOSED",
-        "review_state": "DOCTOR_MODIFIED",
-        "real_inference": bool(instance.get("real_inference")),
-    }
-    first = candidate_instance(
-        instance_id=_next_id(review, "inst-s"),
-        face_indices=list(requested),
-        **shared,
-    )
-    second = candidate_instance(
-        instance_id=_next_id(review, "inst-s"), face_indices=remainder, **shared
-    )
-    for item in (first, second):
-        item["parent_instance_ids"] = [instance["instance_id"]]
-        item["model_prediction_preserved"] = True
-    review["instances"] = [
-        item for item in review["instances"] if item["instance_id"] != instance["instance_id"]
-    ] + [first, second]
-    _event(
-        review,
-        "split",
         {
-            "parents": [instance["instance_id"]],
-            "instance_ids": [first["instance_id"], second["instance_id"]],
+            "instance_id": merged["instance_id"],
+            "parents": merged["parent_instance_ids"],
+            "operation": "merge",
         },
+        affected=[left["instance_id"], right["instance_id"], merged["instance_id"]],
     )

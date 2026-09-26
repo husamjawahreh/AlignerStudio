@@ -61,9 +61,28 @@ test("accept a prepared scan and show segmentation provenance or the runtime blo
   await expect(job).toContainText(/completed|blocked|DRIVER_UNAVAILABLE|ENVIRONMENT_BLOCKED|AVAILABLE/, {
     timeout: 120_000,
   });
+  const outcome = page.getByTestId("upper-segmentation-outcome");
+  await expect(outcome).toBeVisible();
+  const outcomeText = (await outcome.textContent()) ?? "";
+  const blocked = outcomeText.includes("ENVIRONMENT_BLOCKED");
+  const completed = outcomeText.includes("SEGMENTATION_COMPLETED");
+  expect(blocked || completed).toBeTruthy();
+  expect(blocked && completed).toBeFalsy();
   const identity = page.getByTestId("upper-segmentation-identity");
   await expect(identity).toContainText("NOT_ESTABLISHED");
   await expect(identity).toContainText("not established");
+  const provenance = page.getByTestId("upper-segmentation-provenance");
+  await expect(provenance).toContainText("NOT_ESTABLISHED");
+  await expect(provenance).toContainText("QUALITY_EVALUATION NOT_AVAILABLE");
+  await expect(page.getByTestId("upper-segmentation-split")).toHaveText("SPLIT_UNAVAILABLE");
+  if (blocked) {
+    await expect(page.getByRole("button", { name: "Accept candidate" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Merge first two" })).toHaveCount(0);
+    await expect(provenance).toContainText("Real inference not claimed");
+  } else {
+    await expect(page.getByRole("button", { name: "Accept candidate" })).toBeVisible();
+    await expect(provenance).toContainText("Clinical accuracy is not established");
+  }
   await expect(page.getByTestId("upper-segmentation-review")).toBeVisible();
   await expect(page.getByTestId("inspector-segmentation-identity")).toContainText("NOT_ESTABLISHED");
   await expect(page.getByTestId("upper-segmentation-review")).not.toContainText("FDI 11");

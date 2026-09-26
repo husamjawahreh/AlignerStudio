@@ -192,15 +192,14 @@ def test_merge_and_split_require_a_real_partition(tmp_path: Path) -> None:
     assert merged[0]["fdi"] is None
     assert artifact["segmentation"]["review"]["model_instances"][0]["truth_state"] == "PREDICTED"
     review_segmentation(artifact, "reset", {})
-    with pytest.raises(SegmentationReviewError):
+    before = list(artifact["segmentation"]["review"]["instances"])
+    with pytest.raises(SegmentationReviewError, match="SPLIT_UNAVAILABLE"):
         review_segmentation(artifact, "split", {"instance_id": "inst-0", "face_indices": []})
     faces = artifact["segmentation"]["review"]["instances"][0]["geometry_ref"]["face_indices"]
-    review_segmentation(artifact, "split", {"instance_id": "inst-0", "face_indices": faces[:1]})
-    parts = artifact["segmentation"]["review"]["instances"]
-    assert len(parts) == 3
-    split_parts = [item for item in parts if item["instance_id"] != "inst-1"]
-    assert all(item["review_state"] == "DOCTOR_MODIFIED" for item in split_parts)
-    assert sum(item["geometry_ref"]["face_count"] for item in split_parts) == len(faces)
+    with pytest.raises(SegmentationReviewError, match="SPLIT_UNAVAILABLE"):
+        review_segmentation(artifact, "split", {"instance_id": "inst-0", "face_indices": faces[:1]})
+    assert artifact["segmentation"]["review"]["instances"] == before
+    assert artifact["segmentation"]["split_available"] is False
 
 
 def test_stale_job_does_not_overwrite_a_newer_run(tmp_path: Path) -> None:
@@ -375,9 +374,9 @@ def test_real_scan_capability_measurement() -> None:
         pytest.skip("Real FV-02 STL is not available at the measured size.")
     report = measure_segmentation_capability(source, Path(".research/tmp/fv03_reliability"))
     Path(".research/tmp").mkdir(parents=True, exist_ok=True)
-    Path(".research/tmp/fv03_report.json").write_text(
-        json.dumps(report, indent=2) + "\n", encoding="utf-8"
-    )
+    report_path = Path(".research/tmp/fv03_report.json")
+    if not report_path.is_file():
+        report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     assert report["file_size"] == 8_557_034
     assert report["source_sha256"] == (
         "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48"

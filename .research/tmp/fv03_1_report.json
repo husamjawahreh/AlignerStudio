@@ -1,0 +1,203 @@
+{
+  "self_test": {
+    "self_test": {
+      "state": "ENVIRONMENT_UNAVAILABLE",
+      "environment_blockers": [
+        "DRIVER_UNAVAILABLE",
+        "PYTORCH_UNAVAILABLE",
+        "CUDA_EXTENSION_UNAVAILABLE"
+      ],
+      "checkpoint_present": true,
+      "checkpoint_hash_matches": true,
+      "contract_metadata_valid": true,
+      "checkpoint_contract_state": "TENSOR_CONTRACT_ESTABLISHED",
+      "init_error": null,
+      "entered_inference": false,
+      "real_inference": false,
+      "clinically_verified": false
+    },
+    "runtime_manifest": {
+      "manifest_version": "fv03.1-runtime-1",
+      "python_version": "3.12.3",
+      "os": "Linux-7.0.0-34-generic-x86_64-with-glibc2.39",
+      "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.39",
+      "cpu": "Intel(R) Core(TM) i5-10500H CPU @ 2.50GHz",
+      "ram_bytes": 16571219968,
+      "gpu_vendor": null,
+      "gpu_model": null,
+      "driver_version": null,
+      "cuda_version": null,
+      "pytorch_version": null,
+      "pytorch_available": false,
+      "cuda_extension_available": false,
+      "pointops_available": false,
+      "pointops_version": null,
+      "backend_package_versions": {
+        "trimesh": "5.1.0",
+        "numpy": "2.5.3",
+        "torch": null,
+        "pointops": null
+      },
+      "checkpoint_filename": "instseg_full.ckpt",
+      "checkpoint_sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+      "checkpoint_present": true,
+      "model_contract_version": "3dteethland-424252e3d94a1565c8c2090eb5bb456b76386b93",
+      "required_input_channels": 6,
+      "observed_input_channels": 6,
+      "required_model_outputs": {
+        "instance_head": "offsets_and_sigmas",
+        "seed_head": "seed_logit",
+        "identify_head": "seven_logits",
+        "instance_ids": "learned_region_cluster",
+        "fdi_encoded": false,
+        "arch_encoded": false,
+        "left_right_encoded": false
+      },
+      "observed_contract_state": "TENSOR_CONTRACT_ESTABLISHED",
+      "runtime_capability_state": "DRIVER_UNAVAILABLE",
+      "self_test_state": "ENVIRONMENT_UNAVAILABLE"
+    },
+    "capability_state": "DRIVER_UNAVAILABLE",
+    "applicable_states": [
+      "DRIVER_UNAVAILABLE",
+      "PYTORCH_UNAVAILABLE",
+      "CUDA_EXTENSION_UNAVAILABLE"
+    ],
+    "availability": "ENVIRONMENT_BLOCKED",
+    "executable": false,
+    "model_sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+    "real_inference": false,
+    "entered_inference": false,
+    "clinically_verified": false,
+    "fixture_selected": false,
+    "environment": {
+      "spec_version": "fv03.1-environment-1",
+      "applies_to": "toothinstancenet",
+      "application_dependency": false,
+      "python": "3.12",
+      "pytorch": {
+        "validated_pin": "2.10.0+cu128",
+        "upstream_pin": "2.3.0",
+        "mandatory_for_application_startup": false
+      },
+      "cuda": {
+        "validated_image": "12.8.1",
+        "upstream_pin": "12.1",
+        "mandatory_for_application_startup": false
+      },
+      "pointops": {
+        "requirement": "CUDAExtension",
+        "cpp_extension": false,
+        "cpu_forward": false
+      },
+      "checkpoint": {
+        "filename": "instseg_full.ckpt",
+        "sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+        "model_contract_version": "3dteethland-424252e3d94a1565c8c2090eb5bb456b76386b93",
+        "source_revision": "424252e3d94a1565c8c2090eb5bb456b76386b93"
+      },
+      "required_input_channels": 6,
+      "required_model_outputs": {
+        "instance_head": "offsets_and_sigmas",
+        "seed_head": "seed_logit",
+        "identify_head": "seven_logits",
+        "instance_ids": "learned_region_cluster",
+        "fdi_encoded": false,
+        "arch_encoded": false,
+        "left_right_encoded": false
+      },
+      "expected_self_test_when_pins_match": "READY_FOR_INFERENCE",
+      "build_steps": [
+        "Use a separate environment. Do not add these packages to the application process.",
+        "Install Python 3.12.",
+        "Install the validated PyTorch CUDA build, or the upstream pin recorded above.",
+        "Install a CUDA toolkit that matches that build.",
+        "Build pointops from the pinned source as a CUDAExtension. There is no CppExtension.",
+        "Place instseg_full.ckpt on the checkpoint path and verify its SHA-256."
+      ]
+    },
+    "manual_segmentation": {
+      "capability": "manual_segmentation_correction",
+      "status": "NOT_IMPLEMENTED",
+      "substitutes_automatic_segmentation": false,
+      "substitutes_model_prediction": false,
+      "clinical_verification": false,
+      "editor": false,
+      "distinct_from": [
+        "automatic_model_segmentation",
+        "MODEL_PREDICTION",
+        "clinical_verification"
+      ]
+    },
+    "quality_evaluation": {
+      "quality_evaluation": "NOT_AVAILABLE",
+      "reason": "No reference segmentation is available. Scores were not computed.",
+      "clinical_accuracy": "NOT_ESTABLISHED",
+      "dice": null,
+      "iou": null,
+      "surface_distance": null,
+      "hausdorff_distance": null,
+      "instance_count": null,
+      "connected_component_statistics": null,
+      "boundary_statistics": null,
+      "invalid_output_count": null,
+      "self_intersecting_output_count": null
+    }
+  },
+  "prepared_input_probe": {
+    "file_size": 8557034,
+    "source_sha256": "60aaafed87818b7cffd904056c4055748692bc280069af16325bff3b446e5a48",
+    "vertex_count": 513417,
+    "face_count": 171139,
+    "prepared_sha256": "d7475b7e7b71066d70188303f5c7357c7049126159d7441b69f2b7f81d84a9fa",
+    "input_gate_accepted": true,
+    "input_gate_reasons": [],
+    "readiness": "READY_WITH_WARNINGS",
+    "input_gate_ms": 80.17293299781159,
+    "prepared_load_ms": 34.0740920000826,
+    "capability_detection_ms": 340.6271419953555,
+    "capability_state": "DRIVER_UNAVAILABLE",
+    "availability": "ENVIRONMENT_BLOCKED",
+    "applicable_states": [
+      "DRIVER_UNAVAILABLE",
+      "PYTORCH_UNAVAILABLE",
+      "CUDA_EXTENSION_UNAVAILABLE"
+    ],
+    "executable": false,
+    "inference_attempted": false,
+    "inference_ms": null,
+    "real_inference": false,
+    "fixture_selected": false,
+    "fdi_assigned": false,
+    "clinically_segmented": false,
+    "clinical_accuracy_claim": false,
+    "semantic_identity": "NOT_ESTABLISHED",
+    "model_sha256": "100c68a9b120402cc75539eff6347bd998bce8b1d4f01550638f471797d70803",
+    "input_channels": 6,
+    "identify_logits": 7,
+    "fdi_encoded": false,
+    "rss_before_mb": 399.89453125,
+    "rss_after_mb": 331.5859375,
+    "peak_rss_mb": 420.9921875,
+    "library": "trimesh 5.1.0",
+    "message": "ToothInstanceNet cannot execute. Primary blocker: DRIVER_UNAVAILABLE. No segmentation was fabricated."
+  },
+  "command": {
+    "self_test_state": "ENVIRONMENT_UNAVAILABLE",
+    "entered_inference": false,
+    "real_inference": false,
+    "clinically_verified": false,
+    "primary_blocker": "ENVIRONMENT_UNAVAILABLE"
+  },
+  "real_inference": false,
+  "clinically_verified": false,
+  "clinical_accuracy": "NOT_ESTABLISHED",
+  "prior_blocked_run_preserved": {
+    "source": ".research/tmp/fv03_report.json",
+    "prepared_mesh_load_ms": 145.5,
+    "input_gate_ms": 326.3,
+    "capability_detection_ms": 1511.3,
+    "inference": "not run",
+    "peak_rss_mb": 529.3
+  }
+}
