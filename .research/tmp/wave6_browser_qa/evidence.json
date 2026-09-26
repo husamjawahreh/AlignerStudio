@@ -1,0 +1,1036 @@
+{
+  "wave": 6,
+  "clinicalSegmentationValidation": false,
+  "liveToothInstanceNet": false,
+  "fixtureEvidence": "non-clinical",
+  "note": "Screenshots are UI evidence. Fixture crowns and the fixture treatment bundle are generated test meshes. They are not patient inference, not an approval, and not a safety result. Blocked shots are an environment blocker, not a model failure and not zero teeth. WP-14 and WP-15 were not exercised.",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "name": "1366x768"
+    },
+    {
+      "width": 1600,
+      "height": 1000,
+      "name": "1600x1000"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "name": "1280x800"
+    }
+  ],
+  "images": [
+    {
+      "file": "1366x768_01_idle.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "idle",
+      "clinicalSegmentationValidation": false,
+      "note": "Idle. No selection and no scene. No clinical tools."
+    },
+    {
+      "file": "1366x768_02_case.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "case",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Toolbar stays on case context."
+    },
+    {
+      "file": "1366x768_03_blocked.png",
+      "viewport": "1366x768",
+      "provenance": "blocked",
+      "geometry": "none",
+      "context": "blocked",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Retry is blocked, not a failed model, and is not a primary button."
+    },
+    {
+      "file": "1600x1000_01_idle.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "idle",
+      "clinicalSegmentationValidation": false,
+      "note": "Idle. No selection and no scene. No clinical tools."
+    },
+    {
+      "file": "1600x1000_02_case.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "case",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Toolbar stays on case context."
+    },
+    {
+      "file": "1600x1000_03_blocked.png",
+      "viewport": "1600x1000",
+      "provenance": "blocked",
+      "geometry": "none",
+      "context": "blocked",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Retry is blocked, not a failed model, and is not a primary button."
+    },
+    {
+      "file": "1280x800_01_idle.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "idle",
+      "clinicalSegmentationValidation": false,
+      "note": "Idle. No selection and no scene. No clinical tools."
+    },
+    {
+      "file": "1280x800_02_case.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "case",
+      "clinicalSegmentationValidation": false,
+      "note": "Case intake. Toolbar stays on case context."
+    },
+    {
+      "file": "1280x800_03_blocked.png",
+      "viewport": "1280x800",
+      "provenance": "blocked",
+      "geometry": "none",
+      "context": "blocked",
+      "clinicalSegmentationValidation": false,
+      "note": "Environment blocker. Retry is blocked, not a failed model, and is not a primary button."
+    },
+    {
+      "file": "1366x768_15_unavailable.png",
+      "viewport": "1366x768",
+      "provenance": "unavailable",
+      "geometry": "none",
+      "context": "unavailable",
+      "clinicalSegmentationValidation": false,
+      "note": "Segmentation is not available. Measure is explained, not presented as a broken button."
+    },
+    {
+      "file": "1600x1000_15_unavailable.png",
+      "viewport": "1600x1000",
+      "provenance": "unavailable",
+      "geometry": "none",
+      "context": "unavailable",
+      "clinicalSegmentationValidation": false,
+      "note": "Segmentation is not available. Measure is explained, not presented as a broken button."
+    },
+    {
+      "file": "1280x800_15_unavailable.png",
+      "viewport": "1280x800",
+      "provenance": "unavailable",
+      "geometry": "none",
+      "context": "unavailable",
+      "clinicalSegmentationValidation": false,
+      "note": "Segmentation is not available. Measure is explained, not presented as a broken button."
+    },
+    {
+      "file": "1366x768_04_fixture_review.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "segmentation-review",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture segmentation review. Provenance stays on the strip, not a second widget."
+    },
+    {
+      "file": "1366x768_05_one_tooth.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "one-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "One fixture tooth. Label is tooth_ref. No invented FDI."
+    },
+    {
+      "file": "1366x768_06_multi_tooth.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Group selection. No invented group clinical action."
+    },
+    {
+      "file": "1366x768_07_treatment_setup.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup before a stored target. Current/target widget stays hidden."
+    },
+    {
+      "file": "1366x768_08_staging_without_plan.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging step before stored stages. No stage-count claim."
+    },
+    {
+      "file": "1366x768_09_processing.png",
+      "viewport": "1366x768",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "processing",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing. Overlay owns status and cancel. Toolbar has no clinical edits."
+    },
+    {
+      "file": "1366x768_10_failed.png",
+      "viewport": "1366x768",
+      "provenance": "failure",
+      "geometry": "generated_fixture_crowns",
+      "context": "failed",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing failure text stays. Segmentation retry is not offered for this failure."
+    },
+    {
+      "file": "1600x1000_04_fixture_review.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "segmentation-review",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture segmentation review. Provenance stays on the strip, not a second widget."
+    },
+    {
+      "file": "1600x1000_05_one_tooth.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "one-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "One fixture tooth. Label is tooth_ref. No invented FDI."
+    },
+    {
+      "file": "1600x1000_06_multi_tooth.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Group selection. No invented group clinical action."
+    },
+    {
+      "file": "1600x1000_07_treatment_setup.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup before a stored target. Current/target widget stays hidden."
+    },
+    {
+      "file": "1600x1000_08_staging_without_plan.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging step before stored stages. No stage-count claim."
+    },
+    {
+      "file": "1600x1000_09_processing.png",
+      "viewport": "1600x1000",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "failed",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing. Overlay owns status and cancel. Toolbar has no clinical edits."
+    },
+    {
+      "file": "1600x1000_10_failed.png",
+      "viewport": "1600x1000",
+      "provenance": "failure",
+      "geometry": "generated_fixture_crowns",
+      "context": "failed",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing failure text stays. Segmentation retry is not offered for this failure."
+    },
+    {
+      "file": "1280x800_04_fixture_review.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "segmentation-review",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture segmentation review. Provenance stays on the strip, not a second widget."
+    },
+    {
+      "file": "1280x800_05_one_tooth.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "one-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "One fixture tooth. Label is tooth_ref. No invented FDI."
+    },
+    {
+      "file": "1280x800_06_multi_tooth.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Group selection. No invented group clinical action."
+    },
+    {
+      "file": "1280x800_07_treatment_setup.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Treatment setup before a stored target. Current/target widget stays hidden."
+    },
+    {
+      "file": "1280x800_08_staging_without_plan.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_crowns",
+      "context": "multi-tooth",
+      "clinicalSegmentationValidation": false,
+      "note": "Staging step before stored stages. No stage-count claim."
+    },
+    {
+      "file": "1280x800_09_processing.png",
+      "viewport": "1280x800",
+      "provenance": "ui_shell",
+      "geometry": "none",
+      "context": "processing",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing. Overlay owns status and cancel. Toolbar has no clinical edits."
+    },
+    {
+      "file": "1280x800_10_failed.png",
+      "viewport": "1280x800",
+      "provenance": "failure",
+      "geometry": "generated_fixture_crowns",
+      "context": "failed",
+      "clinicalSegmentationValidation": false,
+      "note": "Processing failure text stays. Segmentation retry is not offered for this failure."
+    },
+    {
+      "file": "1366x768_11_stale_staging.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "stale",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture staging is stale. Regenerate stays on the staging step. Not a clinical-quality claim."
+    },
+    {
+      "file": "1366x768_12_refinement.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "refinement",
+      "clinicalSegmentationValidation": false,
+      "note": "Refinement. Move stays unavailable until a tooth is selected on the existing tooth controls."
+    },
+    {
+      "file": "1366x768_13_validation.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "validation",
+      "clinicalSegmentationValidation": false,
+      "note": "Validation. Overlay is unavailable. No safe score."
+    },
+    {
+      "file": "1366x768_14_production.png",
+      "viewport": "1366x768",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "production",
+      "clinicalSegmentationValidation": false,
+      "note": "Production. No new manufacturing action was added to the toolbar."
+    },
+    {
+      "file": "1600x1000_11_stale_staging.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "stale",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture staging is stale. Regenerate stays on the staging step. Not a clinical-quality claim."
+    },
+    {
+      "file": "1600x1000_12_refinement.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "refinement",
+      "clinicalSegmentationValidation": false,
+      "note": "Refinement. Move stays unavailable until a tooth is selected on the existing tooth controls."
+    },
+    {
+      "file": "1600x1000_13_validation.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "validation",
+      "clinicalSegmentationValidation": false,
+      "note": "Validation. Overlay is unavailable. No safe score."
+    },
+    {
+      "file": "1600x1000_14_production.png",
+      "viewport": "1600x1000",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "production",
+      "clinicalSegmentationValidation": false,
+      "note": "Production. No new manufacturing action was added to the toolbar."
+    },
+    {
+      "file": "1280x800_11_stale_staging.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "stale",
+      "clinicalSegmentationValidation": false,
+      "note": "Fixture staging is stale. Regenerate stays on the staging step. Not a clinical-quality claim."
+    },
+    {
+      "file": "1280x800_12_refinement.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "refinement",
+      "clinicalSegmentationValidation": false,
+      "note": "Refinement. Move stays unavailable until a tooth is selected on the existing tooth controls."
+    },
+    {
+      "file": "1280x800_13_validation.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "validation",
+      "clinicalSegmentationValidation": false,
+      "note": "Validation. Overlay is unavailable. No safe score."
+    },
+    {
+      "file": "1280x800_14_production.png",
+      "viewport": "1280x800",
+      "provenance": "fixture_test_only",
+      "geometry": "generated_fixture_treatment",
+      "context": "production",
+      "clinicalSegmentationValidation": false,
+      "note": "Production. No new manufacturing action was added to the toolbar."
+    }
+  ],
+  "occupancy": [
+    {
+      "label": "1366x768-idle",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 1038,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 107,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 70,
+        "height": 25,
+        "top": 63,
+        "left": 1281
+      },
+      "context": "idle",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1366x768-case",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 878,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 107,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 323,
+        "top": 63,
+        "left": 1121
+      },
+      "context": "case",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1366x768-blocked",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 878,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 212,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 776,
+        "top": 63,
+        "left": 1121
+      },
+      "context": "blocked",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-idle",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1264,
+        "height": 936,
+        "top": 56,
+        "left": 232
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 109,
+        "left": 241
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 70,
+        "height": 25,
+        "top": 65,
+        "left": 1513
+      },
+      "context": "idle",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-case",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1048,
+        "height": 936,
+        "top": 56,
+        "left": 256
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 109,
+        "left": 265
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 262,
+        "height": 323,
+        "top": 65,
+        "left": 1321
+      },
+      "context": "case",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-blocked",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1048,
+        "height": 936,
+        "top": 56,
+        "left": 256
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 214,
+        "left": 265
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 262,
+        "height": 725,
+        "top": 65,
+        "left": 1321
+      },
+      "context": "blocked",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-idle",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 952,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 107,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 70,
+        "height": 25,
+        "top": 63,
+        "left": 1195
+      },
+      "context": "idle",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-case",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 792,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 107,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 323,
+        "top": 63,
+        "left": 1035
+      },
+      "context": "case",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-blocked",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 792,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 250,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 776,
+        "top": 63,
+        "left": 1035
+      },
+      "context": "blocked",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1366x768-unavailable",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 878,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 188,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 325,
+        "top": 63,
+        "left": 1121
+      },
+      "context": "unavailable",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-unavailable",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1048,
+        "height": 936,
+        "top": 56,
+        "left": 256
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 190,
+        "left": 265
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 262,
+        "height": 325,
+        "top": 65,
+        "left": 1321
+      },
+      "context": "unavailable",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-unavailable",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 792,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 79,
+        "height": 27,
+        "top": 188,
+        "left": 237
+      },
+      "widgets": null,
+      "inspector": {
+        "width": 230,
+        "height": 325,
+        "top": 63,
+        "left": 1035
+      },
+      "context": "unavailable",
+      "primary": [],
+      "statusCount": 1
+    },
+    {
+      "label": "1366x768-failed",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 878,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 485,
+        "height": 37,
+        "top": 184,
+        "left": 237
+      },
+      "widgets": {
+        "width": 246,
+        "height": 57,
+        "top": 54,
+        "left": 860
+      },
+      "inspector": {
+        "width": 230,
+        "height": 335,
+        "top": 63,
+        "left": 1121
+      },
+      "context": "failed",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-failed",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1048,
+        "height": 936,
+        "top": 56,
+        "left": 256
+      },
+      "toolbar": {
+        "width": 485,
+        "height": 37,
+        "top": 186,
+        "left": 265
+      },
+      "widgets": {
+        "width": 246,
+        "height": 57,
+        "top": 56,
+        "left": 1058
+      },
+      "inspector": {
+        "width": 262,
+        "height": 335,
+        "top": 65,
+        "left": 1321
+      },
+      "context": "failed",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-failed",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 792,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 485,
+        "height": 37,
+        "top": 207,
+        "left": 237
+      },
+      "widgets": {
+        "width": 246,
+        "height": 57,
+        "top": 54,
+        "left": 774
+      },
+      "inspector": {
+        "width": 230,
+        "height": 335,
+        "top": 63,
+        "left": 1035
+      },
+      "context": "failed",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    },
+    {
+      "label": "1366x768-production",
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "viewport": {
+        "width": 878,
+        "height": 708,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 650,
+        "height": 37,
+        "top": 184,
+        "left": 237
+      },
+      "widgets": {
+        "width": 441,
+        "height": 57,
+        "top": 54,
+        "left": 665
+      },
+      "inspector": {
+        "width": 230,
+        "height": 293,
+        "top": 63,
+        "left": 1121
+      },
+      "context": "production",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-view-occlusal",
+        "tool-view-front",
+        "tool-view-lateral",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    },
+    {
+      "label": "1600x1000-production",
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "viewport": {
+        "width": 1048,
+        "height": 936,
+        "top": 56,
+        "left": 256
+      },
+      "toolbar": {
+        "width": 650,
+        "height": 37,
+        "top": 186,
+        "left": 265
+      },
+      "widgets": {
+        "width": 441,
+        "height": 57,
+        "top": 56,
+        "left": 863
+      },
+      "inspector": {
+        "width": 262,
+        "height": 293,
+        "top": 65,
+        "left": 1321
+      },
+      "context": "production",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-view-occlusal",
+        "tool-view-front",
+        "tool-view-lateral",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    },
+    {
+      "label": "1280x800-production",
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "viewport": {
+        "width": 792,
+        "height": 740,
+        "top": 54,
+        "left": 228
+      },
+      "toolbar": {
+        "width": 650,
+        "height": 37,
+        "top": 269,
+        "left": 237
+      },
+      "widgets": {
+        "width": 412,
+        "height": 120,
+        "top": 54,
+        "left": 608
+      },
+      "inspector": {
+        "width": 230,
+        "height": 293,
+        "top": 63,
+        "left": 1035
+      },
+      "context": "production",
+      "primary": [
+        "tool-fit-case",
+        "tool-fit-arch",
+        "tool-view-occlusal",
+        "tool-view-front",
+        "tool-view-lateral",
+        "tool-arch-upper",
+        "tool-arch-lower",
+        "tool-arch-both",
+        "tool-labels"
+      ],
+      "statusCount": 1
+    }
+  ]
+}

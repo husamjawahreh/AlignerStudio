@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Case,
   CaseDentalIntelligencePayload,
@@ -58,11 +58,10 @@ import {
   DentalArchMap,
   PrimaryStatus,
   SegmentationReviewStrip,
-  SelectionWidget,
+  SmartWidgets,
   WorkflowOrientation,
 } from "../components/workspace/ClinicalChrome";
 import {
-  buildContextualTools,
   buildDentalMapEntries,
   buildFeedbackModel,
   buildInspectorModel,
@@ -76,7 +75,9 @@ import {
   type ToothLabelMode,
 } from "../interaction/model";
 import { resolveNextAction, type NextAction } from "../interaction/nextAction";
-import { dedupeNotice, splitToolbar, workflowOrientation } from "../interaction/smartUx";
+import { dedupeNotice, workflowOrientation } from "../interaction/smartUx";
+import { commandIdForShortcut, resolveToolbar, viewportCommandMutatesClinicalState } from "../interaction/toolbar";
+import { resolveWidgets } from "../interaction/widgets";
 import { nextLabelMode } from "../viewer/presentation/labelPolicy";
 import {
   beginTransformTransaction,
@@ -586,6 +587,14 @@ export function App(): JSX.Element {
     };
   }, []);
 
+  const processingMounted = useRef(true);
+  useEffect(() => {
+    processingMounted.current = true;
+    return () => {
+      processingMounted.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     const isProcessing = processingStatus?.stage_status === "PROCESSING";
     if (!activeCase || !isProcessing) return;
@@ -601,7 +610,7 @@ export function App(): JSX.Element {
             api.getTreatment(caseId),
             api.getDentalIntelligence(caseId).catch(() => null),
           ]).then(([bundle, intelligence]) => {
-            if (cancelled) return;
+            if (!processingMounted.current) return;
             setReviewBundle(bundle);
             if (intelligence) setDentalIntelligence(intelligence);
             setBackendTreatment(true);
@@ -609,7 +618,7 @@ export function App(): JSX.Element {
             setWorkspace("staging");
             stopBusy();
           }).catch((error: Error) => {
-            if (cancelled) return;
+            if (!processingMounted.current) return;
             setError(error.message);
             stopBusy();
           });
@@ -1411,6 +1420,11 @@ export function App(): JSX.Element {
     else if (id === "movement") setShowMovementVectors((value) => !value);
     else if (id === "target") setShowTargetGhost((value) => !value);
     else if (id === "isolate") setIsolateSelectedTooth((value) => !value);
+    else if (id === "undo" && viewportCommandMutatesClinicalState(id)) void handleUndo();
+    else if (id === "redo" && viewportCommandMutatesClinicalState(id)) void handleRedo();
+    else if (id === "cancel-processing") void handleCancelProcessing();
+    else if (id === "retry-segmentation") void handleReviewSegmentation();
+    else if (id === "regenerate-staging") void handleRegenerateStaging();
   }
 
   useEffect(() => {
@@ -1422,14 +1436,11 @@ export function App(): JSX.Element {
         deleteShortcutEffect();
         return;
       }
+      const command = commandIdForShortcut(shortcut);
+      if (!command) return;
       event.preventDefault();
-      if (shortcut === "clear") handleClearSelection();
-      else if (shortcut === "fit-selection" || shortcut === "fit-case") handleTool(shortcut === "fit-case" ? "fit-case" : "fit-selection");
-      else if (shortcut === "arch-upper") setArchMode("upper");
-      else if (shortcut === "arch-lower") setArchMode("lower");
-      else if (shortcut === "arch-both") setArchMode("both");
-      else if (shortcut === "undo") void handleUndo();
-      else if (shortcut === "redo") void handleRedo();
+      if (command === "clear-selection") handleClearSelection();
+      else handleTool(command);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1458,24 +1469,6 @@ export function App(): JSX.Element {
       processingStatus?.stage_status === "PROCESSING" ? processingStatus.overall_progress : null,
     segmentation: segmentationReview,
   });
-  const toolbar = buildContextualTools({
-    workspace,
-    sceneAvailable: canShowScene,
-    segmentationKind: segmentationReview.kind,
-    selectionCount: selectedMapKeys.length,
-    archMode,
-    isolateActive: isolateSelectedTooth,
-    labelMode,
-    gingivaVisible: showGingiva,
-    segmentationVisible: showSegmentation,
-    wireframe,
-    movementVisible: showMovementVectors,
-    targetVisible: showTargetGhost,
-    treatmentAvailable,
-    validationAvailable: validation != null || Boolean(reviewBundle.validationSummary),
-    canTransform: treatmentAvailable && canTransformTooth(draftMovement),
-  });
-  const toolbarBands = splitToolbar(toolbar.tools);
   const selectedEntries = dentalEntries.filter((entry) => selectedMapKeys.includes(entry.toothRef));
   const groupArches = [...new Set(selectedEntries.map((entry) => entry.arch).filter(Boolean))].join(", ");
   const unresolvedFlags = selectedEntries.map((entry) => entry.unresolved);
@@ -1543,6 +1536,101 @@ export function App(): JSX.Element {
     }),
     next: nextAction,
   });
+  const validationFindingCount = reviewBundle.validationCapability
+    ? reviewBundle.validationCapability.summary.finding_count
+    : reviewBundle.validationSummary
+      ? reviewBundle.validationSummary.findings.length
+      : null;
+  const validationDataAvailable = reviewBundle.validationCapability != null || reviewBundle.validationSummary != null;
+  const toolbar = resolveToolbar({
+    workspace,
+    hasCase: Boolean(activeCase),
+    sceneAvailable: canShowScene,
+    segmentationKind: segmentationReview.kind,
+    selectionCount: selectedMapKeys.length,
+    groupIdentity,
+    archMode,
+    isolateActive: isolateSelectedTooth,
+    labelMode,
+    gingivaVisible: showGingiva,
+    segmentationVisible: showSegmentation,
+    wireframe,
+    movementVisible: showMovementVectors,
+    targetVisible: showTargetGhost,
+    treatmentAvailable,
+    targetGeometryExists: targetStage !== null,
+    validationAvailable: validationDataAvailable || validation != null,
+    validationFindingCount: validationFindingCount != null && validationFindingCount > 0 ? validationFindingCount : null,
+    stagingCount: treatmentAvailable ? reviewBundle.stages.length : 0,
+    stagingStale: asFreshness(stagingFreshnessValue) === "stale",
+    canTransform: treatmentAvailable && canTransformTooth(draftMovement),
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    canCancelProcessing: Boolean(activeCase && processingStatus?.job_id && processingStatus.stage_status === "PROCESSING"),
+    canRetrySegmentation: segmentationReview.kind === "failed",
+    canRegenerateStaging: treatmentAvailable,
+    stageStatus: processingStatus?.stage_status ?? null,
+    suppressedIds: [
+      ...(nextAction ? [nextAction.id] : []),
+      ...(workspace === "staging" ? ["regenerate-staging"] : []),
+      ...(loadingPresentation ? ["cancel-processing"] : []),
+    ],
+    manipulationOwnedByToothToolbar: Boolean(selectedTooth && workspace === "refinement"),
+  });
+  const widgets = resolveWidgets({
+    selectionCount: selectedMapKeys.length,
+    selectionLabel: selectedReviewLabel?.text ?? null,
+    selectionArch: selectedReviewLabel?.arch ?? null,
+    groupArches: groupArches || null,
+    groupIdentity,
+    identityUnresolved: selectedReviewLabel ? !selectedReviewLabel.fdiAuthoritative : unresolvedFlags.some(Boolean),
+    fixture: Boolean(selectedReviewLabel?.fixture || segmentationReview.kind === "fixture_test_only" || reviewBundle.fixture),
+    provenanceLabel: segmentationReview.provenanceLabel || null,
+    provenanceStripVisible: workspace === "analysis" || Boolean(pipelineDiagnostic),
+    processing: processingStatus?.stage_status === "PROCESSING",
+    processingOwnedByStatus: Boolean(loadingPresentation),
+    phase: processingStatus?.current_stage ?? null,
+    elapsedLabel: feedback.elapsedLabel,
+    serverProgress:
+      typeof processingStatus?.overall_progress === "number" ? processingStatus.overall_progress : null,
+    canCancel: Boolean(processingStatus?.job_id),
+    targetGeometryExists: targetStage !== null,
+    showTarget: showTargetGhost,
+    showCurrent: true,
+    stagingCount: treatmentAvailable ? reviewBundle.stages.length : 0,
+    stagingIndex: treatmentAvailable ? stageIndex : null,
+    stagingStale: asFreshness(stagingFreshnessValue) === "stale",
+    stagingTimelineVisible: showStageTimeline,
+    validationAvailable: validationDataAvailable,
+    validationFindingCount: validationFindingCount != null && validationFindingCount > 0 ? validationFindingCount : null,
+    validationPanelVisible: workspace === "validation",
+    dependencyText: orientation.now,
+    orientationVisible: true,
+  });
+  const toolbarTools = toolbar.primary.map((item) => ({
+    id: item.id,
+    label: item.label,
+    available: item.executable,
+    reason: item.reason,
+    shortcut: item.shortcut,
+    active: item.active,
+    availability: item.availability,
+  }));
+  const toolbarMore = toolbar.more.map((item) => ({
+    id: item.id,
+    label: item.label,
+    available: item.executable,
+    reason: item.reason,
+    shortcut: item.shortcut,
+    active: item.active,
+    availability: item.availability,
+  }));
+  const toolbarWithheld = toolbar.withheld.map((item) => ({
+    id: item.id,
+    label: item.label,
+    reason: item.reason,
+    availability: item.availability === "available" ? ("unavailable" as const) : item.availability,
+  }));
   const inlineError = dedupeNotice(feedback.whatHappened, error);
   const transientNotice = dedupeNotice(feedback.whatHappened, dedupeNotice(inlineError, exportMessage));
   const inspectorIsMinimized = inspectorMinimized || (!activeCase && !selectedTooth);
@@ -1779,10 +1867,7 @@ export function App(): JSX.Element {
               <span className="eyebrow">{workspace === "analysis" ? "Analysis" : workspaceLabel}</span>
               <h1>{workspace === "analysis" ? "Segmentation Review" : workspaceLabel}</h1>
             </div>
-            <SelectionWidget
-              count={selectedMapKeys.length}
-              label={selectedReviewLabel?.text ?? null}
-            />
+            <SmartWidgets models={widgets} />
           </div>
           {workspace === "analysis" || pipelineDiagnostic ? (
             <SegmentationReviewStrip
@@ -1833,9 +1918,10 @@ export function App(): JSX.Element {
                 onReset={() => undefined}
                 contextualToolbar={
                   <ContextualWorkspaceToolbar
-                    tools={toolbarBands.visible}
-                    advanced={toolbarBands.advanced}
-                    unavailable={toolbar.unavailable}
+                    context={toolbar.context}
+                    tools={toolbarTools}
+                    advanced={toolbarMore}
+                    unavailable={toolbarWithheld}
                     onTool={handleTool}
                     extra={
                       selectedTooth && workspace === "refinement" ? (
@@ -1879,6 +1965,14 @@ export function App(): JSX.Element {
                 }
               />
             ) : (
+              <>
+              <ContextualWorkspaceToolbar
+                context={toolbar.context}
+                tools={toolbarTools}
+                advanced={toolbarMore}
+                unavailable={toolbarWithheld}
+                onTool={handleTool}
+              />
               <ProductionEmptyState
                 title={
                   segmentationReview.kind === "blocked_by_environment"
@@ -1910,6 +2004,7 @@ export function App(): JSX.Element {
                   ) : undefined
                 }
               />
+              </>
             )}
             {pipelineDiagnostic?.experimental && (
               <ViewerOverlay>

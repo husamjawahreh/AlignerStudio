@@ -262,7 +262,19 @@ WP-14 and WP-15 were not started. At the time of this Wave 4 result, Wave 5 and 
 
 The workspace now has one primary status, one deterministic next action, and an inspector that follows the actual context. The contract is `docs/WAVE5_SMART_UI_UX.md`. Case readiness stays on the case inspector. Processing status stays on the status line and the processing overlay. Hashes and low-level provenance stay under Advanced details. The next-action resolver only names actions the UI can run. Environment blockers are not offered as a retry and are not drawn as zero teeth. Fixture output stays fixture/test-only. Synthetic gingiva stays presentation-only. FDI is still gated. No clinical algorithm, validation authority, or manufacturing CAD was added.
 
-WP-14 and WP-15 were not started. Wave 6 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 5 result, Wave 6 had not been started.
+
+## Wave 6 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**Live ToothInstanceNet inference:** no. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The viewport toolbar is one deterministic resolver, `resolveToolbar`. Actions carry explicit availability (`available`, `unavailable`, `blocked`, `requires_review`, `stale`) and are not collapsed into a disabled primary button. Widgets render only when they add a fact the status line, inspector, strip, timeline, or step form does not already show. Current/target appears only with a stored target and does not imply approval. The contract is `docs/WAVE6_CONTEXTUAL_TOOLBAR_SMART_WIDGETS.md`.
+
+Keyboard shortcuts call the same command ids as the toolbar. Undo and redo stay on the existing durable edit stack. Viewport commands do not write treatment data. Fixture output stays fixture/test-only. FDI is still gated. No clinical algorithm, validation authority, or manufacturing CAD was added.
+
+WP-14 and WP-15 were not started. Wave 7 and later were not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery
@@ -270,8 +282,12 @@ Wave 1 Real Segmentation Recovery
 → Wave 3 Clinical Segmentation Workspace
 → Wave 4 Premium 3D + Gingiva
 → Wave 5 Smart UI/UX
-→ Wave 6 Workflow + Treatment Plan
-→ Wave 7 Performance + Remaining Time
-→ Wave 8 Feature Depth + Final Polish
-→ Wave 9 Manual Doctor/Product Acceptance
+→ Wave 6 Contextual Toolbar + Smart Widgets
+→ Wave 7 Workflow Simplification
+→ Wave 8 Performance + Remaining Time
+→ Wave 9 Feature Depth
+→ Wave 10 Adaptive Inspector
+→ Wave 11 Failure Experience
+→ Wave 12 Technology Evaluation
+→ Manual acceptance
 → WP-14 → WP-15

@@ -7,6 +7,7 @@ import type {
   ToothReviewLabel,
   UnavailableToolNote,
 } from "../../interaction/model";
+import type { WidgetModel } from "../../interaction/widgets";
 
 export function SegmentationReviewStrip({
   model,
@@ -203,14 +204,17 @@ function ArchRow({
 }
 
 function ToolButton({ tool, onTool }: { tool: ToolItem; onTool: (id: string) => void }): JSX.Element {
+  const availability = tool.availability ?? (tool.available ? "available" : "unavailable");
+  const executable = availability === "available" || availability === "requires_review" || availability === "stale";
   return (
     <button
       type="button"
       className={tool.active ? "viewer-tool is-active" : "viewer-tool"}
-      disabled={!tool.available}
+      disabled={!executable}
       title={`${tool.reason}${tool.shortcut ? ` Shortcut ${tool.shortcut}.` : ""}`}
       aria-keyshortcuts={tool.shortcut}
       data-testid={`tool-${tool.id}`}
+      data-availability={availability}
       onClick={() => onTool(tool.id)}
     >
       {tool.label}
@@ -225,6 +229,7 @@ export function ContextualWorkspaceToolbar({
   selectionCount,
   onTool,
   extra,
+  context,
 }: {
   tools: readonly ToolItem[];
   advanced?: readonly ToolItem[];
@@ -233,10 +238,17 @@ export function ContextualWorkspaceToolbar({
   selectionCount?: number;
   onTool: (id: string) => void;
   extra?: ReactNode;
+  context?: string;
 }): JSX.Element {
   void selectionCount;
   return (
-    <div className="contextual-workspace-toolbar" data-testid="contextual-toolbar" role="toolbar" aria-label="Viewport tools">
+    <div
+      className="contextual-workspace-toolbar"
+      data-testid="contextual-toolbar"
+      data-toolbar-context={context}
+      role="toolbar"
+      aria-label="Viewport tools"
+    >
       {tools.map((tool) => (
         <ToolButton key={tool.id} tool={tool} onTool={onTool} />
       ))}
@@ -256,7 +268,7 @@ export function ContextualWorkspaceToolbar({
           <summary>Unavailable</summary>
           <ul>
             {unavailable.map((note) => (
-              <li key={note.id}>
+              <li key={note.id} data-availability={note.availability ?? "unavailable"} data-tool-id={note.id}>
                 <strong>{note.label}.</strong> {note.reason}
               </li>
             ))}
@@ -389,6 +401,21 @@ export function WorkflowOrientation({
       <span>{now}</span>
       <span data-testid="workflow-next">{next}</span>
     </p>
+  );
+}
+
+export function SmartWidgets({ models }: { models: readonly WidgetModel[] }): JSX.Element | null {
+  if (models.length === 0) return null;
+  return (
+    <div className="smart-widget-row" data-testid="smart-widgets">
+      {models.map((model) => (
+        <div key={model.id} className="smart-widget" data-testid={model.testId} data-widget={model.id}>
+          <span className="eyebrow">{model.eyebrow}</span>
+          <strong>{model.value}</strong>
+          {model.detail ? <span>{model.detail}</span> : null}
+        </div>
+      ))}
+    </div>
   );
 }
 

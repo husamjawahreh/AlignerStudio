@@ -1961,10 +1961,41 @@ body,
   font-size: 12px;
 }
 
+.smart-widget-row {
+  display: flex;
+  min-width: 0;
+  max-width: 52%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .smart-widget {
   display: flex;
+  max-width: 280px;
   flex-direction: column;
   min-width: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--as-border-soft);
+  border-radius: var(--as-radius-sm);
+  background: transparent;
+}
+
+.smart-widget strong,
+.smart-widget span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-widget strong {
+  font-size: 12px;
+  font-weight: var(--as-font-weight-medium);
+}
+
+.smart-widget span {
+  color: var(--as-text-muted);
+  font-size: 11px;
 }
 
 .stage-tooth-label.is-unresolved {

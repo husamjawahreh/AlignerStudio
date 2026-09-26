@@ -123,12 +123,15 @@ export interface ToolItem {
   reason: string;
   shortcut?: string;
   active?: boolean;
+  /** Wave 6 availability. Omitted by older callers; treated as available when the tool can be clicked. */
+  availability?: "available" | "unavailable" | "blocked" | "requires_review" | "stale";
 }
 
 export interface UnavailableToolNote {
   id: string;
   label: string;
   reason: string;
+  availability?: "unavailable" | "blocked" | "requires_review" | "stale";
 }
 
 export interface InspectorRow {

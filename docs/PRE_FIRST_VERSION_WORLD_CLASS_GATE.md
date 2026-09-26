@@ -4,4 +4,6 @@ The authoritative plan and the wave results live in [`PRE_FIRST_VERSION_WORLD_CL
 
 Wave 5 — Smart UI/UX — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The interaction contract is [`WAVE5_SMART_UI_UX.md`](WAVE5_SMART_UI_UX.md).
 
-WP-14 and WP-15 were not started.
+Wave 6 — Contextual toolbar and smart widgets — is **PASS WITH BLOCKER**. Live ToothInstanceNet inference did not run. The contract is [`WAVE6_CONTEXTUAL_TOOLBAR_SMART_WIDGETS.md`](WAVE6_CONTEXTUAL_TOOLBAR_SMART_WIDGETS.md).
+
+WP-14 and WP-15 were not started. Wave 7 and later were not started.
