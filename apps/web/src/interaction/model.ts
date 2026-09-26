@@ -139,6 +139,7 @@ export interface UnavailableToolNote {
 export interface InspectorRow {
   label: string;
   value: string;
+  testId?: string;
 }
 
 export interface InspectorRecovery {
@@ -146,6 +147,38 @@ export interface InspectorRecovery {
   retry: string;
   now: string;
   otherSteps: string;
+}
+
+/** Workspace facts the inspector may show. Null fields are omitted, never rendered as zero. */
+export interface InspectorFacts {
+  readiness?: string | null;
+  nextAction?: string | null;
+  version?: string | null;
+  savedVersions?: number | null;
+  stale?: boolean | null;
+  limits?: string | null;
+  stageCount?: number | null;
+  stageIndex?: number | null;
+  freshness?: string | null;
+  editCount?: number | null;
+  findingCount?: number | null;
+  unavailableChecks?: number | null;
+  truth?: string | null;
+  severity?: string | null;
+  source?: string | null;
+  qc?: string | null;
+  occlusion?: string | null;
+  landmarks?: string | null;
+  axes?: string | null;
+}
+
+/** Stored geometric edit. Target is omitted unless a target is actually stored. */
+export interface InspectorTransform {
+  current: string | null;
+  target: string | null;
+  locked: boolean | null;
+  excluded: boolean | null;
+  editable: boolean | null;
 }
 
 export interface InspectorModel {
@@ -162,8 +195,16 @@ export interface InspectorModel {
     | "interrupted"
     | "stale"
     | "requires_review"
-    | "unavailable";
+    | "unavailable"
+    | "treatment-setup"
+    | "staging"
+    | "refinement"
+    | "validation"
+    | "production"
+    | "analysis";
   title: string;
+  /** Active workflow step when this model is workspace-scoped. */
+  workspace?: WorkflowStepId | null;
   rows: InspectorRow[];
   limitations: string[];
   advanced: InspectorRow[];
@@ -735,6 +776,176 @@ export function buildContextualTools(ctx: ToolbarContext): {
   return { tools, unavailable };
 }
 
+function inspectorRows(rows: Array<InspectorRow | null>): InspectorRow[] {
+  return rows.filter((row): row is InspectorRow => row !== null && row.value.trim() !== "");
+}
+
+function workspaceInspector(
+  input: {
+    workspace: WorkflowStepId;
+    segmentation: SegmentationReviewModel;
+    facts?: InspectorFacts | null;
+    productionNote?: string | null;
+  },
+  advanced: InspectorRow[],
+): InspectorModel {
+  const facts = input.facts ?? {};
+  const segmentationTruth = input.segmentation.headline;
+  const fixtureLimit =
+    input.segmentation.kind === "fixture_test_only"
+      ? "Fixture output is test-only. It is not patient inference."
+      : input.segmentation.kind === "requires_review"
+        ? "Unresolved identity stays on tooth_ref. No identity-correction tool is available."
+        : "";
+  const shared = inspectorRows([
+    { label: "Workspace", value: input.workspace.replaceAll("-", " ") },
+    { label: "Segmentation", value: segmentationTruth },
+    facts.readiness ? { label: "Readiness", value: facts.readiness, testId: "inspector-readiness" } : null,
+    facts.nextAction ? { label: "Next", value: facts.nextAction, testId: "inspector-next" } : null,
+  ]);
+  if (input.workspace === "treatment-setup") {
+    return {
+      mode: "treatment-setup",
+      workspace: input.workspace,
+      title: "Treatment Setup",
+      rows: inspectorRows([
+        ...shared,
+        facts.version ? { label: "Version", value: facts.version } : null,
+        facts.savedVersions != null ? { label: "Saved versions", value: String(facts.savedVersions) } : null,
+        facts.stale == null ? null : { label: "Plan", value: facts.stale ? "Stale" : "Current" },
+        facts.limits ? { label: "Movement limits", value: facts.limits, testId: "inspector-movement-limits" } : null,
+      ]),
+      limitations: [
+        fixtureLimit,
+        "Select one tooth to edit its stored transform. A group does not show one transform.",
+        "Save, restore, and compare stay on the setup form.",
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.workspace === "staging") {
+    return {
+      mode: "staging",
+      workspace: input.workspace,
+      title: "Staging",
+      rows: inspectorRows([
+        ...shared,
+        facts.stageCount != null ? { label: "Stages", value: String(facts.stageCount), testId: "inspector-stage-count" } : null,
+        facts.stageIndex != null && facts.stageCount != null
+          ? { label: "Selected stage", value: `${facts.stageIndex + 1} / ${facts.stageCount}` }
+          : null,
+        facts.freshness ? { label: "Freshness", value: facts.freshness, testId: "inspector-staging-freshness" } : null,
+      ]),
+      limitations: [
+        fixtureLimit,
+        "This staging proposal is not clinically optimized or approved.",
+        "Regenerate stays on the staging form. Opening this step does not regenerate.",
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.workspace === "refinement") {
+    return {
+      mode: "refinement",
+      workspace: input.workspace,
+      title: "Refinement",
+      rows: inspectorRows([
+        ...shared,
+        facts.editCount != null ? { label: "Edits", value: String(facts.editCount) } : null,
+        facts.freshness ? { label: "Clinical tools", value: facts.freshness } : null,
+      ]),
+      limitations: [
+        fixtureLimit,
+        "IPR and attachment values in the review fold are review candidates, not prescriptions.",
+        "Undo and redo use the stored edit stack. There is no clinical approval.",
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.workspace === "validation") {
+    return {
+      mode: "validation",
+      workspace: input.workspace,
+      title: "Validation",
+      rows: inspectorRows([
+        { label: "Workspace", value: "validation" },
+        facts.findingCount != null ? { label: "Findings", value: String(facts.findingCount), testId: "inspector-finding-count" } : null,
+        facts.severity ? { label: "Technical severity", value: facts.severity } : null,
+        facts.truth ? { label: "Truth", value: facts.truth, testId: "inspector-validation-truth" } : null,
+        facts.unavailableChecks != null
+          ? { label: "Unavailable checks", value: String(facts.unavailableChecks), testId: "inspector-unavailable-checks" }
+          : null,
+        facts.freshness ? { label: "Freshness", value: facts.freshness } : null,
+      ]),
+      limitations: [
+        fixtureLimit,
+        "No score and no safety percent. A missing check is not a pass and this is not clinical approval.",
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.workspace === "production") {
+    return {
+      mode: "production",
+      workspace: input.workspace,
+      title: "Production",
+      rows: inspectorRows([
+        ...shared,
+        facts.source ? { label: "Source", value: facts.source } : null,
+        facts.truth ? { label: "Production state", value: facts.truth } : null,
+        facts.qc ? { label: "QC", value: facts.qc } : null,
+        input.productionNote ? { label: "Record", value: input.productionNote } : null,
+      ]),
+      limitations: [
+        "Manufacturing certification is not claimed. Shell, trimline, and undercut stay unavailable unless a real result says otherwise.",
+        fixtureLimit,
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.workspace === "analysis") {
+    return {
+      mode: "analysis",
+      workspace: input.workspace,
+      title: "Analysis",
+      rows: inspectorRows([
+        ...shared,
+        facts.occlusion ? { label: "Occlusion", value: facts.occlusion } : null,
+        facts.landmarks ? { label: "Landmarks", value: facts.landmarks } : null,
+        facts.axes ? { label: "Clinical axes", value: facts.axes } : null,
+      ]),
+      limitations: [
+        input.segmentation.unavailable,
+        input.segmentation.missingToothStatement,
+        fixtureLimit,
+      ].filter(Boolean),
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  return {
+    mode: "case",
+    workspace: input.workspace,
+    title: "Case Intake",
+    rows: shared,
+    limitations: [input.segmentation.missingToothStatement, "No tooth is selected."].filter(Boolean),
+    advanced,
+    actions: [],
+    recovery: null,
+  };
+}
+
 export function buildInspectorModel(input: {
   minimized: boolean;
   patientReference: string | null;
@@ -748,7 +959,17 @@ export function buildInspectorModel(input: {
   phase?: string | null;
   groupArches?: string | null;
   groupIdentity?: "same" | "mixed" | null;
+  /** Whether every selected tooth can take the same edit. Omitted when unknown. */
+  groupEditable?: "all" | "mixed" | "none" | null;
   productionNote?: string | null;
+  /** Set by the workspace shell. Omitted by older callers, which keep the generic case inspector. */
+  workspace?: WorkflowStepId | null;
+  facts?: InspectorFacts | null;
+  transform?: InspectorTransform | null;
+  elapsedLabel?: string | null;
+  /** Present only when the server sent a progress string. Never a client-invented percent. */
+  serverProgressLabel?: string | null;
+  failureMessage?: string | null;
 }): InspectorModel {
   const advanced = [...input.segmentation.advanced];
   if (input.minimized) {
@@ -762,9 +983,94 @@ export function buildInspectorModel(input: {
       recovery: null,
     };
   }
+  if (input.operation === "processing") {
+    return {
+      mode: "processing",
+      workspace: input.workspace ?? null,
+      title: "Processing",
+      rows: inspectorRows([
+        { label: "Phase", value: input.phase?.trim() || "Not reported", testId: "inspector-phase" },
+        input.elapsedLabel ? { label: "Elapsed", value: input.elapsedLabel, testId: "inspector-elapsed" } : null,
+        {
+          label: "Progress",
+          value: input.serverProgressLabel?.trim() || "Indeterminate unless the server sent a percent",
+          testId: "inspector-progress",
+        },
+      ]),
+      limitations: [
+        "A spinner is not a result. Fixture geometry is not substituted while this runs.",
+        "Remaining time stays on the status line. This inspector does not invent a percent or an ETA.",
+      ],
+      advanced,
+      actions: [],
+      recovery: null,
+    };
+  }
+  if (input.operation === "cancelled") {
+    return {
+      mode: "cancelled",
+      workspace: input.workspace ?? null,
+      title: "Cancelled",
+      rows: [
+        { label: "What happened", value: "The job was cancelled. No partial clinical result was accepted." },
+        { label: "Distinct from", value: "Not a failure and not an interruption" },
+      ],
+      limitations: ["Cancellation does not delete the imported scans."],
+      advanced,
+      actions: [],
+      recovery: {
+        sourceData: "Source scans stay as imported.",
+        retry: "A new job is safe. There is no mid-stage resume. The toolbar starts that new segmentation job.",
+        now: "Start a new segmentation job when you want one. The cancelled job is not resumed.",
+        otherSteps: "Case intake remains available.",
+      },
+    };
+  }
+  if (input.operation === "interrupted") {
+    return {
+      mode: "interrupted",
+      workspace: input.workspace ?? null,
+      title: "Interrupted",
+      rows: [
+        { label: "What happened", value: "The job was interrupted. It is not a completed segmentation." },
+        { label: "Distinct from", value: "Not a cancellation and not a model failure" },
+      ],
+      limitations: ["Interruption is not a model failure and not an environment blocker unless the message says so."],
+      advanced,
+      actions: [],
+      recovery: {
+        sourceData: "Source scans are unchanged by the interruption itself.",
+        retry: "Retry starts a new job. Progress does not resume mid-stage.",
+        now: "Start a new segmentation job. The interrupted progress is not restored.",
+        otherSteps: "Workflow steps that need a segmentation result stay unavailable.",
+      },
+    };
+  }
+  if (input.operation === "failed" || input.segmentation.kind === "failed") {
+    return {
+      mode: "failed",
+      workspace: input.workspace ?? null,
+      title: "Failed",
+      rows: inspectorRows([
+        { label: "State", value: "Failed" },
+        input.failureMessage ? { label: "Failure", value: input.failureMessage, testId: "inspector-failure" } : null,
+        { label: "Instances", value: input.segmentation.instanceCountLabel },
+      ]),
+      limitations: [input.segmentation.missingToothStatement],
+      advanced,
+      actions: [],
+      recovery: {
+        sourceData: "The failure record does not report that the source scans were replaced.",
+        retry: "Retry is a new job. The failure text stays until that job returns.",
+        now: input.segmentation.nextStep,
+        otherSteps: "Steps that do not need this result stay available. Tooth review is not available from a failed segmentation.",
+      },
+    };
+  }
   if (input.selectionCount > 1) {
     return {
       mode: "group",
+      workspace: input.workspace ?? null,
       title: `${input.selectionCount} teeth selected`,
       rows: [
         { label: "Count", value: String(input.selectionCount) },
@@ -779,15 +1085,23 @@ export function buildInspectorModel(input: {
                 : "See each tooth_ref",
         },
         { label: "Segmentation", value: input.segmentation.headline },
-      ],
+        input.workspace ? { label: "Workspace", value: input.workspace.replaceAll("-", " ") } : null,
+        input.groupEditable === "all"
+          ? { label: "Editable", value: "All selected teeth can take the same edit" }
+          : input.groupEditable === "mixed"
+            ? { label: "Editable", value: "Not every selected tooth can be edited" }
+            : input.groupEditable === "none"
+              ? { label: "Editable", value: "None of the selected teeth can be edited" }
+              : null,
+      ].filter((row): row is InspectorRow => row !== null),
       limitations: [
-        "Group selection does not assign FDI.",
+        "Group selection does not assign FDI and does not show one tooth transform.",
         input.groupIdentity === "mixed"
           ? "Conflicting identity is not given a shared clinical action."
           : "No group numbering or movement action is available from this selection.",
       ],
       advanced,
-      actions: ["Fit selection"],
+      actions: [],
       recovery: null,
     };
   }
@@ -795,40 +1109,35 @@ export function buildInspectorModel(input: {
     const fixture = input.selected.fixture || input.segmentation.kind === "fixture_test_only";
     return {
       mode: "tooth",
+      workspace: input.workspace ?? null,
       title: input.selected.text,
-      rows: [
-        { label: "tooth_ref", value: input.selected.toothRef },
+      rows: inspectorRows([
+        { label: "tooth_ref", value: input.selected.toothRef, testId: "inspector-tooth-ref" },
         {
           label: "FDI",
           value: input.selected.fdiAuthoritative ? input.selected.text : "Not resolved",
         },
         { label: "Arch", value: input.selected.arch ?? "Not available" },
+        input.workspace ? { label: "Workspace", value: input.workspace.replaceAll("-", " ") } : null,
         { label: "Identity", value: input.selected.unresolved ? "Unresolved" : "Authoritative FDI" },
-        { label: "Segmentation", value: input.segmentation.provenanceLabel },
+        { label: "Segmentation", value: input.segmentation.provenanceLabel, testId: "inspector-segmentation-truth" },
         ...(fixture ? [{ label: "Source", value: "Fixture / test-only" }] : []),
-        {
-          label: "Confidence",
-          value: input.confidence == null ? "Not available" : input.confidence.toFixed(3),
-        },
-        {
-          label: "Target",
-          value: input.treatmentAvailable ? "Stored target can be compared" : "No treatment target",
-        },
-      ],
+        input.confidence == null
+          ? null
+          : { label: "Confidence", value: input.confidence.toFixed(3) },
+        input.transform?.current ? { label: "Current", value: input.transform.current, testId: "inspector-current-transform" } : null,
+        input.transform?.target ? { label: "Target", value: input.transform.target, testId: "inspector-target-transform" } : null,
+      ]),
       limitations: [
         input.selected.unresolved
-          ? "Identity is unresolved. No correction tool is available, and no FDI number was invented."
+          ? "Identity is unresolved. No FDI number was invented."
           : "Confirm FDI before clinical use.",
-        fixture ? "Fixture output is test-only. It is not patient inference." : "",
-        "Clinical axes, roots, and occlusion are not shown unless an authoritative result provides them.",
-        "Synthetic gingiva is presentation-only.",
+        fixture
+          ? "Fixture / test-only. Not patient inference."
+          : "Axes, roots, occlusion, and gingiva are not clinical evidence.",
       ].filter(Boolean),
       advanced,
-      actions: [
-        "Fit selection",
-        "Isolate",
-        ...(input.treatmentAvailable ? ["Compare stored target"] : []),
-      ],
+      actions: [],
       recovery: null,
     };
   }
@@ -849,7 +1158,7 @@ export function buildInspectorModel(input: {
         input.segmentation.missingToothStatement,
       ],
       advanced,
-      actions: ["Review segmentation blocker"],
+      actions: [],
       recovery: {
         sourceData: "This record does not report a change to the uploaded scans.",
         retry: "Retry is not offered while the runtime blocker remains. A later attempt is a new job, not a resume.",
@@ -858,70 +1167,22 @@ export function buildInspectorModel(input: {
       },
     };
   }
-  if (input.operation === "processing") {
-    return {
-      mode: "processing",
-      title: "Processing",
-      rows: [
-        { label: "Phase", value: input.phase?.trim() || "Not reported" },
-        { label: "Progress", value: "Indeterminate unless the server sent a percent" },
-      ],
-      limitations: ["A spinner is not a result. Fixture geometry is not substituted while this runs."],
-      advanced,
-      actions: [],
-      recovery: null,
-    };
-  }
-  if (input.operation === "failed" || input.segmentation.kind === "failed") {
-    return {
-      mode: "failed",
-      title: "Failed",
-      rows: [
-        { label: "State", value: "Failed" },
-        { label: "Instances", value: input.segmentation.instanceCountLabel },
-      ],
-      limitations: [input.segmentation.missingToothStatement],
-      advanced,
-      actions: input.segmentation.retrySafe ? ["Retry segmentation"] : [],
-      recovery: {
-        sourceData: "The failure record does not report that the source scans were replaced.",
-        retry: "Retry is a new job. The failure text stays until that job returns.",
-        now: input.segmentation.nextStep,
-        otherSteps: "Steps that do not need this result stay available. Tooth review is not available from a failed segmentation.",
+  const reviewKind =
+    input.segmentation.kind === "fixture_test_only" || input.segmentation.kind === "requires_review";
+  const workspaceOwnsInspector =
+    Boolean(input.workspace && input.caseId) &&
+    input.segmentation.kind !== "not_available" &&
+    !(reviewKind && (input.workspace === "analysis" || input.workspace === "case-intake"));
+  if (workspaceOwnsInspector && input.workspace) {
+    return workspaceInspector(
+      {
+        workspace: input.workspace,
+        segmentation: input.segmentation,
+        facts: input.facts,
+        productionNote: input.productionNote,
       },
-    };
-  }
-  if (input.operation === "cancelled") {
-    return {
-      mode: "cancelled",
-      title: "Cancelled",
-      rows: [{ label: "What happened", value: "The job was cancelled. No partial clinical result was accepted." }],
-      limitations: ["Cancellation does not delete the imported scans."],
       advanced,
-      actions: ["Retry segmentation"],
-      recovery: {
-        sourceData: "Source scans stay as imported.",
-        retry: "A new job is safe. There is no mid-stage resume.",
-        now: "Retry segmentation when you want a new job.",
-        otherSteps: "Case intake remains available.",
-      },
-    };
-  }
-  if (input.operation === "interrupted") {
-    return {
-      mode: "interrupted",
-      title: "Interrupted",
-      rows: [{ label: "What happened", value: "The job was interrupted. It is not a completed segmentation." }],
-      limitations: ["Interruption is not a model failure and not an environment blocker unless the message says so."],
-      advanced,
-      actions: ["Retry segmentation"],
-      recovery: {
-        sourceData: "Source scans are unchanged by the interruption itself.",
-        retry: "Retry starts a new job. Progress does not resume mid-stage.",
-        now: "Retry segmentation, or stay on case intake.",
-        otherSteps: "Workflow steps that need a segmentation result stay unavailable.",
-      },
-    };
+    );
   }
   if (input.operation === "stale") {
     return {
@@ -955,7 +1216,7 @@ export function buildInspectorModel(input: {
         input.segmentation.missingToothStatement,
       ],
       advanced,
-      actions: ["Review unresolved identities"],
+      actions: [],
       recovery: null,
     };
   }
@@ -970,7 +1231,7 @@ export function buildInspectorModel(input: {
       ],
       limitations: [input.segmentation.missingToothStatement, "Unavailable is not a count of zero teeth."],
       advanced,
-      actions: input.segmentation.retrySafe ? ["Retry segmentation"] : [],
+      actions: [],
       recovery: null,
     };
   }
@@ -978,10 +1239,13 @@ export function buildInspectorModel(input: {
     return {
       mode: "none",
       title: "No case",
-      rows: [{ label: "Next", value: "Create Case" }],
+      rows: [
+        { label: "Readiness", value: "No case yet", testId: "inspector-readiness" },
+        { label: "Next", value: "Create a case on the left" },
+      ],
       limitations: ["No scan, segmentation, or treatment result is loaded."],
       advanced: [],
-      actions: ["Create Case"],
+      actions: [],
       recovery: null,
     };
   }

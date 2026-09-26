@@ -12,4 +12,6 @@ Wave 8 — Performance and remaining time — is **PASS WITH BLOCKER**. Live Too
 
 Wave 9 — Feature depth — is **PASS WITH BLOCKER**. This is not First Version acceptance. Live ToothInstanceNet inference did not run. The contract is [`WAVE9_FEATURE_DEPTH.md`](WAVE9_FEATURE_DEPTH.md).
 
-WP-14 and WP-15 were not started. Wave 10 and later were not started.
+Wave 10 — Adaptive inspector — is **PASS WITH BLOCKER**. This is not First Version acceptance. Live ToothInstanceNet inference did not run. The contract is [`WAVE10_ADAPTIVE_INSPECTOR.md`](WAVE10_ADAPTIVE_INSPECTOR.md).
+
+WP-14 and WP-15 were not started. Wave 11 was not started.

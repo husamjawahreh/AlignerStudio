@@ -1,0 +1,2162 @@
+{
+  "wave": 10,
+  "firstVersionAcceptance": false,
+  "liveToothInstanceNet": false,
+  "environment": "BLOCKED_BY_ENVIRONMENT",
+  "fixtureEvidence": "non-clinical",
+  "note": "Screenshots and measurements are UI evidence. Fixture crowns are generated test meshes. This is not First Version acceptance. WP-14 and WP-15 were not exercised.",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "name": "1366x768"
+    },
+    {
+      "width": 1600,
+      "height": 1000,
+      "name": "1600x1000"
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "name": "1280x800"
+    }
+  ],
+  "images": [
+    {
+      "file": "1366x768_01_launch.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "No case. Inspector does not invent a tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_02_intake.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Case intake context. Readiness stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_03_analysis.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_04_blocked.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Environment blocker. Retry is not offered.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_05_unavailable.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Unavailable is not a count of zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_06_failed.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Failed segmentation keeps the failure recovery.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_07_requires_review.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Fixture segmentation requires review. FDI is not invented.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_08_processing.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Processing inspector. One remaining-time surface. No invented percent.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_09_cancelled.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Cancelled is distinct from failure.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_10_interrupted.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Interrupted does not resume mid-stage.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_11_treatment_none.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Treatment setup with no tooth selected.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_12_one_tooth.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "One tooth. Numeric commit stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_13_multi.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Multiple teeth. No single transform.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_14_undo.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Undo uses the existing edit request.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_15_staging.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Selection survived the staging transition. Regenerate was explicit.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_16_stale.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_17_refinement.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Refinement review fold. Move is not duplicated on the left.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_18_validation.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Validation inspector. No score.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1366x768_19_production.png",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "note": "Production inspector. Export stays on the step form. No certification.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_01_launch.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "No case. Inspector does not invent a tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_02_intake.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Case intake context. Readiness stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_03_analysis.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_04_blocked.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Environment blocker. Retry is not offered.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_05_unavailable.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Unavailable is not a count of zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_06_failed.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Failed segmentation keeps the failure recovery.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_07_requires_review.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Fixture segmentation requires review. FDI is not invented.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_08_processing.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Processing inspector. One remaining-time surface. No invented percent.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_09_cancelled.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Cancelled is distinct from failure.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_10_interrupted.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Interrupted does not resume mid-stage.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_11_treatment_none.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Treatment setup with no tooth selected.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_12_one_tooth.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "One tooth. Numeric commit stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_13_multi.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Multiple teeth. No single transform.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_14_undo.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Undo uses the existing edit request.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_15_staging.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Selection survived the staging transition. Regenerate was explicit.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_16_stale.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_17_refinement.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Refinement review fold. Move is not duplicated on the left.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_18_validation.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Validation inspector. No score.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1600x1000_19_production.png",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "note": "Production inspector. Export stays on the step form. No certification.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_01_launch.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "No case. Inspector does not invent a tooth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_02_intake.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Case intake context. Readiness stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_03_analysis.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Analysis opened without a segmentation run.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_04_blocked.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Environment blocker. Retry is not offered.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_05_unavailable.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Unavailable is not a count of zero teeth.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_06_failed.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Failed segmentation keeps the failure recovery.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_07_requires_review.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Fixture segmentation requires review. FDI is not invented.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_08_processing.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Processing inspector. One remaining-time surface. No invented percent.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_09_cancelled.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Cancelled is distinct from failure.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_10_interrupted.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Interrupted does not resume mid-stage.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_11_treatment_none.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Treatment setup with no tooth selected.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_12_one_tooth.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "One tooth. Numeric commit stays in the inspector.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_13_multi.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Multiple teeth. No single transform.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_14_undo.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Undo uses the existing edit request.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_15_staging.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Selection survived the staging transition. Regenerate was explicit.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_16_stale.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Stale staging stays stale after refresh.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_17_refinement.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Refinement review fold. Move is not duplicated on the left.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_18_validation.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Validation inspector. No score.",
+      "clinicalSegmentationValidation": false
+    },
+    {
+      "file": "1280x800_19_production.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "note": "Production inspector. Export stays on the step form. No certification.",
+      "clinicalSegmentationValidation": false
+    }
+  ],
+  "measurements": [
+    {
+      "name": "1366x768_launch",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 107.25,
+        "height": 26.5,
+        "width": 83.5
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "none"
+    },
+    {
+      "name": "1366x768_intake",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 107.25,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "case"
+    },
+    {
+      "name": "1366x768_analysis_idle",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "analysis"
+    },
+    {
+      "name": "1366x768_blocked",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 212,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "blocked"
+    },
+    {
+      "name": "1366x768_unavailable",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "unavailable"
+    },
+    {
+      "name": "1366x768_failed",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "failed"
+    },
+    {
+      "name": "1366x768_requires_review",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 165.625,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "requires_review"
+    },
+    {
+      "name": "1366x768_processing",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 165.625,
+        "height": 10,
+        "width": 10
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "processing"
+    },
+    {
+      "name": "1366x768_cancelled",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 165.625,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "cancelled"
+    },
+    {
+      "name": "1366x768_interrupted",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 165.625,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "interrupted"
+    },
+    {
+      "name": "1366x768_treatment_none",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 184.34375,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "treatment-setup"
+    },
+    {
+      "name": "1366x768_one_tooth",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 184.34375,
+        "height": 68,
+        "width": 860
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1366x768_multi",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 184.34375,
+        "height": 60.5,
+        "width": 860
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "group"
+    },
+    {
+      "name": "1366x768_staging",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 184.328125,
+        "height": 37,
+        "width": 739.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1366x768_stale",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 126,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "staging"
+    },
+    {
+      "name": "1366x768_refinement",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 126,
+        "height": 60.5,
+        "width": 860
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "refinement"
+    },
+    {
+      "name": "1366x768_validation",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 126,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "validation"
+    },
+    {
+      "name": "1366x768_production",
+      "viewport": {
+        "top": 54,
+        "height": 708,
+        "width": 878
+      },
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 706,
+      "inspectorClientHeight": 706,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 708,
+        "bottom": 762,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 126,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "production"
+    },
+    {
+      "name": "1600x1000_launch",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 109.25,
+        "height": 26.5,
+        "width": 83.5
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "none"
+    },
+    {
+      "name": "1600x1000_intake",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 109.25,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "case"
+    },
+    {
+      "name": "1600x1000_analysis_idle",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "analysis"
+    },
+    {
+      "name": "1600x1000_blocked",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 214,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "blocked"
+    },
+    {
+      "name": "1600x1000_unavailable",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 189.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "unavailable"
+    },
+    {
+      "name": "1600x1000_failed",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "failed"
+    },
+    {
+      "name": "1600x1000_requires_review",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "requires_review"
+    },
+    {
+      "name": "1600x1000_processing",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 10,
+        "width": 10
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "processing"
+    },
+    {
+      "name": "1600x1000_cancelled",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "cancelled"
+    },
+    {
+      "name": "1600x1000_interrupted",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 167.625,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "interrupted"
+    },
+    {
+      "name": "1600x1000_treatment_none",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 186.34375,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "treatment-setup"
+    },
+    {
+      "name": "1600x1000_one_tooth",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 186.34375,
+        "height": 37,
+        "width": 1023.046875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1600x1000_multi",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 186.34375,
+        "height": 37,
+        "width": 969.9375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "group"
+    },
+    {
+      "name": "1600x1000_staging",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 186.34375,
+        "height": 37,
+        "width": 739.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1600x1000_stale",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 128,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "staging"
+    },
+    {
+      "name": "1600x1000_refinement",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 128,
+        "height": 37,
+        "width": 933.140625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "refinement"
+    },
+    {
+      "name": "1600x1000_validation",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 128,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "validation"
+    },
+    {
+      "name": "1600x1000_production",
+      "viewport": {
+        "top": 56,
+        "height": 936,
+        "width": 1048
+      },
+      "scrollHeight": 1000,
+      "clientHeight": 1000,
+      "scrollWidth": 1600,
+      "clientWidth": 1600,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 934,
+      "inspectorClientHeight": 934,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 56,
+        "height": 936,
+        "bottom": 992,
+        "width": 280
+      },
+      "toolbar": {
+        "top": 128,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "production"
+    },
+    {
+      "name": "1280x800_launch",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 107.25,
+        "height": 26.5,
+        "width": 83.5
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "none"
+    },
+    {
+      "name": "1280x800_intake",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 107.25,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "case"
+    },
+    {
+      "name": "1280x800_analysis_idle",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "analysis"
+    },
+    {
+      "name": "1280x800_blocked",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 250.375,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "blocked"
+    },
+    {
+      "name": "1280x800_unavailable",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "unavailable"
+    },
+    {
+      "name": "1280x800_failed",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 26.5,
+        "width": 79.078125
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "failed"
+    },
+    {
+      "name": "1280x800_requires_review",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "requires_review"
+    },
+    {
+      "name": "1280x800_processing",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 10,
+        "width": 10
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "processing"
+    },
+    {
+      "name": "1280x800_cancelled",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "cancelled"
+    },
+    {
+      "name": "1280x800_interrupted",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 187.8125,
+        "height": 37,
+        "width": 120.40625
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "interrupted"
+    },
+    {
+      "name": "1280x800_treatment_none",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 269.5625,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "treatment-setup"
+    },
+    {
+      "name": "1280x800_one_tooth",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 206.5625,
+        "height": 68,
+        "width": 774
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1280x800_multi",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 206.5625,
+        "height": 68,
+        "width": 774
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "group"
+    },
+    {
+      "name": "1280x800_staging",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 206.5,
+        "height": 37,
+        "width": 739.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "tooth"
+    },
+    {
+      "name": "1280x800_stale",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 189,
+        "height": 37,
+        "width": 770.4375
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "staging"
+    },
+    {
+      "name": "1280x800_refinement",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 189,
+        "height": 68,
+        "width": 774
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "refinement"
+    },
+    {
+      "name": "1280x800_validation",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 126,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "validation"
+    },
+    {
+      "name": "1280x800_production",
+      "viewport": {
+        "top": 54,
+        "height": 740,
+        "width": 792
+      },
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "pageScrolls": false,
+      "inspectorOverflow": "hidden",
+      "inspectorScrollHeight": 738,
+      "inspectorClientHeight": 738,
+      "inspectorOverflows": false,
+      "inspector": {
+        "top": 54,
+        "height": 740,
+        "bottom": 794,
+        "width": 248
+      },
+      "toolbar": {
+        "top": 189,
+        "height": 37,
+        "width": 650.21875
+      },
+      "viewportWiderThanInspector": true,
+      "mode": "production"
+    }
+  ]
+}

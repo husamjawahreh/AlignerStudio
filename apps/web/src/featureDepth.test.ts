@@ -83,8 +83,9 @@ describe("Wave 9 feature depth", () => {
       canRegenerateStaging: true,
       stageStatus: null,
       manipulationOwnedByToothToolbar: true,
+      commitOwnedByInspector: true,
     });
     expect(setup.withheld.find((item) => item.id === "move")?.reason).toMatch(/existing edit stack/);
-    expect(setup.primary.find((item) => item.id === "undo")).toBeTruthy();
+    expect(setup.primary.find((item) => item.id === "undo")).toBeUndefined();
   });
 });

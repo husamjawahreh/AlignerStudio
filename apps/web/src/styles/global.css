@@ -1778,6 +1778,79 @@ body,
   padding: 8px;
 }
 
+/* Wave 10: the page and the inspector column do not scroll. The left step form may. */
+.cad-workspace > .cad-inspector {
+  overflow: hidden;
+  gap: 4px;
+  padding: 4px;
+}
+
+.cad-inspector details:not([open]) > :not(summary),
+.as-advanced-details:not([open]) > :not(summary) {
+  display: none;
+}
+
+.cad-inspector .inspection-panel {
+  padding: 4px 6px;
+}
+
+.cad-inspector .movement-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8px;
+  margin-top: 4px;
+}
+
+.cad-inspector .movement-row {
+  padding: 2px 0;
+}
+
+.cad-inspector .validation-panel {
+  padding: 4px 0 0;
+}
+
+.cad-inspector .validation-panel .panel-heading,
+.cad-inspector .validation-panel > .cad-review-note {
+  display: none;
+}
+
+.cad-inspector .validation-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.cad-inspector .validation-metrics div {
+  padding: 2px;
+}
+
+.cad-inspector .validation-metrics strong {
+  font-size: 12px;
+}
+
+.cad-inspector .validation-warning,
+.cad-inspector .validation-clear,
+.cad-inspector .validation-check-list {
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.inspector-review-fold {
+  min-height: 0;
+  color: var(--as-text-secondary);
+  font-size: 12px;
+}
+
+.inspector-review-fold > summary {
+  cursor: pointer;
+}
+
+.validation-check-catalog-fold > summary {
+  cursor: pointer;
+  color: var(--as-text-secondary);
+  font-size: 12px;
+}
+
 .primary-status {
   display: flex;
   max-width: 280px;
@@ -1940,7 +2013,26 @@ body,
 .adaptive-inspector {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.adaptive-inspector .cad-stat-row {
+  padding: 1px 0;
+  line-height: 1.2;
+}
+
+.adaptive-inspector .cad-stat-row strong {
+  max-width: 68%;
+  text-align: right;
+}
+
+.adaptive-inspector h2 {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.inspector-limitations li {
+  margin: 0 0 2px;
 }
 
 .adaptive-inspector header {
@@ -1951,14 +2043,20 @@ body,
 
 .adaptive-inspector h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .inspector-limitations {
   margin: 0;
   padding-left: 16px;
   color: var(--as-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.inspector-recovery {
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .smart-widget-row {

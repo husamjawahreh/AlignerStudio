@@ -22,6 +22,8 @@ export type ToolbarContextId =
   | "processing"
   | "blocked"
   | "failed"
+  | "cancelled"
+  | "interrupted"
   | "stale"
   | "unavailable";
 
@@ -85,6 +87,8 @@ export interface ToolbarMachineInput {
   suppressedIds?: readonly string[];
   /** Treatment Setup or Refinement tooth controls already own move and rotate. */
   manipulationOwnedByToothToolbar?: boolean;
+  /** Numeric commit, lock, exclude, undo, and redo are on the tooth inspector. */
+  commitOwnedByInspector?: boolean;
 }
 
 export interface ToolbarResolution {
@@ -137,6 +141,8 @@ export function shortcutUsesToolbarCommand(shortcut: WorkspaceShortcut): boolean
 export function resolveToolbarContext(input: ToolbarMachineInput): ToolbarContextId {
   const stage = (input.stageStatus ?? "").toUpperCase();
   if (stage === "PROCESSING") return "processing";
+  if (stage === "CANCELLED") return "cancelled";
+  if (stage === "INTERRUPTED") return "interrupted";
   if (input.segmentationKind === "blocked_by_environment") return "blocked";
   if (stage === "FAILED" || input.segmentationKind === "failed") return "failed";
   if (
@@ -228,6 +234,27 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
           effect: "job",
           reversible: false,
           truthDependency: "processing",
+        }),
+      );
+    }
+    return pack(context, items);
+  }
+
+  if (context === "cancelled" || context === "interrupted") {
+    if (input.canRetrySegmentation) {
+      push(
+        action({
+          id: "retry-segmentation",
+          label: "Retry segmentation",
+          category: "workflow",
+          availability: "available",
+          reason:
+            context === "cancelled"
+              ? "The job was cancelled. This starts a new segmentation job and does not resume the cancelled one."
+              : "The job was interrupted. This starts a new segmentation job. Progress does not resume mid-stage.",
+          effect: "job",
+          reversible: false,
+          truthDependency: context,
         }),
       );
     }
@@ -556,7 +583,7 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
     );
   }
 
-  if (editingWorkspace && input.canUndo) {
+  if (editingWorkspace && input.canUndo && !input.commitOwnedByInspector) {
     push(
       action({
         id: "undo",
@@ -570,7 +597,7 @@ export function resolveToolbar(input: ToolbarMachineInput): ToolbarResolution {
       }),
     );
   }
-  if (editingWorkspace && input.canRedo) {
+  if (editingWorkspace && input.canRedo && !input.commitOwnedByInspector) {
     push(
       action({
         id: "redo",

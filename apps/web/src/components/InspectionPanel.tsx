@@ -24,6 +24,8 @@ interface InspectionPanelProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  /** The adaptive inspector already shows identity and the stored transform. */
+  embedded?: boolean;
 }
 
 type NumericMovementKey =
@@ -80,6 +82,7 @@ export function InspectionPanel({
   onRedo,
   canUndo = false,
   canRedo = false,
+  embedded = false,
 }: InspectionPanelProps): JSX.Element {
   if (!tooth) {
     return (
@@ -106,26 +109,29 @@ export function InspectionPanel({
 
   return (
     <aside className="inspection-panel" data-testid="inspection-panel">
-      <div className="panel-heading">
-        <div>
-          <span className="eyebrow">Tooth</span>
-          <h2>{title}</h2>
-        </div>
-        <TruthBadge state={validationTruth} />
-      </div>
-      <FixtureBadge fixture={tooth.fixture} provenance={tooth.provenance} />
-
-      <CurrentTargetPair
-        currentValue={`${tooth.arch} · current`}
-        targetValue={draftMovement ? "Editable target" : "From setup"}
-        targetAvailable={Boolean(draftMovement || tooth.movement)}
-      />
+      {embedded ? null : (
+        <>
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Tooth</span>
+              <h2>{title}</h2>
+            </div>
+            <TruthBadge state={validationTruth} />
+          </div>
+          <FixtureBadge fixture={tooth.fixture} provenance={tooth.provenance} />
+          <CurrentTargetPair
+            currentValue={`${tooth.arch} · current`}
+            targetValue={draftMovement ? "Editable target" : "From setup"}
+            targetAvailable={Boolean(draftMovement || tooth.movement)}
+          />
+        </>
+      )}
 
       <div className="inspection-meta">
         <span data-testid="inspection-tooth-ref">
           {tooth.toothRef ?? `Instance ${tooth.instanceId}`}
         </span>
-        <span>{tooth.arch === "upper" ? "Upper" : "Lower"}</span>
+        {embedded ? null : <span>{tooth.arch === "upper" ? "Upper" : "Lower"}</span>}
         <span data-testid="inspection-fdi-truth">
           FDI:{" "}
           {tooth.fdiNumber != null

@@ -20,6 +20,8 @@ interface ContextualToothToolbarProps {
   onCancel: () => void;
   onClearSelection: () => void;
   embedded?: boolean;
+  /** Lock, exclude, apply, and cancel stay on the numeric inspector. */
+  commitOwnedByInspector?: boolean;
 }
 
 /** Selection-scoped viewport toolbar wired to live App state (not mock UI). */
@@ -44,6 +46,7 @@ export function ContextualToothToolbar({
   onCancel,
   onClearSelection,
   embedded = false,
+  commitOwnedByInspector = false,
 }: ContextualToothToolbarProps): JSX.Element {
   return (
     <div
@@ -91,42 +94,46 @@ export function ContextualToothToolbar({
         >
           Movement
         </button>
-        <button
-          type="button"
-          className={locked ? "viewer-tool is-active" : "viewer-tool"}
-          onClick={onToggleLocked}
-          disabled={!canEdit}
-          title="Lock tooth"
-        >
-          {locked ? "Locked" : "Lock"}
-        </button>
-        <button
-          type="button"
-          className={excluded ? "viewer-tool is-active" : "viewer-tool"}
-          onClick={onToggleExcluded}
-          disabled={!canEdit}
-          title="Exclude tooth"
-        >
-          {excluded ? "Excluded" : "Exclude"}
-        </button>
-        <button
-          type="button"
-          className="viewer-tool"
-          onClick={onApply}
-          disabled={!canEdit || !isDirty}
-          title="Apply edit"
-        >
-          Apply
-        </button>
-        <button
-          type="button"
-          className="viewer-tool"
-          onClick={onCancel}
-          disabled={!canEdit || !isDirty}
-          title="Cancel edit"
-        >
-          Cancel
-        </button>
+        {commitOwnedByInspector ? null : (
+          <>
+            <button
+              type="button"
+              className={locked ? "viewer-tool is-active" : "viewer-tool"}
+              onClick={onToggleLocked}
+              disabled={!canEdit}
+              title="Lock tooth"
+            >
+              {locked ? "Locked" : "Lock"}
+            </button>
+            <button
+              type="button"
+              className={excluded ? "viewer-tool is-active" : "viewer-tool"}
+              onClick={onToggleExcluded}
+              disabled={!canEdit}
+              title="Exclude tooth"
+            >
+              {excluded ? "Excluded" : "Exclude"}
+            </button>
+            <button
+              type="button"
+              className="viewer-tool"
+              onClick={onApply}
+              disabled={!canEdit || !isDirty}
+              title="Apply edit"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              className="viewer-tool"
+              onClick={onCancel}
+              disabled={!canEdit || !isDirty}
+              title="Cancel edit"
+            >
+              Cancel
+            </button>
+          </>
+        )}
         <button type="button" className="viewer-tool" onClick={onClearSelection} title="Clear selection">
           Clear
         </button>

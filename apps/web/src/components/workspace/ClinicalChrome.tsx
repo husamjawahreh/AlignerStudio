@@ -293,6 +293,7 @@ export function AdaptiveInspector({
       className={`adaptive-inspector${minimized ? " is-minimized" : ""}`}
       data-testid="adaptive-inspector"
       data-inspector-mode={model.mode}
+      data-inspector-workspace={model.workspace ?? ""}
     >
       <header>
         <span className="eyebrow">Inspector</span>
@@ -304,7 +305,12 @@ export function AdaptiveInspector({
         <>
           <h2>{model.title}</h2>
           {model.rows.map((row) => (
-            <div className="cad-stat-row" key={row.label}>
+            <div
+              className="cad-stat-row"
+              key={row.label}
+              data-testid={row.testId}
+              data-readiness-surface={row.testId === "inspector-readiness" ? "primary" : undefined}
+            >
               <span>{row.label}</span>
               <strong>{row.value}</strong>
             </div>

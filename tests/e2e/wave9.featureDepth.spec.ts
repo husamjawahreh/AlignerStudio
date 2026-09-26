@@ -336,8 +336,9 @@ test.describe("Wave 9 feature depth", () => {
       await expect(page.getByRole("region", { name: "Smart Staging" })).toBeVisible({ timeout: 20_000 });
       await page.getByTestId("workflow-step-treatment-setup").click();
       await expect(page.getByTestId("setup-no-movement-limits")).toBeVisible();
-      await expect(page.getByTestId("inspection-panel")).toBeVisible();
-      await shot(page, `${viewport.name}_03_treatment_setup`, "Stored plan. No movement limits. Numeric inspector is present.");
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "treatment-setup");
+      await expect(page.getByTestId("inspection-panel")).toHaveCount(0);
+      await shot(page, `${viewport.name}_03_treatment_setup`, "Stored plan. No movement limits. Inspector is the setup context until a tooth is selected.");
 
       await page.getByTestId("dental-map-upper:instance:0").click();
       await expect(page.getByTestId("contextual-tooth-toolbar")).toBeVisible();

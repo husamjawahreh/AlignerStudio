@@ -6,18 +6,15 @@ import type {
 } from "@alignerstudio/contracts";
 import { createSceneLayerRegistry } from "@alignerstudio/types";
 import { api, type PipelineDiagnostic, type ProcessingStatus } from "../api/client";
+import { buildCaseIntakeReadiness } from "../caseIntake";
 import { ConfirmDialog } from "../design-system";
-import { ExportPanel } from "../components/ExportPanel";
-import { AnalysisInspector, AnalysisPanel } from "../components/AnalysisPanel";
-import { CaseIntakeInspector, CaseIntakePanel } from "../components/CaseIntakePanel";
-import { ProductionInspector, ProductionPanel } from "../components/ProductionPanel";
-import { RefinementInspector, RefinementPanel } from "../components/RefinementPanel";
-import { StagingInspector, StagingPanel } from "../components/StagingPanel";
-import { TreatmentSetupInspector, TreatmentSetupPanel } from "../components/TreatmentSetupPanel";
-import {
-  ValidationWorkflowInspector,
-  ValidationWorkflowPanel,
-} from "../components/ValidationWorkflowPanel";
+import { AnalysisPanel } from "../components/AnalysisPanel";
+import { CaseIntakePanel } from "../components/CaseIntakePanel";
+import { ProductionPanel } from "../components/ProductionPanel";
+import { RefinementPanel } from "../components/RefinementPanel";
+import { StagingPanel } from "../components/StagingPanel";
+import { TreatmentSetupPanel } from "../components/TreatmentSetupPanel";
+import { ValidationWorkflowPanel } from "../components/ValidationWorkflowPanel";
 import { ContextualToothToolbar } from "../components/ContextualToothToolbar";
 import { InspectionPanel } from "../components/InspectionPanel";
 import { type ArchIsolationMode } from "../components/WorkspaceViewportChrome";
@@ -412,6 +409,7 @@ export function App(): JSX.Element {
     () => (treatmentAvailable ? reviewBundle.stages.at(-1) ?? null : null),
     [reviewBundle.stages, treatmentAvailable],
   );
+  // Inspector context is not a dependency. Changing it does not rebuild geometry or the BVH.
   const sceneGraph = useMemo(
     () => activeReviewStage
       ? createDentalSceneGraph(activeReviewStage, originalScanBuffers, sceneLayers)
@@ -1260,6 +1258,7 @@ export function App(): JSX.Element {
       try {
         const status = await api.startProcessing(activeCase.id);
         setProcessingStatus(status);
+        if (status.stage_status !== "PROCESSING") stopBusy();
       } catch (err) {
         setError((err as Error).message);
         stopBusy();
@@ -1535,25 +1534,6 @@ export function App(): JSX.Element {
     if (value === "stale" || value === "current") return value;
     return "unavailable";
   };
-  const inspectorModel = buildInspectorModel({
-    minimized: inspectorMinimized || (!activeCase && !selectedTooth),
-    patientReference: activeCase?.patient_reference ?? patientReference,
-    caseId: activeCase?.id ?? null,
-    segmentation: segmentationReview,
-    selected: selectedReviewLabel,
-    selectionCount: selectedMapKeys.length,
-    confidence: selectedReviewTooth?.confidence ?? null,
-    treatmentAvailable,
-    operation: feedback.state,
-    phase: processingStatus?.current_stage ?? null,
-    groupArches: groupArches || null,
-    groupIdentity,
-    productionNote: reviewBundle.productionCad
-      ? reviewBundle.productionCad.overall_truth_state.replaceAll("_", " ")
-      : treatmentAvailable
-        ? "Manufacturing capabilities are not available"
-        : null,
-  });
   const workflow = resolveWorkflow({
     activeStep: workspace,
     hasCase: Boolean(activeCase),
@@ -1602,6 +1582,102 @@ export function App(): JSX.Element {
       ? reviewBundle.validationSummary.findings.length
       : null;
   const validationDataAvailable = reviewBundle.validationCapability != null || reviewBundle.validationSummary != null;
+  const intakeReadiness = buildCaseIntakeReadiness({
+    hasCase: Boolean(activeCase),
+    upperState: archUploads.upper.state,
+    lowerState: archUploads.lower.state,
+  });
+  const selectedMeshes = reviewTeeth.filter((tooth) =>
+    selectedMapKeys.includes(toothReviewLabel(tooth).toothRef),
+  );
+  const editableFlags = selectedMeshes.map((tooth) => {
+    if (!treatmentAvailable || !tooth.movement) return false;
+    return !tooth.movement.locked && !tooth.movement.excluded;
+  });
+  const groupEditable =
+    selectedMapKeys.length < 2
+      ? null
+      : editableFlags.every(Boolean)
+        ? "all"
+        : editableFlags.some(Boolean)
+          ? "mixed"
+          : "none";
+  const formatStoredMovement = (
+    movement: { translationX: number; translationY: number; translationZ: number; rotation: number } | null | undefined,
+  ): string | null => {
+    if (!movement) return null;
+    return `${movement.translationX.toFixed(2)} ${movement.translationY.toFixed(2)} ${movement.translationZ.toFixed(2)} mm · ${movement.rotation.toFixed(2)}°`;
+  };
+  const currentMovement = draftMovement ?? selectedFixtureTooth?.movement ?? null;
+  const targetMovement = treatmentAvailable ? (currentProposalTooth?.movement ?? null) : null;
+  const oneToothEditing =
+    selectedMapKeys.length === 1 &&
+    (workspace === "treatment-setup" || workspace === "refinement") &&
+    treatmentAvailable;
+  const inspectorModel = buildInspectorModel({
+    minimized: inspectorMinimized,
+    patientReference: activeCase?.patient_reference ?? patientReference,
+    caseId: activeCase?.id ?? null,
+    segmentation: segmentationReview,
+    selected: selectedMapKeys.length === 1 ? selectedReviewLabel : null,
+    selectionCount: selectedMapKeys.length,
+    confidence: selectedReviewTooth?.confidence ?? null,
+    treatmentAvailable,
+    operation: feedback.state,
+    phase: processingStatus?.current_stage ?? null,
+    groupArches: groupArches || null,
+    groupIdentity,
+    groupEditable,
+    workspace,
+    elapsedLabel: feedback.elapsedLabel,
+    serverProgressLabel:
+      processingStatus?.stage_status === "PROCESSING" &&
+      typeof processingStatus.overall_progress === "number" &&
+      Number.isFinite(processingStatus.overall_progress)
+        ? `Server reported ${Math.round(processingStatus.overall_progress)}`
+        : null,
+    failureMessage:
+      feedback.state === "failed" ? (processingStatus?.user_message?.trim() || null) : null,
+    transform:
+      selectedMapKeys.length === 1
+        ? {
+            current: formatStoredMovement(currentMovement),
+            target: formatStoredMovement(targetMovement),
+            locked: draftMovement ? Boolean(draftMovement.locked) : null,
+            excluded: draftMovement ? Boolean(draftMovement.excluded) : null,
+            editable: oneToothEditing ? canTransformTooth(draftMovement) : null,
+          }
+        : null,
+    facts: {
+      readiness: intakeReadiness.completenessLabel,
+      nextAction: nextAction?.label ?? null,
+      version: reviewBundle.versionId ? reviewBundle.versionId.slice(0, 12) : null,
+      savedVersions: reviewBundle.treatmentSetup?.versions.length ?? null,
+      stale: asFreshness(stagingFreshnessValue) === "stale",
+      limits: treatmentAvailable ? "No movement limits are configured" : null,
+      stageCount: treatmentAvailable ? reviewBundle.stages.length : null,
+      stageIndex: treatmentAvailable ? stageIndex : null,
+      freshness:
+        workspace === "validation"
+          ? validationFreshnessValue
+          : stagingFreshnessValue,
+      editCount: reviewBundle.editHistory.length,
+      findingCount: validationFindingCount,
+      unavailableChecks: reviewBundle.validationCapability?.summary.unavailable_checks ?? null,
+      truth:
+        workspace === "production"
+          ? (reviewBundle.productionCad?.overall_truth_state ?? null)
+          : (reviewBundle.validationCapability?.overall_truth_state ?? null),
+      severity: reviewBundle.validationCapability?.overall_check_state ?? null,
+      source: reviewBundle.productionCad?.binding.source_kind ?? null,
+      qc: reviewBundle.productionCad?.export_state ?? null,
+    },
+    productionNote: reviewBundle.productionCad
+      ? reviewBundle.productionCad.overall_truth_state.replaceAll("_", " ")
+      : treatmentAvailable
+        ? "Manufacturing capabilities are not available"
+        : null,
+  });
   const toolbar = resolveToolbar({
     workspace,
     hasCase: Boolean(activeCase),
@@ -1627,7 +1703,11 @@ export function App(): JSX.Element {
     canUndo: undoStack.length > 0,
     canRedo: redoStack.length > 0,
     canCancelProcessing: Boolean(activeCase && processingStatus?.job_id && processingStatus.stage_status === "PROCESSING"),
-    canRetrySegmentation: segmentationReview.kind === "failed",
+    canRetrySegmentation:
+      segmentationReview.kind === "failed" ||
+      processingStatus?.stage_status === "CANCELLED" ||
+      processingStatus?.stage_status === "INTERRUPTED",
+    commitOwnedByInspector: oneToothEditing,
     canRegenerateStaging: treatmentAvailable,
     stageStatus: processingStatus?.stage_status ?? null,
     suppressedIds: [
@@ -1695,7 +1775,7 @@ export function App(): JSX.Element {
   }));
   const inlineError = dedupeNotice(feedback.whatHappened, error);
   const transientNotice = dedupeNotice(feedback.whatHappened, dedupeNotice(inlineError, exportMessage));
-  const inspectorIsMinimized = inspectorMinimized || (!activeCase && !selectedTooth);
+  const inspectorIsMinimized = inspectorMinimized;
 
   return (
     <AppShell>
@@ -1884,12 +1964,7 @@ export function App(): JSX.Element {
           )}
 
           {workspace === "refinement" && (
-            <RefinementPanel
-              bundle={reviewBundle}
-              gizmoMode={gizmoMode}
-              treatmentAvailable={treatmentAvailable}
-              onGizmoMode={setGizmoMode}
-            />
+            <RefinementPanel bundle={reviewBundle} treatmentAvailable={treatmentAvailable} />
           )}
 
           {workspace === "validation" && (
@@ -2026,6 +2101,7 @@ export function App(): JSX.Element {
                           onApply={() => void handleApplyEdit()}
                           onCancel={handleCancelEdit}
                           onClearSelection={handleClearSelection}
+                          commitOwnedByInspector
                         />
                       ) : null
                     }
@@ -2106,54 +2182,18 @@ export function App(): JSX.Element {
             minimized={inspectorIsMinimized}
             onToggle={() => setInspectorMinimized((value) => !value)}
           />
-          {workspace === "case-intake" && (
-            <CaseIntakeInspector
-              caseId={activeCase?.id ?? null}
-              patientReference={patientReference}
-              caseStatus={activeCase?.status ?? null}
-              archUploads={archUploads}
-              processingStatus={processingStatus}
-            />
-          )}
-          {workspace === "analysis" && (
-            <AnalysisInspector
-              diagnostic={pipelineDiagnostic}
-              dentalIntelligence={dentalIntelligence}
-              teeth={pipelineReviewStage?.teeth ?? []}
-              validation={validation}
-              selectedLabel={
-                selectedReviewLabel?.text ??
-                selection.selectedToothRef ??
-                "Select a tooth"
-              }
-              selectedConfidence={
-                segmentationReview.kind === "real_model_inference"
-                  ? selection.confidence
-                  : null
-              }
-              selectedArch={selection.arch}
-            />
-          )}
-          {workspace === "treatment-setup" && (
-            <TreatmentSetupInspector bundle={reviewBundle} treatmentAvailable={treatmentAvailable}>
-              <ProposalPanels
-                iprSites={reviewBundle.iprSites}
-                attachmentSites={reviewBundle.attachmentSites}
-                clinicalToolsFreshness={reviewBundle.clinicalTools?.freshness}
-                clinicalToolsNotes={reviewBundle.clinicalTools?.notes}
-                onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
-                onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
-                onAttachmentStatus={(siteId, status) =>
-                  void handleAttachmentStatus(siteId, status)
-                }
-                onReset={() => void handleResetProposals()}
-              />
-              {treatmentAvailable ? (
+          {inspectorIsMinimized ? null : (
+            <>
+              {oneToothEditing && selectedFixtureTooth ? (
                 <InspectionPanel
                   tooth={selectedFixtureTooth}
                   dentalIntelligence={dentalIntelligence}
                   draftMovement={draftMovement}
-                  originalMovement={currentProposalTooth?.movement ?? null}
+                  originalMovement={
+                    workspace === "refinement"
+                      ? (originalTooth?.movement ?? null)
+                      : (currentProposalTooth?.movement ?? null)
+                  }
                   isDirty={
                     draftMovement !== null &&
                     currentProposalTooth !== null &&
@@ -2178,83 +2218,47 @@ export function App(): JSX.Element {
                   onRedo={() => void handleRedo()}
                   canUndo={undoStack.length > 0}
                   canRedo={redoStack.length > 0}
+                  embedded
                 />
               ) : null}
-            </TreatmentSetupInspector>
-          )}
-          {workspace === "staging" && (
-            <StagingInspector
-              stage={activeReviewStage}
-              stageCount={reviewBundle.stages.length}
-              isPlaying={isPlaying}
-            />
-          )}
-          {workspace === "refinement" && (
-            <RefinementInspector editCount={reviewBundle.editHistory.length}>
-              <div className="cad-inspector-section">
-                <button
-                  className="secondary-button"
-                  onClick={handleResetAll}
-                  disabled={reviewBundle.editHistory.length === 0}
-                >
-                  Reset all edits
-                </button>
-              </div>
-              <ProposalPanels
-                iprSites={reviewBundle.iprSites}
-                attachmentSites={reviewBundle.attachmentSites}
-                clinicalToolsFreshness={reviewBundle.clinicalTools?.freshness}
-                clinicalToolsNotes={reviewBundle.clinicalTools?.notes}
-                onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
-                onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
-                onAttachmentStatus={(siteId, status) =>
-                  void handleAttachmentStatus(siteId, status)
-                }
-                onReset={() => void handleResetProposals()}
-              />
-              <InspectionPanel
-                tooth={selectedFixtureTooth}
-                dentalIntelligence={dentalIntelligence}
-                draftMovement={treatmentAvailable ? draftMovement : null}
-                originalMovement={originalTooth?.movement ?? null}
-                isDirty={
-                  draftMovement !== null &&
-                  currentProposalTooth !== null &&
-                  hasMovementChanges(draftMovement, currentProposalTooth.movement)
-                }
-                onDraftChange={handleDraftChange}
-                interactionState={toothInteractionState}
-                onApply={() => void handleApplyEdit()}
-                onCancel={handleCancelEdit}
-                onReset={handleResetTooth}
-                onToggleLocked={() =>
-                  setDraftMovement((current) =>
-                    current ? { ...current, locked: !current.locked } : current,
-                  )
-                }
-                onToggleExcluded={() =>
-                  setDraftMovement((current) =>
-                    current ? { ...current, excluded: !current.excluded } : current,
-                  )
-                }
-                onUndo={() => void handleUndo()}
-                onRedo={() => void handleRedo()}
-                canUndo={undoStack.length > 0}
-                canRedo={redoStack.length > 0}
-              />
-            </RefinementInspector>
-          )}
-          {workspace === "validation" && (
-            <ValidationWorkflowInspector hasStage={activeReviewStage !== null}>
-              {activeReviewStage ? (
+              {workspace === "refinement" && treatmentAvailable ? (
+                <div className="cad-inspector-section">
+                  <button
+                    className="secondary-button"
+                    onClick={handleResetAll}
+                    disabled={reviewBundle.editHistory.length === 0}
+                  >
+                    Reset all edits
+                  </button>
+                </div>
+              ) : null}
+              {workspace === "refinement" ? (
+                <details className="inspector-review-fold" data-testid="refinement-review-fold">
+                  <summary>
+                    IPR and attachment review
+                    {reviewBundle.iprSites.length + reviewBundle.attachmentSites.length > 0
+                      ? ` (${reviewBundle.iprSites.length + reviewBundle.attachmentSites.length})`
+                      : ""}
+                    . Review candidates, not prescriptions.
+                  </summary>
+                  <ProposalPanels
+                    iprSites={reviewBundle.iprSites}
+                    attachmentSites={reviewBundle.attachmentSites}
+                    clinicalToolsFreshness={reviewBundle.clinicalTools?.freshness}
+                    clinicalToolsNotes={reviewBundle.clinicalTools?.notes}
+                    onIPRStatus={(siteId, status) => void handleIPRStatus(siteId, status)}
+                    onIPRAmount={(siteId, amount) => void handleIPRAmount(siteId, amount)}
+                    onAttachmentStatus={(siteId, status) =>
+                      void handleAttachmentStatus(siteId, status)
+                    }
+                    onReset={() => void handleResetProposals()}
+                  />
+                </details>
+              ) : null}
+              {workspace === "validation" && activeReviewStage ? (
                 <ValidationPanel stage={activeReviewStage} bundle={reviewBundle} />
               ) : null}
-            </ValidationWorkflowInspector>
-          )}
-          {workspace === "production" && (
-            <ProductionInspector>
-              <ExportPanel bundle={reviewBundle} onExport={() => void handleExportRequest()} />
-            </ProductionInspector>
+            </>
           )}
         </RightInspector>
       </WorkspaceContainer>

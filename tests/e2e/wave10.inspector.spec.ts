@@ -1,0 +1,582 @@
+/**
+ * Wave 10 browser QA. Fixture crowns are test meshes, not patient inference.
+ * Requires the web app at P8_WEB_URL (default http://127.0.0.1:5173).
+ */
+import { test, expect, type Page } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const WEB = process.env.P8_WEB_URL ?? "http://127.0.0.1:5173";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const EVIDENCE_DIR = path.join(ROOT, ".research/tmp/wave10_browser_qa");
+const VIEWPORTS = [
+  { width: 1366, height: 768, name: "1366x768" },
+  { width: 1600, height: 1000, name: "1600x1000" },
+  { width: 1280, height: 800, name: "1280x800" },
+] as const;
+
+const images: Array<Record<string, unknown>> = [];
+const measurements: Array<Record<string, unknown>> = [];
+
+function crown(arch: "upper" | "lower", index: number) {
+  const cx = index * 3;
+  const cy = arch === "upper" ? 6 : -6;
+  const vertices = [[cx, cy, 0], [cx + 1, cy, 0], [cx, cy + 1, 0], [cx, cy, 1]];
+  const faces = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]];
+  return {
+    instance_id: (arch === "upper" ? 0 : 20) + index,
+    tooth_ref: `${arch}:instance:${index}`,
+    fdi_number: null,
+    arch,
+    vertices,
+    faces,
+    centroid: [cx, cy, 0],
+    confidence: null,
+    provenance: "fixture",
+    fixture: true,
+    experimental: true,
+    planning_mode: "semantic_only_experimental",
+    identification_status: "uncertain",
+  };
+}
+
+function movement() {
+  return { translationX: 0, translationY: 0, translationZ: 0, rotation: 0, tip: 0, torque: 0, angulation: 0, intrusion: 0, extrusion: 0 };
+}
+
+function treatmentTooth(arch: "upper" | "lower", index: number) {
+  const mesh = crown(arch, index);
+  return {
+    instanceId: mesh.instance_id,
+    fdiNumber: null,
+    toothRef: mesh.tooth_ref,
+    planningMode: "semantic_only_experimental",
+    arch,
+    confidence: null,
+    vertices: mesh.vertices,
+    faces: mesh.faces,
+    centroid: mesh.centroid,
+    identificationStatus: "uncertain",
+    movement: movement(),
+    validationStatus: "unavailable",
+    validationMessage: "Fixture/test-only surface. Not a clinical finding.",
+    provenance: "fixture",
+    fixture: true,
+    experimental: true,
+    limitStatus: "not_configured",
+  };
+}
+
+function treatmentBundle(stale: boolean) {
+  const teeth = [0, 1].flatMap((index) => [treatmentTooth("upper", index), treatmentTooth("lower", index)]);
+  const freshness = stale ? "stale" : "current";
+  return {
+    stages: [0, 1].map((index) => ({
+      index,
+      stageId: `fixture-stage-${index}`,
+      teeth,
+      validationStatus: "warning",
+      collisionCount: 0,
+      proximityCount: 0,
+      contactCount: 0,
+      warnings: ["Fixture finding. Not a clinical approval."],
+      provenance: "fixture",
+      fixture: true,
+    })),
+    provenance: "fixture",
+    fixture: true,
+    realDataAvailable: true,
+    experimental: true,
+    planningMode: "semantic_only_experimental",
+    proposalKind: "original_generated",
+    editHistory: [],
+    iprSites: [{
+      siteId: "ipr-1",
+      toothA: "upper:instance:0",
+      toothB: "upper:instance:1",
+      status: "needs_review",
+      measuredAmount: 1.2,
+      currentDistance: 1.2,
+      amountUnit: "model units",
+      valueSource: "centroid_distance",
+      truthState: "requires_review",
+    }],
+    attachmentSites: [{
+      siteId: "att-1",
+      tooth: "upper:instance:0",
+      status: "needs_review",
+      truthState: "requires_review",
+      valueSource: "review_candidate",
+    }],
+    sourceKind: "development_treatment_fixture",
+    unavailableReason: "Browser QA fixture. Not clinical evidence.",
+    versionId: "wave10-version-1",
+    smartStaging: {
+      freshness,
+      stage_count: 2,
+      clinically_approved: false,
+      clinically_optimal: false,
+      meta: { freshness, truth_state: freshness, clinically_approved: false, clinically_optimal: false },
+    },
+    validationCapability: {
+      freshness,
+      overall_check_state: "requires_review",
+      overall_truth_state: "requires_review",
+      clinically_approved: false,
+      summary: {
+        finding_count: 1,
+        checks_passed: 0,
+        warnings: 1,
+        errors: 0,
+        unavailable_checks: 2,
+        review_required_checks: 1,
+        check_count: 3,
+        affected_teeth: [],
+        affected_stages: [],
+        clinically_approved: false,
+        clinical_safety_guarantee: false,
+        validation_score: null,
+      },
+      checks: [{
+        check_id: "manufacturing",
+        category: "manufacturing",
+        label: "Manufacturing",
+        check_state: "not_available",
+        truth_state: "not_available",
+        context_kind: "case",
+        finding_count: 0,
+        limitations: [],
+        clinically_approved: false,
+      }],
+      findings: [{
+        finding_id: "fixture-finding",
+        category: "fixture",
+        severity: "warning",
+        check_state: "requires_review",
+        truth_state: "requires_review",
+        affected_tooth_refs: [],
+        stage_index: 0,
+        message: "Fixture finding. Not an approval.",
+      }],
+    },
+    clinicalTools: {
+      freshness,
+      readiness: { ipr_measurement: "requires_review", attachment_placement: "requires_review" },
+      notes: ["Centroid distance is not an IPR prescription."],
+    },
+  };
+}
+
+function pipelineJson(mode: string, arch: "upper" | "lower") {
+  if (mode === "blocked") {
+    return {
+      state: "blocked_by_environment",
+      segmentation_truth_state: "blocked_by_environment",
+      source_kind: "uploaded_real_case",
+      runtime_blocker: "No NVIDIA driver, torch, or pointops on this host.",
+      tooth_instance_count: 0,
+      validation_findings: [],
+      failures: ["Live ToothInstanceNet inference did not run."],
+      notes: [],
+      provenance: "real",
+      fixture: false,
+      tooth_instances: [],
+    };
+  }
+  if (mode === "unavailable") {
+    return {
+      state: "model_unavailable",
+      segmentation_truth_state: "not_available",
+      source_kind: "uploaded_real_case",
+      tooth_instance_count: 0,
+      validation_findings: [],
+      failures: ["Segmentation model is not available."],
+      notes: [],
+      provenance: "real",
+      fixture: false,
+      tooth_instances: [],
+    };
+  }
+  if (mode === "failed") {
+    return {
+      state: "segmentation_failed",
+      segmentation_truth_state: "failed",
+      source_kind: "uploaded_real_case",
+      tooth_instance_count: 0,
+      validation_findings: [],
+      failures: ["decoder stopped"],
+      notes: [],
+      provenance: "real",
+      fixture: false,
+      tooth_instances: [],
+    };
+  }
+  return {
+    state: "identification_incomplete",
+    source_kind: "validated_real_case",
+    tooth_instance_count: 2,
+    identified_teeth: 0,
+    uncertain_teeth: 2,
+    unidentified_teeth: 2,
+    validation_findings: [],
+    failures: [],
+    notes: ["fixture presentation crowns"],
+    provenance: "fixture",
+    fixture: true,
+    experimental: true,
+    tooth_instances: [0, 1].map((index) => crown(arch, index)),
+  };
+}
+
+async function installApi(page: Page) {
+  const mode: { value: "blocked" | "fixture" | "treatment" | "stale" | "unavailable" | "failed" } = { value: "blocked" };
+  const job: { active: boolean; status: string; message: string; progress: number | null } = {
+    active: false,
+    status: "PROCESSING",
+    message: "Preparing the case.",
+    progress: null,
+  };
+  const counts = { pipeline: 0, processing: 0, edits: 0, regenerate: 0 };
+  await page.route("**/cases**", async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+    const caseBody = {
+      id: "wave10-case",
+      patient_reference: "wave10-inspector",
+      status: "mesh_validated",
+      meshes: [
+        { arch: "upper", file_path: "/tmp/upper.stl", original_filename: "upper.stl", uploaded_at: "2026-09-26T00:00:00Z" },
+        { arch: "lower", file_path: "/tmp/lower.stl", original_filename: "lower.stl", uploaded_at: "2026-09-26T00:00:00Z" },
+      ],
+      created_at: "2026-09-26T00:00:00Z",
+    };
+    if (method === "POST" && /\/cases$/.test(url)) {
+      await route.fulfill({ json: { ...caseBody, status: "created", meshes: [] } });
+      return;
+    }
+    if (method === "GET" && /\/cases\/wave10-case$/.test(url)) {
+      await route.fulfill({ json: caseBody });
+      return;
+    }
+    if (method === "POST" && url.includes("/uploads") && !url.includes("validate")) {
+      await route.fulfill({ json: caseBody });
+      return;
+    }
+    if (method === "POST" && url.includes("/validate")) {
+      await route.fulfill({ json: { is_valid: true, triangle_count: 4, is_watertight: true, errors: [] } });
+      return;
+    }
+    if (method === "POST" && url.includes("/pipeline/")) {
+      counts.pipeline += 1;
+      const arch = url.includes("/lower") ? "lower" : "upper";
+      await route.fulfill({ json: pipelineJson(mode.value, arch) });
+      return;
+    }
+    if (method === "POST" && url.includes("/treatment/edits")) {
+      counts.edits += 1;
+      await route.fulfill({ json: treatmentBundle(mode.value === "stale") });
+      return;
+    }
+    if (method === "POST" && url.includes("/staging/regenerate")) {
+      counts.regenerate += 1;
+      await route.fulfill({ json: treatmentBundle(mode.value === "stale") });
+      return;
+    }
+    if (method === "GET" && /\/treatment$/.test(url)) {
+      if (mode.value === "treatment" || mode.value === "stale") {
+        await route.fulfill({ json: treatmentBundle(mode.value === "stale") });
+        return;
+      }
+      await route.fulfill({ status: 404, body: "none" });
+      return;
+    }
+    const statusBody = () => ({
+      job_id: "wave10-job",
+      case_id: "wave10-case",
+      stage_status: job.status,
+      current_stage: "preparation",
+      user_message: job.message,
+      overall_progress: job.progress,
+      elapsed_seconds: 4,
+      remaining_time: {
+        kind: "none",
+        seconds: null,
+        confidence: null,
+        sample_count: 0,
+        qualifier: "none",
+        label: "No reliable remaining-time estimate",
+      },
+    });
+    if (method === "POST" && /\/processing$/.test(url)) {
+      counts.processing += 1;
+      job.active = true;
+      await route.fulfill({ json: statusBody() });
+      return;
+    }
+    if (method === "GET" && url.includes("processing-status")) {
+      if (!job.active) {
+        await route.fulfill({ status: 404, body: "none" });
+        return;
+      }
+      await route.fulfill({ json: statusBody() });
+      return;
+    }
+    if (method === "POST" && url.includes("/cancel")) {
+      job.status = "CANCELLED";
+      job.message = "Cancelled by the doctor.";
+      await route.fulfill({ json: statusBody() });
+      return;
+    }
+    if (method === "GET" && url.includes("/dental-intelligence")) {
+      await route.fulfill({ status: 404, body: "none" });
+      return;
+    }
+    await route.fulfill({ status: 404, body: "unmocked" });
+  });
+  return { mode, job, counts };
+}
+
+async function shot(page: Page, name: string, note: string) {
+  fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+  await page.screenshot({ path: path.join(EVIDENCE_DIR, `${name}.png`), fullPage: false });
+  images.push({ file: `${name}.png`, viewport: page.viewportSize(), note, clinicalSegmentationValidation: false });
+}
+
+async function measure(page: Page, name: string) {
+  const metrics = await page.evaluate(() => {
+    const doc = document.documentElement;
+    const inspector = document.querySelector(".cad-inspector");
+    const viewport = document.querySelector("[data-testid='layout-viewport']");
+    const toolbar = document.querySelector("[data-testid='contextual-toolbar']");
+    const inspectorBox = inspector?.getBoundingClientRect();
+    const viewportBox = viewport?.getBoundingClientRect();
+    const toolbarBox = toolbar?.getBoundingClientRect();
+    const mode = document.querySelector("[data-testid='adaptive-inspector']")?.getAttribute("data-inspector-mode");
+    return {
+      scrollHeight: doc.scrollHeight,
+      clientHeight: doc.clientHeight,
+      scrollWidth: doc.scrollWidth,
+      clientWidth: doc.clientWidth,
+      pageScrolls: doc.scrollHeight > doc.clientHeight + 4 || doc.scrollWidth > doc.clientWidth + 4,
+      inspectorOverflow: inspector ? getComputedStyle(inspector).overflowY : null,
+      inspectorScrollHeight: inspector ? inspector.scrollHeight : null,
+      inspectorClientHeight: inspector ? inspector.clientHeight : null,
+      inspectorOverflows: inspector ? inspector.scrollHeight > inspector.clientHeight + 4 : null,
+      inspector: inspectorBox
+        ? { top: inspectorBox.top, height: inspectorBox.height, bottom: inspectorBox.bottom, width: inspectorBox.width }
+        : null,
+      viewport: viewportBox
+        ? { top: viewportBox.top, height: viewportBox.height, width: viewportBox.width }
+        : null,
+      toolbar: toolbarBox
+        ? { top: toolbarBox.top, height: toolbarBox.height, width: toolbarBox.width }
+        : null,
+      viewportWiderThanInspector: Boolean(viewportBox && inspectorBox && viewportBox.width > inspectorBox.width),
+      mode,
+    };
+  });
+  measurements.push({ name, viewport: page.viewportSize(), ...metrics });
+  expect(metrics.pageScrolls, name).toBe(false);
+  expect(metrics.viewportWiderThanInspector, name).toBe(true);
+  expect(
+    metrics.inspectorOverflows,
+    `${name} inspector ${metrics.inspectorScrollHeight}px in ${metrics.inspectorClientHeight}px`,
+  ).toBe(false);
+  return metrics;
+}
+
+async function importScans(page: Page) {
+  await page.locator("#patient-reference").fill("wave10");
+  await page.getByTestId("create-case-primary").click();
+  await page.locator("#upper-stl").setInputFiles({ name: "upper.stl", mimeType: "model/stl", buffer: Buffer.from("upper-wave10") });
+  await page.locator("#lower-stl").setInputFiles({ name: "lower.stl", mimeType: "model/stl", buffer: Buffer.from("lower-wave10") });
+}
+
+test.describe.configure({ mode: "serial" });
+
+test.describe("Wave 10 adaptive inspector", () => {
+  test.afterAll(() => {
+    fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+    const evidencePath = path.join(EVIDENCE_DIR, "evidence.json");
+    fs.writeFileSync(evidencePath, JSON.stringify({
+      wave: 10,
+      firstVersionAcceptance: false,
+      liveToothInstanceNet: false,
+      environment: "BLOCKED_BY_ENVIRONMENT",
+      fixtureEvidence: "non-clinical",
+      note: "Screenshots and measurements are UI evidence. Fixture crowns are generated test meshes. This is not First Version acceptance. WP-14 and WP-15 were not exercised.",
+      viewports: VIEWPORTS,
+      images,
+      measurements,
+    }, null, 2));
+  });
+
+  for (const viewport of VIEWPORTS) {
+    test(`adaptive inspector at ${viewport.name}`, async ({ page }) => {
+      test.setTimeout(180_000);
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      const api = await installApi(page);
+      await page.goto(WEB);
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "none");
+      await measure(page, `${viewport.name}_launch`);
+      await shot(page, `${viewport.name}_01_launch`, "No case. Inspector does not invent a tooth.");
+
+      await importScans(page);
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "case");
+      await measure(page, `${viewport.name}_intake`);
+      await shot(page, `${viewport.name}_02_intake`, "Case intake context. Readiness stays in the inspector.");
+
+      await page.getByTestId("workflow-step-analysis").click();
+      const before = api.counts.pipeline;
+      await page.getByTestId("workflow-step-analysis").click();
+      expect(api.counts.pipeline).toBe(before);
+      await measure(page, `${viewport.name}_analysis_idle`);
+      await shot(page, `${viewport.name}_03_analysis`, "Analysis opened without a segmentation run.");
+
+      await page.getByTestId("analysis-panel").getByRole("button", { name: "Review segmentation" }).click();
+      await expect(page.getByTestId("analysis-environment-block")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "blocked");
+      await expect(page.getByTestId("adaptive-inspector")).toContainText(/Not offered/i);
+      await expect(page.getByRole("button", { name: "Retry segmentation" })).toHaveCount(0);
+      await measure(page, `${viewport.name}_blocked`);
+      await shot(page, `${viewport.name}_04_blocked`, "Environment blocker. Retry is not offered.");
+
+      await page.evaluate(() => sessionStorage.clear());
+      api.mode.value = "unavailable";
+      await page.goto(WEB);
+      await importScans(page);
+      await page.getByTestId("workflow-step-analysis").click();
+      await page.getByTestId("analysis-panel").getByRole("button", { name: "Review segmentation" }).click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "unavailable", { timeout: 20_000 });
+      await measure(page, `${viewport.name}_unavailable`);
+      await shot(page, `${viewport.name}_05_unavailable`, "Unavailable is not a count of zero teeth.");
+
+      await page.evaluate(() => sessionStorage.clear());
+      api.mode.value = "failed";
+      await page.goto(WEB);
+      await importScans(page);
+      await page.getByTestId("workflow-step-analysis").click();
+      await page.getByTestId("analysis-panel").getByRole("button", { name: "Review segmentation" }).click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "failed", { timeout: 20_000 });
+      await expect(page.getByTestId("failure-recovery")).toContainText(/new job/i);
+      await measure(page, `${viewport.name}_failed`);
+      await shot(page, `${viewport.name}_06_failed`, "Failed segmentation keeps the failure recovery.");
+
+      await page.evaluate(() => sessionStorage.clear());
+      api.mode.value = "fixture";
+      await page.goto(WEB);
+      await importScans(page);
+      await page.getByTestId("workflow-step-analysis").click();
+      await page.getByTestId("analysis-panel").getByRole("button", { name: "Review segmentation" }).click();
+      await expect(page.getByTestId("analysis-fixture-note")).toContainText(/test-only/i, { timeout: 20_000 });
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "requires_review");
+      await measure(page, `${viewport.name}_requires_review`);
+      await shot(page, `${viewport.name}_07_requires_review`, "Fixture segmentation requires review. FDI is not invented.");
+
+      api.mode.value = "treatment";
+      api.job.status = "PROCESSING";
+      api.job.message = "Preparing the case.";
+      api.job.progress = null;
+      await page.getByTestId("workflow-step-treatment-setup").click();
+      await page.getByRole("button", { name: "Generate Treatment Setup" }).click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "processing", { timeout: 20_000 });
+      await expect(page.getByTestId("remaining-time")).toHaveCount(1);
+      await expect(page.getByTestId("inspector-progress")).toContainText(/Indeterminate/i);
+      await measure(page, `${viewport.name}_processing`);
+      await shot(page, `${viewport.name}_08_processing`, "Processing inspector. One remaining-time surface. No invented percent.");
+
+      api.job.status = "CANCELLED";
+      api.job.message = "The job was cancelled.";
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "cancelled", { timeout: 15_000 });
+      await expect(page.getByTestId("adaptive-inspector")).toContainText(/Not a failure/i);
+      await measure(page, `${viewport.name}_cancelled`);
+      await shot(page, `${viewport.name}_09_cancelled`, "Cancelled is distinct from failure.");
+
+      api.job.status = "INTERRUPTED";
+      api.job.message = "The job was interrupted.";
+      api.job.active = false;
+      await page.getByRole("button", { name: "Generate Treatment Setup" }).click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "interrupted", { timeout: 15_000 });
+      await expect(page.getByTestId("adaptive-inspector")).toContainText(/Not a cancellation/i);
+      await measure(page, `${viewport.name}_interrupted`);
+      await shot(page, `${viewport.name}_10_interrupted`, "Interrupted does not resume mid-stage.");
+
+      api.job.status = "PROCESSING";
+      api.job.message = "Preparing the case.";
+      api.job.progress = null;
+      api.job.active = false;
+      await page.getByRole("button", { name: "Generate Treatment Setup" }).click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "processing", { timeout: 15_000 });
+      api.job.status = "COMPLETED";
+      api.job.message = "Stored for review.";
+      await expect(page.getByRole("region", { name: "Smart Staging" })).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId("workflow-step-treatment-setup").click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "treatment-setup");
+      await expect(page.getByTestId("inspection-panel")).toHaveCount(0);
+      await measure(page, `${viewport.name}_treatment_none`);
+      await shot(page, `${viewport.name}_11_treatment_none`, "Treatment setup with no tooth selected.");
+
+      await page.getByTestId("dental-map-upper:instance:0").click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "tooth");
+      await expect(page.getByTestId("inspector-tooth-ref")).toContainText("upper:instance:0");
+      await expect(page.getByTestId("contextual-tooth-toolbar").getByRole("button", { name: "Apply" })).toHaveCount(0);
+      await expect(page.getByTestId("inspection-panel").getByRole("button", { name: "Apply" })).toBeVisible();
+      await measure(page, `${viewport.name}_one_tooth`);
+      await shot(page, `${viewport.name}_12_one_tooth`, "One tooth. Numeric commit stays in the inspector.");
+
+      await page.getByTestId("dental-map-upper:instance:1").click({ modifiers: ["Shift"] });
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "group");
+      await expect(page.getByTestId("inspector-current-transform")).toHaveCount(0);
+      await measure(page, `${viewport.name}_multi`);
+      await shot(page, `${viewport.name}_13_multi`, "Multiple teeth. No single transform.");
+
+      await page.getByTestId("dental-map-upper:instance:0").click();
+      const inspection = page.getByTestId("inspection-panel");
+      await inspection.getByRole("spinbutton").first().fill("0.4");
+      const edits = api.counts.edits;
+      await inspection.getByRole("button", { name: "Apply" }).click();
+      await expect.poll(() => api.counts.edits).toBe(edits + 1);
+      await inspection.getByRole("button", { name: "Undo doctor edit" }).click();
+      await expect.poll(() => api.counts.edits).toBe(edits + 2);
+      await shot(page, `${viewport.name}_14_undo`, "Undo uses the existing edit request.");
+
+      const regenerates = api.counts.regenerate;
+      await page.getByTestId("workflow-step-staging").click();
+      await expect(page.getByTestId("staging-not-optimal")).toBeVisible();
+      await expect(page.getByTestId("inspector-tooth-ref")).toContainText("upper:instance:0");
+      expect(api.counts.regenerate).toBe(regenerates);
+      await page.getByTestId("staging-regenerate").click();
+      await expect.poll(() => api.counts.regenerate).toBe(regenerates + 1);
+      await measure(page, `${viewport.name}_staging`);
+      await shot(page, `${viewport.name}_15_staging`, "Selection survived the staging transition. Regenerate was explicit.");
+
+      api.mode.value = "stale";
+      await page.waitForFunction(() => sessionStorage.getItem("alignerstudio.activeWorkspace") === "staging");
+      await page.reload();
+      await expect(page.getByTestId("staging-freshness")).toHaveText("stale", { timeout: 15_000 });
+      await measure(page, `${viewport.name}_stale`);
+      await shot(page, `${viewport.name}_16_stale`, "Stale staging stays stale after refresh.");
+
+      await page.getByTestId("workflow-step-refinement").click();
+      await expect(page.getByTestId("refinement-review-fold")).toContainText(/not prescriptions/i);
+      await expect(page.getByTestId("refinement-panel").getByRole("button", { name: "Move" })).toHaveCount(0);
+      await measure(page, `${viewport.name}_refinement`);
+      await shot(page, `${viewport.name}_17_refinement`, "Refinement review fold. Move is not duplicated on the left.");
+
+      await page.getByTestId("workflow-step-validation").click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "validation");
+      await expect(page.getByTestId("validation-review-note")).toContainText(/not a pass/i);
+      await expect(page.getByTestId("adaptive-inspector")).toContainText(/No score/i);
+      await measure(page, `${viewport.name}_validation`);
+      await shot(page, `${viewport.name}_18_validation`, "Validation inspector. No score.");
+
+      await page.getByTestId("workflow-step-production").click();
+      await expect(page.getByTestId("adaptive-inspector")).toHaveAttribute("data-inspector-mode", "production");
+      await expect(page.getByTestId("production-manufacturing-limit")).toContainText(/not manufacturing readiness/i);
+      await expect(page.getByTestId("production-inspector")).toHaveCount(0);
+      await measure(page, `${viewport.name}_production`);
+      await shot(page, `${viewport.name}_19_production`, "Production inspector. Export stays on the step form. No certification.");
+    });
+  }
+});

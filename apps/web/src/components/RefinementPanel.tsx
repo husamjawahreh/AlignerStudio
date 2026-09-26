@@ -2,21 +2,15 @@ import type { ReactNode } from "react";
 import type { ReviewBundle } from "../review/types";
 import { buildRefinementNavigation } from "../workflowNavigationPresentation";
 
-type GizmoMode = "translate" | "rotate";
-
 interface RefinementPanelProps {
   bundle: ReviewBundle;
-  gizmoMode: GizmoMode;
   treatmentAvailable: boolean;
-  onGizmoMode: (mode: GizmoMode) => void;
 }
 
 /** Refinement left nav — concise status; gizmo lives in the contextual viewport toolbar. */
 export function RefinementPanel({
   bundle,
-  gizmoMode,
   treatmentAvailable,
-  onGizmoMode,
 }: RefinementPanelProps): JSX.Element {
   const rows = buildRefinementNavigation(bundle);
   const tools = bundle.clinicalTools;
@@ -30,7 +24,7 @@ export function RefinementPanel({
           Refinement
         </h3>
         <p className="cad-review-note">
-          Select a tooth in the viewport. Move, rotate, lock, exclude, reset, undo, and redo use the stored plan.
+          Select a tooth in the viewport. Move and rotate are on the tooth toolbar. Lock, exclude, numeric edit, reset, undo, and redo are on the inspector. They use the stored plan.
         </p>
         {!treatmentAvailable ? (
           <p className="cad-review-note" data-testid="refinement-empty">
@@ -52,28 +46,6 @@ export function RefinementPanel({
             Clinical tools need refresh relative to the current setup or staging version.
           </p>
         )}
-      </section>
-
-      <section className="analysis-section" aria-labelledby="tooth-controls">
-        <h3 id="tooth-controls" className="eyebrow">
-          Mode
-        </h3>
-        <div className="edit-actions">
-          <button
-            className={gizmoMode === "translate" ? "primary-button" : "secondary-button"}
-            onClick={() => onGizmoMode("translate")}
-            disabled={!treatmentAvailable}
-          >
-            Move
-          </button>
-          <button
-            className={gizmoMode === "rotate" ? "primary-button" : "secondary-button"}
-            onClick={() => onGizmoMode("rotate")}
-            disabled={!treatmentAvailable}
-          >
-            Rotate
-          </button>
-        </div>
       </section>
 
       <section className="analysis-section" aria-labelledby="attachments-nav">

@@ -121,15 +121,17 @@ export function ValidationPanel({ stage, bundle }: ValidationPanelProps): JSX.El
       )}
 
       {checks.length > 0 && (
-        <div className="validation-check-list" data-testid="validation-check-catalog">
-          <strong className="eyebrow">Checks</strong>
-          {checks.map((check) => (
-            <div className="validation-check-row" key={check.check_id}>
-              <span>{check.label}</span>
-              <strong>{formatState(check.check_state)}</strong>
-            </div>
-          ))}
-        </div>
+        <details className="validation-check-catalog-fold" data-testid="validation-check-catalog">
+          <summary>All checks ({checks.length})</summary>
+          <div className="validation-check-list">
+            {checks.map((check) => (
+              <div className="validation-check-row" key={check.check_id}>
+                <span>{check.label}</span>
+                <strong>{formatState(check.check_state)}</strong>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {unavailableChecks.length > 0 && (

@@ -308,7 +308,19 @@ Treatment Setup now uses the existing tooth edit stack: direct and numeric edits
 
 This result section was added because the previous sentence said Wave 9 had not been started.
 
-WP-14 and WP-15 were not started. Wave 10 and later were not started.
+WP-14 and WP-15 were not started. At the time of this Wave 9 result, Wave 10 had not been started.
+
+## Wave 10 result
+
+**Date:** 2026-09-26  
+**Verdict:** PASS WITH BLOCKER  
+**This is not First Version acceptance.** Live ToothInstanceNet inference did not run. This host remains **BLOCKED_BY_ENVIRONMENT**.
+
+The inspector is one resolver, `buildInspectorModel`. It changes with selection, workspace, and job state. Advanced details stay collapsed. The page does not scroll at 1366×768, 1600×1000, or 1280×800. Each audited action has one owner. The contract is `docs/WAVE10_ADAPTIVE_INSPECTOR.md`.
+
+This result section was added because the previous sentence said Wave 10 had not been started.
+
+WP-14 and WP-15 were not started. Wave 11 was not started.
 
 ## Implementation order
 Wave 1 Real Segmentation Recovery
